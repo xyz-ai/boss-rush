@@ -1,0 +1,38 @@
+[
+  {
+    "id": "tl_pressure",
+    "name": "会议施压",
+    "family": "aggression",
+    "base": 2,
+    "self_costs": {},
+    "on_resolve": {},
+    "loss_penalty": {
+      "bod": 1
+    },
+    "text": "组长正面施压。若你本回合落败，Body -1。"
+  },
+  {
+    "id": "tl_procedure",
+    "name": "制度卡点",
+    "family": "defense",
+    "base": 1,
+    "self_costs": {},
+    "on_resolve": {},
+    "loss_penalty": {
+      "rep": 1
+    },
+    "text": "用流程和边界挡住你。若你本回合落败，Reputation -1。"
+  },
+  {
+    "id": "tl_alignment",
+    "name": "口径统一",
+    "family": "growth",
+    "base": 1,
+    "self_costs": {},
+    "on_resolve": {},
+    "loss_penalty": {
+      "spr": 1
+    },
+    "text": "让你在语境里被慢慢同化。若你本回合落败，Spirit -1。"
+  }
+]

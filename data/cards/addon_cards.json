@@ -1,0 +1,20 @@
+[
+  {
+    "id": "intel",
+    "name": "Intel",
+    "type": "peek",
+    "text": "本回合免费查看 Boss 的 3 张候选牌池。"
+  },
+  {
+    "id": "leverage",
+    "name": "Leverage",
+    "type": "round_modifier",
+    "text": "若本回合对 Boss 造成伤害，则额外造成 1 点 Boss HP 伤害，并获得 +1 POS。"
+  },
+  {
+    "id": "stop_loss",
+    "name": "StopLoss",
+    "type": "round_modifier",
+    "text": "将本回合玩家 HP 的最大损失限制为 1。"
+  }
+]

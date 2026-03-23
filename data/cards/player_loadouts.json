@@ -1,0 +1,9 @@
+{
+  "default_set_hand": [
+    "g_steady",
+    "g_burst",
+    "a_tempo",
+    "d_cover",
+    "c_audit"
+  ]
+}

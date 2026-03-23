@@ -1,0 +1,14 @@
+{
+  "spirit": {
+    "low": 6,
+    "critical": 3
+  },
+  "body": {
+    "low": 6,
+    "critical": 3
+  },
+  "reputation": {
+    "low": 6,
+    "critical": 3
+  }
+}

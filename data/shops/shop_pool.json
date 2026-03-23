@@ -1,0 +1,68 @@
+[
+  {
+    "id": "buy_intel",
+    "title": "情报订阅",
+    "description": "补充 1 张 Intel。",
+    "cost_life": 2,
+    "effects": {
+      "addons": {
+        "intel": 1
+      }
+    }
+  },
+  {
+    "id": "buy_leverage",
+    "title": "杠杆关系",
+    "description": "补充 1 张 Leverage。",
+    "cost_life": 2,
+    "effects": {
+      "addons": {
+        "leverage": 1
+      }
+    }
+  },
+  {
+    "id": "buy_stop_loss",
+    "title": "止损条款",
+    "description": "补充 1 张 StopLoss。",
+    "cost_life": 2,
+    "effects": {
+      "addons": {
+        "stop_loss": 1
+      }
+    }
+  },
+  {
+    "id": "recover_body",
+    "title": "短暂补觉",
+    "description": "恢复 2 点 Body。",
+    "cost_life": 3,
+    "effects": {
+      "restore": {
+        "bod": 2
+      }
+    }
+  },
+  {
+    "id": "recover_spirit",
+    "title": "情绪抽离",
+    "description": "恢复 2 点 Spirit。",
+    "cost_life": 3,
+    "effects": {
+      "restore": {
+        "spr": 2
+      }
+    }
+  },
+  {
+    "id": "recover_reputation",
+    "title": "口碑修补",
+    "description": "恢复 2 点 Reputation。",
+    "cost_life": 3,
+    "effects": {
+      "restore": {
+        "rep": 2
+      }
+    }
+  }
+]

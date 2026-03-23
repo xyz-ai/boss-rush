@@ -1,0 +1,14 @@
+{
+  "id": "manager",
+  "name": "Manager",
+  "title": "经理",
+  "description": "占位数据。下一阶段开放。",
+  "deck": [],
+  "pool_size": 3,
+  "ai_weights": {
+    "counter": 45,
+    "neutral": 35,
+    "wrong": 20
+  },
+  "enabled": false
+}

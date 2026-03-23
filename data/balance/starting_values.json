@@ -1,0 +1,17 @@
+{
+  "pos": 0,
+  "pos_min": -7,
+  "pos_max": 7,
+  "bod": 8,
+  "spr": 8,
+  "rep": 8,
+  "life": 10,
+  "peek_cost_spr": 1,
+  "shop_offer_count": 3,
+  "boss_order": ["team_lead"],
+  "starting_addons": {
+    "intel": 1,
+    "leverage": 1,
+    "stop_loss": 1
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "beats": {
+    "aggression": "growth",
+    "growth": "defense",
+    "defense": "aggression"
+  },
+  "multipliers": {
+    "advantage": 2.0,
+    "disadvantage": 0.5,
+    "neutral": 1.0
+  }
+}

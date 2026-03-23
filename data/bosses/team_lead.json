@@ -1,0 +1,18 @@
+{
+  "id": "team_lead",
+  "name": "Team Lead",
+  "title": "组长",
+  "description": "像人一样猜测你的出牌，但并不全知。他更偏向反制，却仍然会留出失误。",
+  "deck": ["tl_pressure", "tl_procedure", "tl_alignment"],
+  "pool_size": 3,
+  "ai_weights": {
+    "counter": 50,
+    "neutral": 35,
+    "wrong": 15
+  },
+  "presentation": {
+    "accent_color": "#bcc6d2",
+    "desk_tint": "#2f2624",
+    "portrait_mode": "silhouette"
+  }
+}

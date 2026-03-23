@@ -1,0 +1,10 @@
+{
+  "max_sets": 3,
+  "wins_to_clear": 2,
+  "max_rounds_per_set": 5,
+  "player_hp_per_set": 6,
+  "boss_hp_per_set": 6,
+  "tie_winner": "boss",
+  "max_addons_per_round": 1,
+  "reset_pos_on_new_set": false
+}
