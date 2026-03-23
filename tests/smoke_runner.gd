@@ -19,7 +19,7 @@ func _run() -> void:
 		loader.reload_all()
 		_test_logic(loader, failures)
 		_test_ai(loader, failures)
-	await _test_scene_instancing(failures)
+	await _test_scene_instancing(loader, failures)
 
 	if failures.is_empty():
 		print("SMOKE OK")
@@ -38,6 +38,13 @@ func _test_logic(loader, failures: Array[String]) -> void:
 	var peek_system = PEEK_SYSTEM_SCRIPT.new()
 
 	var state = _fresh_state(loader)
+	_assert(
+		state.current_set_state.boss_deck == loader.get_boss("team_lead").get("deck", []),
+		"Set should initialize the full boss deck for the current set.",
+		failures
+	)
+	_assert(state.current_set_state.boss_used_cards.is_empty(), "Boss used cards should start empty.", failures)
+	_assert(not state.current_set_state.boss_revealed, "Boss deck should start hidden.", failures)
 	state.begin_round(["tl_pressure", "tl_procedure", "tl_alignment"])
 	var result = resolver.resolve_round(state, "g_steady", "tl_procedure", {"addon_id": "", "cover": 0})
 	_assert(result.get("margin", 0) == 2, "Growth vs defense should create +2 margin.", failures)
@@ -90,9 +97,18 @@ func _test_logic(loader, failures: Array[String]) -> void:
 
 	state = _fresh_state(loader)
 	state.spr = 1
-	state.begin_round(["tl_pressure", "tl_procedure", "tl_alignment"])
-	peek_system.peek_pool(state, state.current_set_state.current_pool)
+	peek_system.peek_pool(state, state.current_set_state.boss_deck)
+	_assert(state.current_set_state.boss_revealed, "Peeking should reveal the full boss deck for the set.", failures)
 	_assert(state.is_failed(), "Run should fail immediately when SPR reaches zero.", failures)
+
+	state = _fresh_state(loader)
+	state.begin_round(["tl_pressure", "tl_procedure", "tl_alignment"])
+	state.current_set_state.mark_boss_card_used("tl_pressure")
+	_assert(state.current_set_state.boss_used_cards.size() == 1, "Used boss cards should be tracked for deck visualization.", failures)
+	state.start_set(challenge_rules)
+	state.current_set_state.configure_boss_deck(loader.get_boss("team_lead").get("deck", []))
+	_assert(state.current_set_state.boss_used_cards.is_empty(), "Boss used cards should reset on a new set.", failures)
+	_assert(not state.current_set_state.boss_revealed, "Boss reveal state should reset on a new set.", failures)
 
 func _test_ai(loader, failures: Array[String]) -> void:
 	var state = _fresh_state(loader)
@@ -114,7 +130,7 @@ func _test_ai(loader, failures: Array[String]) -> void:
 	_assert(counts["counter"] > counts["neutral"], "Counter picks should outnumber neutral picks.", failures)
 	_assert(counts["neutral"] > counts["wrong"], "Neutral picks should outnumber wrong picks.", failures)
 
-func _test_scene_instancing(failures: Array[String]) -> void:
+func _test_scene_instancing(loader, failures: Array[String]) -> void:
 	for scene_path in [
 		"res://scenes/main/Main.tscn",
 		"res://scenes/battle/BattleScene.tscn",
@@ -132,12 +148,31 @@ func _test_scene_instancing(failures: Array[String]) -> void:
 			instance.queue_free()
 			await process_frame
 
+	var battle_scene: Control = load("res://scenes/battle/BattleScene.tscn").instantiate()
+	var battle_state = _fresh_state(loader)
+	var game_run = get_root().get_node_or_null("GameRun")
+	if game_run != null:
+		game_run.run_state = battle_state
+	get_root().add_child(battle_scene)
+	battle_scene.bind_context(battle_state, loader.get_boss("team_lead"))
+	await process_frame
+	battle_scene.call("_on_peek_requested")
+	await process_frame
+	_assert(battle_state.current_set_state.boss_revealed, "BattleScene should reveal the boss deck after peek.", failures)
+	var first_card_id = str(battle_state.current_set_state.remaining_player_battle_cards[0])
+	battle_scene.call("_on_player_card_selected", first_card_id)
+	await process_frame
+	_assert(battle_state.current_set_state.boss_used_cards.size() == 1, "BattleScene should record used boss cards after a round resolves.", failures)
+	battle_scene.queue_free()
+	await process_frame
+
 func _fresh_state(loader) -> Object:
 	var defaults: Dictionary = loader.get_balance("starting_values", {})
 	var challenge_rules: Dictionary = loader.get_balance("challenge_rules", {})
 	var state = RUN_STATE_SCRIPT.new()
 	state.configure(defaults)
 	state.begin_challenge("team_lead", challenge_rules, loader.get_player_loadout("default_set_hand"))
+	state.current_set_state.configure_boss_deck(loader.get_boss("team_lead").get("deck", []))
 	return state
 
 func _assert(condition: bool, message: String, failures: Array[String]) -> void:

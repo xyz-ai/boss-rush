@@ -26,6 +26,7 @@ var _pending_result: Dictionary = {}
 @onready var _boss_silhouette: Label = $SafeArea/RootHBox/MainStage/BossStage/MarginContainer/VBoxContainer/PortraitRow/PortraitFrame/BustMargin/BossSilhouette
 @onready var _status_panel = $SafeArea/RootHBox/SideRail/StatusPanel
 @onready var _boss_panel = $SafeArea/RootHBox/MainStage/BossStage/MarginContainer/VBoxContainer/PortraitRow/BossPanel
+@onready var _boss_deck_view = $SafeArea/RootHBox/MainStage/BossStage/MarginContainer/VBoxContainer/BossDeckView
 @onready var _addon_panel = $SafeArea/RootHBox/SideRail/AddonPanel
 @onready var _card_row: HBoxContainer = $SafeArea/RootHBox/MainStage/PlayerHandStage/MarginContainer/VBoxContainer/HandScroll/CardRow
 @onready var _hand_info_label: Label = $SafeArea/RootHBox/MainStage/PlayerHandStage/MarginContainer/VBoxContainer/HandInfoLabel
@@ -57,6 +58,7 @@ func bind_context(next_run_state, next_boss_def: Dictionary) -> void:
 func apply_effect_profile(profile: Dictionary) -> void:
 	_status_panel.apply_effect_profile(profile)
 	_boss_panel.apply_effect_profile(profile)
+	_boss_deck_view.apply_effect_profile(profile)
 	_addon_panel.apply_effect_profile(profile)
 	_dust_overlay.modulate.a = float(profile.get("crack_alpha", 0.0))
 	_desk_surface.color = Color(
@@ -75,6 +77,7 @@ func _setup_scene() -> void:
 	_sync_presentation()
 	if run_state.current_set_state == null:
 		run_state.start_set(run_state.challenge_rules)
+	_ensure_boss_deck_initialized()
 	if run_state.current_set_state != null and run_state.current_set_state.current_pool.is_empty():
 		_start_round()
 	else:
@@ -100,10 +103,17 @@ func _build_player_cards() -> void:
 		_card_row.add_child(card_view)
 		_card_views[card_def.get("id", "")] = card_view
 
+func _ensure_boss_deck_initialized() -> void:
+	if run_state == null or run_state.current_set_state == null:
+		return
+	if run_state.current_set_state.boss_deck.is_empty():
+		run_state.current_set_state.configure_boss_deck(boss_def.get("deck", []))
+
 func _start_round() -> void:
 	if run_state == null or run_state.current_set_state == null:
 		return
 	var set_state = run_state.current_set_state
+	_ensure_boss_deck_initialized()
 	if not set_state.has_rounds_remaining():
 		return
 	run_state.begin_round(_boss_ai.prepare_pool(boss_def, run_state))
@@ -119,14 +129,15 @@ func _refresh_ui() -> void:
 	var challenge_state = run_state.challenge_state
 	_status_panel.update_from_run_state(run_state)
 	_boss_panel.update_from_battle(run_state, boss_def)
+	_boss_deck_view.refresh_from_state(set_state)
 	_build_player_cards()
 
 	if set_state != null:
-		_boss_panel.set_round_pool(set_state.current_pool, set_state.pool_revealed)
+		_boss_panel.set_deck_status(set_state)
 		_boss_panel.set_peek_state(
 			int(_data_loader().get_balance("peek_cost_spr", 1)),
 			set_state.free_peek_this_round,
-			set_state.pool_revealed or set_state.current_pool.is_empty()
+			set_state.boss_revealed or set_state.boss_deck.is_empty()
 		)
 		_addon_panel.set_inventory(run_state.get_remaining_addons(), _data_loader().get_all_addons(), set_state.round_active_addon)
 		_set_round_banner.text = "第 %d 局 / 第 %d 回合" % [set_state.set_index, min(set_state.round_index + 1, set_state.max_rounds)]
@@ -162,7 +173,7 @@ func _on_peek_requested() -> void:
 	if _result_popup.visible or run_state == null or run_state.current_set_state == null:
 		return
 	var set_state = run_state.current_set_state
-	var result = _peek_system.peek_pool(run_state, set_state.current_pool)
+	var result = _peek_system.peek_pool(run_state, set_state.boss_deck)
 	_notice_label.text = result.get("message", "")
 	if result.get("ok", false):
 		GameRun.emit_log(result.get("message", ""))
@@ -189,6 +200,7 @@ func _on_player_card_selected(card_id: String) -> void:
 		return
 	var player_card = _data_loader().get_battle_card(card_id)
 	var boss_card_id = _boss_ai.pick_card(set_state.current_pool, player_card.get("family", ""), run_state)
+	set_state.mark_boss_card_used(boss_card_id)
 	var result = _resolver.resolve_round(run_state, card_id, boss_card_id, _addon_system.build_round_context(run_state))
 	set_state.last_round_result = result.duplicate(true)
 	run_state.clear_round_state()

@@ -28,35 +28,34 @@ func update_from_battle(run_state, boss_def: Dictionary = {}) -> void:
 	if challenge_state == null or set_state == null:
 		_score_label.text = "Boss 胜场：-"
 		_hp_label.text = "Boss HP：-"
+		_pool_label.text = "卡池状态：未开始"
 		return
 	_score_label.text = "Boss 胜场 %d / 玩家胜场 %d" % [
 		int(challenge_state.boss_set_wins),
 		int(challenge_state.player_set_wins),
 	]
 	_hp_label.text = "本局 Boss HP %d" % int(set_state.boss_hp)
+	set_deck_status(set_state)
 
-func set_round_pool(pool_ids: Array, revealed: bool) -> void:
-	if pool_ids.is_empty():
-		_pool_label.text = "候选牌池：等待下一回合。"
+func set_deck_status(set_state) -> void:
+	if set_state == null:
+		_pool_label.text = "卡池状态：未开始"
 		return
-	if not revealed:
-		_pool_label.text = "候选牌池：%d 张未揭示。" % pool_ids.size()
-		return
-
-	var names: Array[String] = []
-	var data_loader = get_node_or_null("/root/DataLoader")
-	for card_id in pool_ids:
-		names.append(data_loader.get_boss_card(str(card_id)).get("name", str(card_id)))
-	_pool_label.text = "候选牌池：%s" % " / ".join(names)
+	var used_count = set_state.boss_used_cards.size()
+	var total_count = set_state.boss_deck.size()
+	var reveal_text = "未查看"
+	if set_state.boss_revealed:
+		reveal_text = "已展开"
+	_pool_label.text = "卡池状态：%s，已出 %d / 总数 %d" % [reveal_text, used_count, total_count]
 
 func set_peek_state(cost: int, free_peek: bool, disabled: bool) -> void:
 	_peek_button.disabled = disabled
 	if disabled:
-		_peek_button.text = "牌池已查看"
+		_peek_button.text = "卡池已展开"
 	elif free_peek:
-		_peek_button.text = "免费查看牌池"
+		_peek_button.text = "免费查看卡池"
 	else:
-		_peek_button.text = "支付 %d SPR 查看牌池" % cost
+		_peek_button.text = "支付 %d SPR 查看卡池" % cost
 
 func apply_effect_profile(profile: Dictionary) -> void:
 	var fatigue = float(profile.get("fatigue", 0.0))

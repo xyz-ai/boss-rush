@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scenes/battle/BattleScene.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/battle/StatusPanel.tscn" id="2"]
@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" path="res://scenes/battle/AddonPanel.tscn" id="4"]
 [ext_resource type="PackedScene" path="res://scenes/battle/ResultPopup.tscn" id="5"]
 [ext_resource type="PackedScene" path="res://scenes/ui/TooltipPanel.tscn" id="6"]
+[ext_resource type="PackedScene" path="res://scenes/battle/BossDeckView.tscn" id="7"]
 
 [node name="BattleScene" type="Control"]
 layout_mode = 3
@@ -164,6 +165,10 @@ text = "BOSS"
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+
+[node name="BossDeckView" parent="SafeArea/RootHBox/MainStage/BossStage/MarginContainer/VBoxContainer" instance=ExtResource("7")]
+layout_mode = 2
+size_flags_horizontal = 3
 
 [node name="TableStage" type="PanelContainer" parent="SafeArea/RootHBox/MainStage"]
 custom_minimum_size = Vector2(0, 210)

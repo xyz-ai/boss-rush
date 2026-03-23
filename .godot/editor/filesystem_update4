@@ -24,3 +24,4 @@ res://scripts/systems/AddonSystem.gd
 res://scripts/systems/LoggingSystem.gd
 res://scripts/systems/PeekSystem.gd
 res://tests/smoke_runner.gd
+res://scripts/core/SetState.gd

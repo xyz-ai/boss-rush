@@ -14,6 +14,9 @@ var current_pool: Array[String] = []
 var pool_revealed: bool = false
 var free_peek_this_round: bool = false
 var round_active_addon: String = ""
+var boss_deck: Array[String] = []
+var boss_used_cards: Array[String] = []
+var boss_revealed: bool = false
 
 var next_bonus: int = 0
 var next_penalty: int = 0
@@ -35,10 +38,20 @@ func configure(next_set_index: int, set_rules: Dictionary, loadout_ids: Array[St
 	pool_revealed = false
 	free_peek_this_round = false
 	round_active_addon = ""
+	boss_deck.clear()
+	boss_used_cards.clear()
+	boss_revealed = false
 	next_bonus = 0
 	next_penalty = 0
 	cover = 0
 	last_round_result.clear()
+
+func configure_boss_deck(deck_ids: Array) -> void:
+	boss_deck.clear()
+	for card_id in deck_ids:
+		boss_deck.append(str(card_id))
+	boss_used_cards.clear()
+	boss_revealed = false
 
 func begin_round(pool_ids: Array) -> void:
 	current_pool.clear()
@@ -64,6 +77,9 @@ func clear_round_state() -> void:
 	round_active_addon = ""
 	cover = 0
 
+func mark_boss_card_used(card_id: String) -> void:
+	boss_used_cards.append(str(card_id))
+
 func has_rounds_remaining() -> bool:
 	return round_index < max_rounds and not remaining_player_battle_cards.is_empty()
 
@@ -80,6 +96,9 @@ func snapshot() -> Dictionary:
 		"pool_revealed": pool_revealed,
 		"free_peek_this_round": free_peek_this_round,
 		"round_active_addon": round_active_addon,
+		"boss_deck": boss_deck.duplicate(),
+		"boss_used_cards": boss_used_cards.duplicate(),
+		"boss_revealed": boss_revealed,
 		"next_bonus": next_bonus,
 		"next_penalty": next_penalty,
 		"cover": cover,
