@@ -8,6 +8,22 @@ signal addon_selected(addon_id: String)
 
 var _rows: Dictionary = {}
 
+func _ready() -> void:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.055, 0.05, 0.045, 0.72)
+	style.border_color = Color(0.82, 0.76, 0.62, 0.16)
+	style.border_width_left = 1
+	style.border_width_top = 1
+	style.border_width_right = 1
+	style.border_width_bottom = 1
+	style.corner_radius_top_left = 14
+	style.corner_radius_top_right = 14
+	style.corner_radius_bottom_left = 14
+	style.corner_radius_bottom_right = 14
+	style.shadow_color = Color(0, 0, 0, 0.18)
+	style.shadow_size = 18
+	add_theme_stylebox_override("panel", style)
+
 func set_inventory(inventory: Dictionary, addon_defs: Array[Dictionary], active_addon: String) -> void:
 	if _rows.size() != addon_defs.size():
 		_rebuild(addon_defs)
@@ -30,7 +46,7 @@ func set_inventory(inventory: Dictionary, addon_defs: Array[Dictionary], active_
 		if active_addon == addon_id:
 			action_button.text = "已启用"
 
-	_hint_label.text = "加注牌属于本次挑战资源。每回合最多使用 1 张，用掉后直到商店补充前都不会恢复。"
+	_hint_label.text = "本次挑战资源 · 用后不恢复"
 
 func apply_effect_profile(profile: Dictionary) -> void:
 	var fatigue = float(profile.get("fatigue", 0.0))
@@ -47,6 +63,7 @@ func _rebuild(addon_defs: Array[Dictionary]) -> void:
 		var row_panel = PanelContainer.new()
 		row_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row_panel.custom_minimum_size = Vector2(0, 78)
+		row_panel.add_theme_stylebox_override("panel", _make_row_style())
 		_addon_list.add_child(row_panel)
 
 		var margin = MarginContainer.new()
@@ -71,17 +88,24 @@ func _rebuild(addon_defs: Array[Dictionary]) -> void:
 		var title_label = Label.new()
 		title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		title_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		title_label.add_theme_color_override("font_color", Color(0.96, 0.92, 0.88))
 		info_box.add_child(title_label)
 
 		var desc_label = Label.new()
 		desc_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		desc_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		desc_label.add_theme_color_override("font_color", Color(0.84, 0.80, 0.76, 0.94))
 		info_box.add_child(desc_label)
 
 		var action_button = Button.new()
 		action_button.custom_minimum_size = Vector2(84, 42)
 		action_button.text = "使用"
+		action_button.add_theme_stylebox_override("normal", _make_button_style(Color(0.12, 0.10, 0.09, 0.92), Color(0.82, 0.76, 0.62, 0.28)))
+		action_button.add_theme_stylebox_override("hover", _make_button_style(Color(0.18, 0.14, 0.12, 0.96), Color(0.90, 0.82, 0.66, 0.46)))
+		action_button.add_theme_stylebox_override("pressed", _make_button_style(Color(0.08, 0.07, 0.06, 0.96), Color(0.90, 0.82, 0.66, 0.34)))
+		action_button.add_theme_stylebox_override("disabled", _make_button_style(Color(0.08, 0.07, 0.06, 0.56), Color(0.42, 0.40, 0.36, 0.16)))
+		action_button.add_theme_color_override("font_color", Color(0.96, 0.92, 0.88))
 		action_button.pressed.connect(_on_addon_button_pressed.bind(addon_id))
 		row.add_child(action_button)
 
@@ -93,3 +117,33 @@ func _rebuild(addon_defs: Array[Dictionary]) -> void:
 
 func _on_addon_button_pressed(addon_id: String) -> void:
 	emit_signal("addon_selected", addon_id)
+
+func _make_row_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.08, 0.07, 0.06, 0.70)
+	style.border_color = Color(0.84, 0.76, 0.62, 0.14)
+	style.border_width_left = 1
+	style.border_width_top = 1
+	style.border_width_right = 1
+	style.border_width_bottom = 1
+	style.corner_radius_top_left = 12
+	style.corner_radius_top_right = 12
+	style.corner_radius_bottom_left = 12
+	style.corner_radius_bottom_right = 12
+	style.shadow_color = Color(0, 0, 0, 0.18)
+	style.shadow_size = 12
+	return style
+
+func _make_button_style(fill: Color, border: Color) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = fill
+	style.border_color = border
+	style.border_width_left = 1
+	style.border_width_top = 1
+	style.border_width_right = 1
+	style.border_width_bottom = 1
+	style.corner_radius_top_left = 8
+	style.corner_radius_top_right = 8
+	style.corner_radius_bottom_left = 8
+	style.corner_radius_bottom_right = 8
+	return style

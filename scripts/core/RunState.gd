@@ -10,6 +10,9 @@ var bod: int = 0
 var spr: int = 0
 var rep: int = 0
 var life: int = 0
+var boss_bod: int = 0
+var boss_spr: int = 0
+var boss_rep: int = 0
 
 var pos_min: int = CONSTANTS.POS_MIN
 var pos_max: int = CONSTANTS.POS_MAX
@@ -33,6 +36,9 @@ func configure(defaults: Dictionary) -> void:
 	spr = int(defaults.get("spr", 8))
 	rep = int(defaults.get("rep", 8))
 	life = int(defaults.get("life", 10))
+	boss_bod = int(defaults.get("boss_bod", 3))
+	boss_spr = int(defaults.get("boss_spr", 3))
+	boss_rep = int(defaults.get("boss_rep", 3))
 	pos_min = int(defaults.get("pos_min", CONSTANTS.POS_MIN))
 	pos_max = int(defaults.get("pos_max", CONSTANTS.POS_MAX))
 	boss_index = 0
@@ -129,14 +135,20 @@ func finish_set(winner: String) -> Dictionary:
 func clamp_pos() -> void:
 	pos = clamp(pos, pos_min, pos_max)
 
-func is_collapsed() -> bool:
+func is_player_collapsed() -> bool:
 	return bod <= 0 or spr <= 0 or rep <= 0
+
+func is_boss_collapsed() -> bool:
+	return boss_bod <= 0 or boss_spr <= 0 or boss_rep <= 0
+
+func is_collapsed() -> bool:
+	return is_player_collapsed() or is_boss_collapsed()
 
 func is_failed() -> bool:
 	return is_collapsed()
 
 func is_victory() -> bool:
-	return challenge_state != null and challenge_state.player_set_wins >= challenge_state.wins_to_clear
+	return is_boss_collapsed() or (challenge_state != null and challenge_state.player_set_wins >= challenge_state.wins_to_clear)
 
 func get_remaining_addons() -> Dictionary:
 	if challenge_state == null:
@@ -150,6 +162,9 @@ func snapshot() -> Dictionary:
 		"spr": spr,
 		"rep": rep,
 		"life": life,
+		"boss_bod": boss_bod,
+		"boss_spr": boss_spr,
+		"boss_rep": boss_rep,
 		"current_boss_id": current_boss_id,
 		"remaining_addons": get_remaining_addons().duplicate(true),
 		"challenge": challenge_state.snapshot() if challenge_state != null else {},

@@ -1,10 +1,23 @@
-extends PanelContainer
+extends Control
 class_name BossDeckView
+
+const CARD_FRAME_PATH := "res://assets/battle/cards/frames/card_frame_main.png"
+const CARD_BACK_PATH := "res://assets/battle/cards/backs/card_back_default.png"
+const CARD_USED_OVERLAY_PATH := "res://assets/battle/cards/overlays/card_overlay_used.png"
+const CARD_SHADOW_PATH := "res://assets/battle/effects/shadow_card_soft.png"
+const PORTRAIT_PATHS := [
+	"res://assets/battle/cards/portraits/card_portrait_silhouette_01.png",
+	"res://assets/battle/cards/portraits/card_portrait_silhouette_02.png",
+	"res://assets/battle/cards/portraits/card_portrait_silhouette_03.png",
+]
 
 var _effect_profile: Dictionary = {}
 
 @onready var _deck_title: Label = $MarginContainer/VBoxContainer/DeckTitle
 @onready var _deck_row: HBoxContainer = $MarginContainer/VBoxContainer/DeckScroll/DeckRow
+
+func _ready() -> void:
+	_deck_title.add_theme_color_override("font_color", Color(0.86, 0.82, 0.76, 0.96))
 
 func refresh_from_state(set_state) -> void:
 	for child in _deck_row.get_children():
@@ -14,12 +27,12 @@ func refresh_from_state(set_state) -> void:
 		_deck_title.text = "对手牌列"
 		return
 
-	_deck_title.text = "对手牌列 %d 张 / 已出 %d" % [
+	_deck_title.text = "对手牌列 %d / 已出 %d" % [
 		set_state.boss_deck.size(),
 		set_state.boss_used_cards.size(),
 	]
 
-	var used_counts := _build_used_counts(set_state.boss_used_cards)
+	var used_counts: Dictionary = _build_used_counts(set_state.boss_used_cards)
 	for card_id in set_state.boss_deck:
 		var card_state := "hidden"
 		if set_state.boss_revealed:
@@ -33,7 +46,7 @@ func apply_effect_profile(profile: Dictionary) -> void:
 	_effect_profile = profile.duplicate(true)
 	var fatigue = float(profile.get("fatigue", 0.0))
 	var coldness = float(profile.get("coldness", 0.0))
-	self_modulate = Color(1.0 - coldness * 0.08, 1.0 - fatigue * 0.08, 1.0 - coldness * 0.03, 1.0)
+	self_modulate = Color(1.0 - coldness * 0.08, 1.0 - fatigue * 0.06, 1.0 - coldness * 0.02, 1.0)
 
 func _build_used_counts(used_cards: Array) -> Dictionary:
 	var counts: Dictionary = {}
@@ -44,95 +57,161 @@ func _build_used_counts(used_cards: Array) -> Dictionary:
 
 func _build_card_widget(card_id: String, card_state: String) -> Control:
 	var card_def = _data_loader().get_boss_card(card_id)
-	var panel = PanelContainer.new()
-	panel.custom_minimum_size = Vector2(126, 104)
-	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	var root := Control.new()
+	root.custom_minimum_size = Vector2(96, 132)
+	root.mouse_filter = Control.MOUSE_FILTER_STOP
 
-	var panel_box = StyleBoxFlat.new()
-	panel_box.corner_radius_top_left = 10
-	panel_box.corner_radius_top_right = 10
-	panel_box.corner_radius_bottom_left = 10
-	panel_box.corner_radius_bottom_right = 10
-	panel_box.border_width_left = 1
-	panel_box.border_width_top = 1
-	panel_box.border_width_right = 1
-	panel_box.border_width_bottom = 1
-	panel_box.shadow_size = 10
-	panel_box.shadow_color = Color(0, 0, 0, 0.18)
-	panel_box.border_color = Color(0.64, 0.67, 0.73, 0.42)
+	var shadow := TextureRect.new()
+	_fill_rect(shadow)
+	shadow.texture = _load_texture(CARD_SHADOW_PATH)
+	shadow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	shadow.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	shadow.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	shadow.modulate = Color(0, 0, 0, 0.56)
+	root.add_child(shadow)
 
-	var title_text = "?"
-	var body_text = "未查看"
-	var badge_text = ""
-	var title_color = Color(0.92, 0.94, 0.96)
-	var alpha = 1.0
+	var body := Control.new()
+	_fill_rect(body)
+	root.add_child(body)
+
+	var backdrop := ColorRect.new()
+	_fill_rect_inset(backdrop, 0.04, 0.04, 0.96, 0.96)
+	body.add_child(backdrop)
+
+	var portrait := TextureRect.new()
+	portrait.anchor_left = 0.10
+	portrait.anchor_top = 0.09
+	portrait.anchor_right = 0.90
+	portrait.anchor_bottom = 0.70
+	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	portrait.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	body.add_child(portrait)
+
+	var back := TextureRect.new()
+	_fill_rect_inset(back, 0.04, 0.04, 0.96, 0.96)
+	back.texture = _load_texture(CARD_BACK_PATH)
+	back.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	back.stretch_mode = TextureRect.STRETCH_SCALE
+	back.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	body.add_child(back)
+
+	var frame := TextureRect.new()
+	_fill_rect(frame)
+	frame.texture = _load_texture(CARD_FRAME_PATH)
+	frame.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	frame.stretch_mode = TextureRect.STRETCH_SCALE
+	frame.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	body.add_child(frame)
+
+	var title_bg := ColorRect.new()
+	title_bg.anchor_left = 0.10
+	title_bg.anchor_top = 0.76
+	title_bg.anchor_right = 0.90
+	title_bg.anchor_bottom = 0.93
+	title_bg.color = Color(0.04, 0.04, 0.04, 0.74)
+	body.add_child(title_bg)
+
+	var title := Label.new()
+	title.anchor_left = 0.12
+	title.anchor_top = 0.78
+	title.anchor_right = 0.88
+	title.anchor_bottom = 0.92
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	title.add_theme_color_override("font_color", Color(0.94, 0.92, 0.88))
+	body.add_child(title)
+
+	var badge := Label.new()
+	badge.anchor_left = 0.10
+	badge.anchor_top = 0.04
+	badge.anchor_right = 0.90
+	badge.anchor_bottom = 0.18
+	badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	badge.add_theme_color_override("font_color", Color(0.94, 0.72, 0.42))
+	body.add_child(badge)
+
+	var used_overlay := TextureRect.new()
+	_fill_rect(used_overlay)
+	used_overlay.texture = _load_texture(CARD_USED_OVERLAY_PATH)
+	used_overlay.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	used_overlay.stretch_mode = TextureRect.STRETCH_SCALE
+	used_overlay.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	used_overlay.visible = false
+	body.add_child(used_overlay)
+
+	var tooltip_title := "Boss 未揭示牌"
+	var tooltip_body := "当前还没有查看这一局的 Boss 卡池。"
 	match card_state:
 		"hidden":
-			panel_box.bg_color = Color(0.11, 0.11, 0.13, 0.88)
-			title_text = "?"
-			body_text = "未查看"
-			alpha = 0.76
+			backdrop.color = Color(0.08, 0.08, 0.09, 0.88)
+			back.visible = true
+			portrait.visible = false
+			title.text = "?"
+			title.modulate = Color(0.78, 0.78, 0.80, 0.82)
+			root.modulate.a = 0.82
 		"used":
-			panel_box.bg_color = Color(0.20, 0.21, 0.24, 0.80)
-			title_text = str(card_def.get("name", card_id))
-			body_text = "已使用"
-			badge_text = "已出"
-			title_color = Color(0.72, 0.74, 0.77)
-			alpha = 0.50
+			backdrop.color = Color(0.14, 0.14, 0.15, 0.86)
+			back.visible = false
+			portrait.visible = true
+			portrait.texture = _pick_portrait_texture(card_id)
+			portrait.modulate = Color(0.62, 0.62, 0.64, 0.72)
+			title.text = str(card_def.get("name", card_id))
+			title.modulate = Color(0.72, 0.72, 0.74, 0.90)
+			badge.text = "已出"
+			used_overlay.visible = true
+			root.modulate = Color(0.74, 0.74, 0.76, 0.56)
+			tooltip_title = str(card_def.get("name", card_id))
+			tooltip_body = "%s\n\n状态：本局已经出过。" % str(card_def.get("text", ""))
 		_:
-			panel_box.bg_color = Color(0.27, 0.30, 0.34, 0.95)
-			title_text = str(card_def.get("name", card_id))
-			body_text = str(card_def.get("family", "")).capitalize()
-	panel.add_theme_stylebox_override("panel", panel_box)
-	panel.modulate.a = alpha
+			backdrop.color = Color(0.16, 0.14, 0.12, 0.92)
+			back.visible = false
+			portrait.visible = true
+			portrait.texture = _pick_portrait_texture(card_id)
+			portrait.modulate = Color(0.92, 0.88, 0.80, 0.82)
+			title.text = str(card_def.get("name", card_id))
+			title.modulate = Color(0.95, 0.93, 0.89, 1.0)
+			root.modulate = Color(1, 1, 1, 1)
+			tooltip_title = str(card_def.get("name", card_id))
+			tooltip_body = str(card_def.get("text", ""))
 
-	var margin = MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 12)
-	margin.add_theme_constant_override("margin_top", 10)
-	margin.add_theme_constant_override("margin_right", 12)
-	margin.add_theme_constant_override("margin_bottom", 10)
-	panel.add_child(margin)
-
-	var box = VBoxContainer.new()
-	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	box.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	box.add_theme_constant_override("separation", 6)
-	margin.add_child(box)
-
-	var badge = Label.new()
-	badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	badge.text = badge_text
-	badge.modulate = Color(0.90, 0.68, 0.52, 0.92)
-	box.add_child(badge)
-
-	var title = Label.new()
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	title.text = title_text
-	title.modulate = title_color
-	box.add_child(title)
-
-	var body = Label.new()
-	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	body.text = body_text
-	body.modulate = Color(0.78, 0.80, 0.84, 0.88)
-	box.add_child(body)
-
-	var tooltip_title = "Boss 未揭示卡"
-	var tooltip_body = "当前还没有查看这一局的 Boss 卡池。"
-	if card_state != "hidden":
-		tooltip_title = str(card_def.get("name", card_id))
-		tooltip_body = str(card_def.get("text", ""))
-	panel.mouse_entered.connect(func():
-		SignalBus.emit_signal("tooltip_requested", tooltip_title, tooltip_body, panel.global_position)
+	root.mouse_entered.connect(func():
+		SignalBus.emit_signal("tooltip_requested", tooltip_title, tooltip_body, root.global_position)
 	)
-	panel.mouse_exited.connect(func():
+	root.mouse_exited.connect(func():
 		SignalBus.emit_signal("tooltip_hidden")
 	)
-	return panel
+	return root
+
+func _pick_portrait_texture(card_id: String) -> Texture2D:
+	var index: int = abs(card_id.hash()) % PORTRAIT_PATHS.size()
+	var path: String = PORTRAIT_PATHS[index]
+	if not ResourceLoader.exists(path):
+		path = PORTRAIT_PATHS[1]
+	return _load_texture(path)
+
+func _fill_rect(control: Control) -> void:
+	control.layout_mode = 1
+	control.anchors_preset = Control.PRESET_FULL_RECT
+	control.anchor_right = 1.0
+	control.anchor_bottom = 1.0
+	control.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	control.grow_vertical = Control.GROW_DIRECTION_BOTH
+	control.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+func _fill_rect_inset(control: Control, left: float, top: float, right: float, bottom: float) -> void:
+	control.layout_mode = 1
+	control.anchor_left = left
+	control.anchor_top = top
+	control.anchor_right = right
+	control.anchor_bottom = bottom
+	control.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+func _load_texture(path: String) -> Texture2D:
+	if path.is_empty() or not ResourceLoader.exists(path):
+		return null
+	return load(path) as Texture2D
 
 func _data_loader():
 	return get_node_or_null("/root/DataLoader")

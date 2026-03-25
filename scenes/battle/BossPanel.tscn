@@ -3,57 +3,35 @@
 [ext_resource type="Script" path="res://scenes/battle/BossPanel.gd" id="1"]
 
 [node name="BossPanel" type="PanelContainer"]
-custom_minimum_size = Vector2(0, 160)
 size_flags_horizontal = 3
-size_flags_vertical = 3
 script = ExtResource("1")
 
 [node name="MarginContainer" type="MarginContainer" parent="."]
 layout_mode = 2
-theme_override_constants/margin_left = 18
-theme_override_constants/margin_top = 16
-theme_override_constants/margin_right = 18
-theme_override_constants/margin_bottom = 16
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 12
 
 [node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/separation = 10
-
-[node name="SectionTitle" type="Label" parent="MarginContainer/VBoxContainer"]
-layout_mode = 2
-text = "Boss 情报"
+theme_override_constants/separation = 5
 
 [node name="BossName" type="Label" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
+horizontal_alignment = 1
 autowrap_mode = 3
 text = "组长 / Team Lead"
 
-[node name="InfoScroll" type="ScrollContainer" parent="MarginContainer/VBoxContainer"]
+[node name="BossDesc" type="Label" parent="MarginContainer/VBoxContainer"]
+visible = false
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 3
-horizontal_scroll_mode = 0
-vertical_scroll_mode = 1
-
-[node name="InfoVBox" type="VBoxContainer" parent="MarginContainer/VBoxContainer/InfoScroll"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 10
-
-[node name="BossDesc" type="Label" parent="MarginContainer/VBoxContainer/InfoScroll/InfoVBox"]
-layout_mode = 2
-size_flags_horizontal = 3
+horizontal_alignment = 1
 autowrap_mode = 3
-text = "Boss 描述"
-
-[node name="PoolLabel" type="Label" parent="MarginContainer/VBoxContainer/InfoScroll/InfoVBox"]
-layout_mode = 2
-size_flags_horizontal = 3
-autowrap_mode = 3
-text = "候选牌池：未公开"
+text = "像人在猜你会怎么出牌，但并不全知。"
 
 [node name="FooterRow" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
@@ -64,17 +42,32 @@ theme_override_constants/separation = 10
 layout_mode = 2
 size_flags_horizontal = 3
 autowrap_mode = 3
-text = "Boss 胜场 0"
+text = "比分 0 : 0"
 
 [node name="HpLabel" type="Label" parent="MarginContainer/VBoxContainer/FooterRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 horizontal_alignment = 2
 autowrap_mode = 3
-text = "本局 Boss HP 6"
+text = "HP 6"
+
+[node name="PoolLabel" type="Label" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 1
+autowrap_mode = 3
+text = "未窥破 · 已出 0 / 5"
+
+[node name="StateLabel" type="Label" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 1
+autowrap_mode = 3
+text = "BOD 3 / SPR 3 / REP 3"
 
 [node name="PeekButton" type="Button" parent="MarginContainer/VBoxContainer"]
+visible = false
 layout_mode = 2
-custom_minimum_size = Vector2(0, 42)
+custom_minimum_size = Vector2(0, 38)
 size_flags_horizontal = 3
-text = "支付 1 SPR 查看牌池"
+text = "查看牌池"

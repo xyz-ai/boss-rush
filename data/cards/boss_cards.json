@@ -12,6 +12,18 @@
     "text": "组长正面施压。若你本回合落败，Body -1。"
   },
   {
+    "id": "tl_deadline",
+    "name": "截止追逼",
+    "family": "aggression",
+    "base": 1,
+    "self_costs": {},
+    "on_resolve": {},
+    "loss_penalty": {
+      "spr": 1
+    },
+    "text": "把节奏压到你身上。若你本回合落败，Spirit -1。"
+  },
+  {
     "id": "tl_procedure",
     "name": "制度卡点",
     "family": "defense",
@@ -22,6 +34,18 @@
       "rep": 1
     },
     "text": "用流程和边界挡住你。若你本回合落败，Reputation -1。"
+  },
+  {
+    "id": "tl_escalation",
+    "name": "层层上报",
+    "family": "defense",
+    "base": 2,
+    "self_costs": {},
+    "on_resolve": {},
+    "loss_penalty": {
+      "rep": 1
+    },
+    "text": "把风险抬到更高层。若你本回合落败，Reputation -1。"
   },
   {
     "id": "tl_alignment",

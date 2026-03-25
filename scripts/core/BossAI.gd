@@ -14,23 +14,19 @@ func set_seed(seed: int) -> void:
 	rng.seed = seed
 
 func prepare_pool(boss_def: Dictionary, _run_state) -> Array[String]:
-	var deck: Array = boss_def.get("deck", []).duplicate()
-	var pool_size = max(1, int(boss_def.get("pool_size", 3)))
-	if deck.is_empty():
+	if _run_state == null or _run_state.current_set_state == null:
 		return []
-	var shuffled = _shuffle(deck)
+	var remaining_cards: Array[String] = _run_state.current_set_state.remaining_boss_battle_cards.duplicate()
+	if remaining_cards.is_empty():
+		return []
 	var pool: Array[String] = []
-	for card_id in shuffled:
+	for card_id in remaining_cards:
 		pool.append(str(card_id))
-		if pool.size() >= pool_size:
-			break
-	while pool.size() < pool_size:
-		pool.append(str(deck[rng.randi_range(0, deck.size() - 1)]))
 	return pool
 
 func pick_card(pool_ids: Array, player_family: String, run_state) -> String:
 	var boss_def = _data_loader().get_boss(run_state.current_boss_id)
-	var weights: Dictionary = boss_def.get("ai_weights", {"counter": 50, "neutral": 35, "wrong": 15})
+	var weights: Dictionary = boss_def.get("ai_weights", {"counter": 50, "neutral": 30, "wrong": 20})
 	var buckets = {
 		"counter": [],
 		"neutral": [],

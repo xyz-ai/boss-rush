@@ -9,6 +9,7 @@ var boss_hp: int = 6
 
 var remaining_player_battle_cards: Array[String] = []
 var played_player_battle_cards: Array[String] = []
+var remaining_boss_battle_cards: Array[String] = []
 
 var current_pool: Array[String] = []
 var pool_revealed: bool = false
@@ -34,6 +35,7 @@ func configure(next_set_index: int, set_rules: Dictionary, loadout_ids: Array[St
 	for card_id in loadout_ids:
 		remaining_player_battle_cards.append(str(card_id))
 	played_player_battle_cards.clear()
+	remaining_boss_battle_cards.clear()
 	current_pool.clear()
 	pool_revealed = false
 	free_peek_this_round = false
@@ -48,8 +50,11 @@ func configure(next_set_index: int, set_rules: Dictionary, loadout_ids: Array[St
 
 func configure_boss_deck(deck_ids: Array) -> void:
 	boss_deck.clear()
+	remaining_boss_battle_cards.clear()
 	for card_id in deck_ids:
-		boss_deck.append(str(card_id))
+		var boss_card_id := str(card_id)
+		boss_deck.append(boss_card_id)
+		remaining_boss_battle_cards.append(boss_card_id)
 	boss_used_cards.clear()
 	boss_revealed = false
 
@@ -70,6 +75,13 @@ func consume_battle_card(card_id: String) -> bool:
 	played_player_battle_cards.append(card_id)
 	return true
 
+func consume_boss_card(card_id: String) -> bool:
+	var card_index := remaining_boss_battle_cards.find(card_id)
+	if card_index == -1:
+		return false
+	remaining_boss_battle_cards.remove_at(card_index)
+	return true
+
 func clear_round_state() -> void:
 	current_pool.clear()
 	pool_revealed = false
@@ -81,7 +93,7 @@ func mark_boss_card_used(card_id: String) -> void:
 	boss_used_cards.append(str(card_id))
 
 func has_rounds_remaining() -> bool:
-	return round_index < max_rounds and not remaining_player_battle_cards.is_empty()
+	return round_index < max_rounds and not remaining_player_battle_cards.is_empty() and not remaining_boss_battle_cards.is_empty()
 
 func snapshot() -> Dictionary:
 	return {
@@ -92,6 +104,7 @@ func snapshot() -> Dictionary:
 		"boss_hp": boss_hp,
 		"remaining_player_battle_cards": remaining_player_battle_cards.duplicate(),
 		"played_player_battle_cards": played_player_battle_cards.duplicate(),
+		"remaining_boss_battle_cards": remaining_boss_battle_cards.duplicate(),
 		"current_pool": current_pool.duplicate(),
 		"pool_revealed": pool_revealed,
 		"free_peek_this_round": free_peek_this_round,

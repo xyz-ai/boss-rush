@@ -18,8 +18,8 @@ func resolve_round(run_state, player_card_id: String, boss_card_id: String, roun
 	var used_addon = str(round_ctx.get("addon_id", ""))
 	run_state.consume_battle_card(player_card_id)
 
-	_apply_costs(run_state, player_card.get("self_costs", {}), logs, player_card.get("name", player_card_id))
-	_apply_costs(run_state, boss_card.get("self_costs", {}), logs, boss_card.get("name", boss_card_id))
+	_apply_costs(run_state, player_card.get("self_costs", {}), logs, str(player_card.get("name", player_card_id)))
+	_apply_costs(run_state, boss_card.get("self_costs", {}), logs, str(boss_card.get("name", boss_card_id)))
 
 	var consumed_bonus = set_state.next_bonus
 	var consumed_penalty = set_state.next_penalty
@@ -30,6 +30,12 @@ func resolve_round(run_state, player_card_id: String, boss_card_id: String, roun
 	var boss_base = max(0, int(boss_card.get("base", 0)))
 	if consumed_bonus != 0 or consumed_penalty != 0:
 		logs.append("延续状态生效：Next %+d / %+d。" % [consumed_bonus, -consumed_penalty])
+	if run_state.spr <= 1:
+		player_base = max(0, player_base - 1)
+		logs.append("玩家 Spirit 触底，本回合牌力 -1。")
+	if run_state.boss_spr <= 1:
+		boss_base = max(0, boss_base - 1)
+		logs.append("Boss Spirit 触底，本回合牌力 -1。")
 
 	var current_cover = max(set_state.cover, int(round_ctx.get("cover", 0)))
 	current_cover = max(current_cover, int(player_card.get("on_resolve", {}).get("cover_current", 0)))
@@ -39,10 +45,16 @@ func resolve_round(run_state, player_card_id: String, boss_card_id: String, roun
 	if player_card.get("family", "") == "control":
 		player_base += _resolve_control_bonus(player_card, boss_card, logs)
 
-	var player_total = max(0, int(floor(float(player_base) * matchup_rules.get_multiplier(player_card.get("family", ""), boss_card.get("family", "")))))
-	var boss_total = max(0, int(floor(float(boss_base) * matchup_rules.get_multiplier(boss_card.get("family", ""), player_card.get("family", "")))))
+	var player_total = max(
+		0,
+		int(floor(float(player_base) * matchup_rules.get_multiplier(player_card.get("family", ""), boss_card.get("family", ""))))
+	)
+	var boss_total = max(
+		0,
+		int(floor(float(boss_base) * matchup_rules.get_multiplier(boss_card.get("family", ""), player_card.get("family", ""))))
+	)
 
-	logs.append("玩家打出 %s，Boss 打出 %s。" % [player_card.get("name", player_card_id), boss_card.get("name", boss_card_id)])
+	logs.append("玩家打出 %s；Boss 打出 %s。" % [player_card.get("name", player_card_id), boss_card.get("name", boss_card_id)])
 	logs.append("回合点数：玩家 %d vs Boss %d。" % [player_total, boss_total])
 
 	var margin = player_total - boss_total
@@ -56,9 +68,16 @@ func resolve_round(run_state, player_card_id: String, boss_card_id: String, roun
 			var absorbed = min(player_damage, current_cover)
 			player_damage -= absorbed
 			logs.append("Cover 吸收了 %d 点伤害。" % absorbed)
+		if player_damage > 0 and run_state.bod <= 1:
+			player_damage += 1
+			logs.append("玩家 Body 触底，本回合多承受 1 点伤害。")
 		if used_addon == "stop_loss" and player_damage > 1:
 			player_damage = 1
 			logs.append("StopLoss 将本回合玩家 HP 损失锁定为 1。")
+
+	if boss_damage > 0 and run_state.boss_bod <= 1:
+		boss_damage += 1
+		logs.append("Boss Body 触底，本回合多承受 1 点伤害。")
 
 	if used_addon == "leverage" and boss_damage > 0:
 		boss_damage += 1
@@ -70,6 +89,13 @@ func resolve_round(run_state, player_card_id: String, boss_card_id: String, roun
 
 	if margin < 0:
 		_apply_costs(run_state, boss_card.get("loss_penalty", {}), logs, "%s 压力" % boss_card.get("name", boss_card_id))
+	elif boss_damage > 0:
+		_apply_costs(
+			run_state,
+			player_card.get("on_resolve", {}).get("boss_penalty_on_hit", {}),
+			logs,
+			"%s 反压" % player_card.get("name", player_card_id)
+		)
 
 	run_state.pos += margin
 	run_state.clamp_pos()
@@ -92,9 +118,14 @@ func resolve_round(run_state, player_card_id: String, boss_card_id: String, roun
 	var challenge_finished = false
 	var challenge_outcome = "ongoing"
 	var challenge_snapshot = run_state.challenge_state.snapshot() if run_state.challenge_state != null else {}
-	if run_state.is_collapsed():
+	if run_state.is_player_collapsed():
 		challenge_finished = true
 		challenge_outcome = "defeat"
+		logs.append("玩家长期状态归零，挑战立即失败。")
+	elif run_state.is_boss_collapsed():
+		challenge_finished = true
+		challenge_outcome = "victory"
+		logs.append("Boss 长期状态归零，挑战立即胜利。")
 	elif set_finished:
 		var set_result = run_state.finish_set(set_winner)
 		challenge_finished = bool(set_result.get("challenge_finished", false))
@@ -176,6 +207,12 @@ func _apply_costs(run_state, delta: Dictionary, logs: Array[String], source_labe
 				run_state.rep -= amount
 			"life":
 				run_state.life -= amount
+			"boss_bod":
+				run_state.boss_bod -= amount
+			"boss_spr":
+				run_state.boss_spr -= amount
+			"boss_rep":
+				run_state.boss_rep -= amount
 		logs.append("%s 造成 %s -%d。" % [source_label, str(key).to_upper(), amount])
 
 func _data_loader():

@@ -6,7 +6,10 @@
     "base": 1,
     "self_costs": {},
     "on_resolve": {
-      "set_next_bonus": 1
+      "set_next_bonus": 1,
+      "boss_penalty_on_hit": {
+        "boss_spr": 1
+      }
     },
     "ui_tags": ["稳定", "延续"],
     "text": "稳步推进。本回合基础值 1；结算后下回合获得 Next +1。"
@@ -18,7 +21,10 @@
     "base": 2,
     "self_costs": {},
     "on_resolve": {
-      "set_next_penalty": 1
+      "set_next_penalty": 1,
+      "boss_penalty_on_hit": {
+        "boss_bod": 1
+      }
     },
     "ui_tags": ["爆发", "后劲不足"],
     "text": "短线爆发。本回合基础值 2；结算后下回合承受 Next -1。"
@@ -31,7 +37,11 @@
     "self_costs": {
       "rep": 1
     },
-    "on_resolve": {},
+    "on_resolve": {
+      "boss_penalty_on_hit": {
+        "boss_rep": 1
+      }
+    },
     "ui_tags": ["施压", "声誉代价"],
     "text": "主动施压。本回合基础值 2；立刻失去 1 点 Reputation。"
   },
@@ -42,7 +52,10 @@
     "base": 1,
     "self_costs": {},
     "on_resolve": {
-      "cover_current": 1
+      "cover_current": 1,
+      "boss_penalty_on_hit": {
+        "boss_bod": 1
+      }
     },
     "ui_tags": ["防守", "止损"],
     "text": "防守止损。本回合基础值 1；结算时提供 Cover 1。"
@@ -55,7 +68,10 @@
     "self_costs": {},
     "on_resolve": {
       "control_bonus_vs": ["aggression"],
-      "control_bonus": 2
+      "control_bonus": 2,
+      "boss_penalty_on_hit": {
+        "boss_spr": 1
+      }
     },
     "ui_tags": ["控制", "条件反制"],
     "text": "条件反制。基础值 1；若 Boss 本回合是 Aggression，额外 +2。"

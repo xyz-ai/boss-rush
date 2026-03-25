@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scenes/battle/BattleScene.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/battle/StatusPanel.tscn" id="2"]
@@ -7,6 +7,7 @@
 [ext_resource type="PackedScene" path="res://scenes/battle/ResultPopup.tscn" id="5"]
 [ext_resource type="PackedScene" path="res://scenes/ui/TooltipPanel.tscn" id="6"]
 [ext_resource type="PackedScene" path="res://scenes/battle/BossDeckView.tscn" id="7"]
+[ext_resource type="PackedScene" path="res://scenes/battle/ClashAreaView.tscn" id="8"]
 
 [node name="BattleScene" type="Control"]
 layout_mode = 3
@@ -28,41 +29,53 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="GradientRect" type="ColorRect" parent="BackgroundLayer"]
+[node name="BgOffice" type="TextureRect" parent="BackgroundLayer"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.05, 0.06, 0.08, 1)
+mouse_filter = 2
 
-[node name="DeskSurface" type="ColorRect" parent="BackgroundLayer"]
-layout_mode = 1
-anchor_top = 0.34
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-color = Color(0.18, 0.14, 0.12, 0.95)
-
-[node name="HazeRect" type="ColorRect" parent="BackgroundLayer"]
+[node name="AtmosphereTint" type="ColorRect" parent="BackgroundLayer"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.14, 0.18, 0.2, 0.08)
+mouse_filter = 2
+color = Color(0.04, 0.03, 0.025, 0.56)
 
-[node name="VignetteOverlay" type="ColorRect" parent="BackgroundLayer"]
+[node name="DeskTable" type="TextureRect" parent="BackgroundLayer"]
+layout_mode = 1
+anchor_left = 0.01
+anchor_top = 0.18
+anchor_right = 0.99
+anchor_bottom = 1.05
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="DeskShade" type="ColorRect" parent="BackgroundLayer"]
+layout_mode = 1
+anchor_top = 0.54
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.02, 0.015, 0.01, 0.22)
+
+[node name="VignetteOverlay" type="TextureRect" parent="BackgroundLayer"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0, 0, 0, 0.14)
+mouse_filter = 2
 
 [node name="DustOrCrackOverlay" type="Label" parent="BackgroundLayer"]
 layout_mode = 1
@@ -72,322 +85,423 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-text = "////    fracture    ////        ////    fracture    ////"
+text = "//// fracture //// //// fracture ////"
 horizontal_alignment = 1
-vertical_alignment = 1
-modulate = Color(0.8, 0.84, 0.88, 0.0)
+vertical_alignment = 2
+modulate = Color(0.82, 0.84, 0.88, 0.0)
 
-[node name="SafeArea" type="MarginContainer" parent="."]
+[node name="SafeArea" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 16.0
+offset_right = -20.0
+offset_bottom = -16.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="StageRoot" type="Control" parent="SafeArea"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_left = 18
-theme_override_constants/margin_top = 18
-theme_override_constants/margin_right = 18
-theme_override_constants/margin_bottom = 18
 
-[node name="RootHBox" type="HBoxContainer" parent="SafeArea"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/separation = 18
+[node name="BossStage" type="Control" parent="SafeArea/StageRoot"]
+layout_mode = 1
+anchor_left = 0.20
+anchor_top = 0.01
+anchor_right = 0.80
+anchor_bottom = 0.33
 
-[node name="MainStage" type="VBoxContainer" parent="SafeArea/RootHBox"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/separation = 16
+[node name="PortraitFrame" type="PanelContainer" parent="SafeArea/StageRoot/BossStage"]
+layout_mode = 1
+anchor_left = 0.32
+anchor_top = 0.00
+anchor_right = 0.68
+anchor_bottom = 0.88
 
-[node name="BossStage" type="PanelContainer" parent="SafeArea/RootHBox/MainStage"]
-custom_minimum_size = Vector2(0, 230)
-layout_mode = 2
-size_flags_horizontal = 3
+[node name="PortraitGlow" type="ColorRect" parent="SafeArea/StageRoot/BossStage/PortraitFrame"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.84, 0.76, 0.60, 0.08)
 
-[node name="MarginContainer" type="MarginContainer" parent="SafeArea/RootHBox/MainStage/BossStage"]
-layout_mode = 2
-theme_override_constants/margin_left = 18
-theme_override_constants/margin_top = 18
-theme_override_constants/margin_right = 18
-theme_override_constants/margin_bottom = 18
+[node name="BossPortrait" type="TextureRect" parent="SafeArea/StageRoot/BossStage/PortraitFrame"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
 
-[node name="VBoxContainer" type="VBoxContainer" parent="SafeArea/RootHBox/MainStage/BossStage/MarginContainer"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/separation = 12
-
-[node name="BossHeader" type="HBoxContainer" parent="SafeArea/RootHBox/MainStage/BossStage/MarginContainer/VBoxContainer"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 12
-
-[node name="BossHeadline" type="Label" parent="SafeArea/RootHBox/MainStage/BossStage/MarginContainer/VBoxContainer/BossHeader"]
-layout_mode = 2
-size_flags_horizontal = 3
-text = "对桌对象"
-
-[node name="BossMood" type="Label" parent="SafeArea/RootHBox/MainStage/BossStage/MarginContainer/VBoxContainer/BossHeader"]
-layout_mode = 2
-size_flags_horizontal = 3
-horizontal_alignment = 2
-text = "制度席位"
-
-[node name="PortraitRow" type="HBoxContainer" parent="SafeArea/RootHBox/MainStage/BossStage/MarginContainer/VBoxContainer"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/separation = 16
-
-[node name="PortraitFrame" type="PanelContainer" parent="SafeArea/RootHBox/MainStage/BossStage/MarginContainer/VBoxContainer/PortraitRow"]
-custom_minimum_size = Vector2(220, 160)
-layout_mode = 2
-
-[node name="BustMargin" type="MarginContainer" parent="SafeArea/RootHBox/MainStage/BossStage/MarginContainer/VBoxContainer/PortraitRow/PortraitFrame"]
-layout_mode = 2
-theme_override_constants/margin_left = 18
-theme_override_constants/margin_top = 18
-theme_override_constants/margin_right = 18
-theme_override_constants/margin_bottom = 18
-
-[node name="BossSilhouette" type="Label" parent="SafeArea/RootHBox/MainStage/BossStage/MarginContainer/VBoxContainer/PortraitRow/PortraitFrame/BustMargin"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
+[node name="BossPortraitFallback" type="Label" parent="SafeArea/StageRoot/BossStage/PortraitFrame"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
 horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 3
 text = "BOSS"
 
-[node name="BossPanel" parent="SafeArea/RootHBox/MainStage/BossStage/MarginContainer/VBoxContainer/PortraitRow" instance=ExtResource("3")]
+[node name="BossCaption" type="Label" parent="SafeArea/StageRoot/BossStage"]
+layout_mode = 1
+anchor_left = 0.32
+anchor_top = 0.02
+anchor_right = 0.68
+anchor_bottom = 0.14
+horizontal_alignment = 1
+vertical_alignment = 1
+text = "组长 / Team Lead"
+
+[node name="BossPanel" parent="SafeArea/StageRoot/BossStage" instance=ExtResource("3")]
+layout_mode = 1
+anchor_left = 0.34
+anchor_top = 0.62
+anchor_right = 0.66
+anchor_bottom = 0.98
+
+[node name="TableCore" type="Control" parent="SafeArea/StageRoot"]
+layout_mode = 1
+anchor_left = 0.08
+anchor_top = 0.20
+anchor_right = 0.92
+anchor_bottom = 0.82
+
+[node name="TopRoundInfo" type="PanelContainer" parent="SafeArea/StageRoot/TableCore"]
+layout_mode = 1
+anchor_left = 0.36
+anchor_top = 0.04
+anchor_right = 0.64
+anchor_bottom = 0.18
+
+[node name="MarginContainer" type="MarginContainer" parent="SafeArea/StageRoot/TableCore/TopRoundInfo"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 10
+
+[node name="VBoxContainer" type="VBoxContainer" parent="SafeArea/StageRoot/TableCore/TopRoundInfo/MarginContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 3
+theme_override_constants/separation = 2
 
-[node name="BossDeckView" parent="SafeArea/RootHBox/MainStage/BossStage/MarginContainer/VBoxContainer" instance=ExtResource("7")]
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="TableStage" type="PanelContainer" parent="SafeArea/RootHBox/MainStage"]
-custom_minimum_size = Vector2(0, 210)
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="MarginContainer" type="MarginContainer" parent="SafeArea/RootHBox/MainStage/TableStage"]
-layout_mode = 2
-theme_override_constants/margin_left = 20
-theme_override_constants/margin_top = 16
-theme_override_constants/margin_right = 20
-theme_override_constants/margin_bottom = 16
-
-[node name="VBoxContainer" type="VBoxContainer" parent="SafeArea/RootHBox/MainStage/TableStage/MarginContainer"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/separation = 14
-
-[node name="SetRoundBanner" type="Label" parent="SafeArea/RootHBox/MainStage/TableStage/MarginContainer/VBoxContainer"]
+[node name="RoundLabel" type="Label" parent="SafeArea/StageRoot/TableCore/TopRoundInfo/MarginContainer/VBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 horizontal_alignment = 1
 text = "第 1 局 / 第 1 回合"
 
-[node name="ClashArea" type="HBoxContainer" parent="SafeArea/RootHBox/MainStage/TableStage/MarginContainer/VBoxContainer"]
+[node name="HpVersusLabel" type="Label" parent="SafeArea/StageRoot/TableCore/TopRoundInfo/MarginContainer/VBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/separation = 18
+horizontal_alignment = 1
+text = "玩家 6 HP  vs  Boss 6 HP"
 
-[node name="PlayerGauge" type="VBoxContainer" parent="SafeArea/RootHBox/MainStage/TableStage/MarginContainer/VBoxContainer/ClashArea"]
-custom_minimum_size = Vector2(180, 0)
-layout_mode = 2
-size_flags_vertical = 3
-theme_override_constants/separation = 8
-
-[node name="PlayerGaugeTitle" type="Label" parent="SafeArea/RootHBox/MainStage/TableStage/MarginContainer/VBoxContainer/ClashArea/PlayerGauge"]
-layout_mode = 2
-text = "你"
-
-[node name="PlayerHpBar" type="ProgressBar" parent="SafeArea/RootHBox/MainStage/TableStage/MarginContainer/VBoxContainer/ClashArea/PlayerGauge"]
+[node name="HintLabel" type="Label" parent="SafeArea/StageRoot/TableCore/TopRoundInfo/MarginContainer/VBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
-max_value = 6.0
-value = 6.0
-show_percentage = false
-
-[node name="PlayerHpValue" type="Label" parent="SafeArea/RootHBox/MainStage/TableStage/MarginContainer/VBoxContainer/ClashArea/PlayerGauge"]
-layout_mode = 2
+horizontal_alignment = 1
 autowrap_mode = 3
+text = "桌面已摆开。"
+
+[node name="IntelZone" type="Control" parent="SafeArea/StageRoot/TableCore"]
+layout_mode = 1
+anchor_left = 0.18
+anchor_top = 0.20
+anchor_right = 0.82
+anchor_bottom = 0.50
+
+[node name="IntelLabel" type="Label" parent="SafeArea/StageRoot/TableCore/IntelZone"]
+layout_mode = 1
+anchor_left = 0.16
+anchor_top = 0.00
+anchor_right = 0.84
+anchor_bottom = 0.16
+horizontal_alignment = 1
+vertical_alignment = 1
+text = "未窥破情报"
+
+[node name="BossDeckView" parent="SafeArea/StageRoot/TableCore/IntelZone" instance=ExtResource("7")]
+layout_mode = 1
+anchor_left = 0.00
+anchor_top = 0.12
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="ClashArea" parent="SafeArea/StageRoot/TableCore" instance=ExtResource("8")]
+layout_mode = 1
+anchor_left = 0.31
+anchor_top = 0.52
+anchor_right = 0.69
+anchor_bottom = 0.74
+
+[node name="BossHpPlaque" type="PanelContainer" parent="SafeArea/StageRoot/TableCore"]
+layout_mode = 1
+anchor_left = 0.77
+anchor_top = 0.26
+anchor_right = 0.95
+anchor_bottom = 0.40
+
+[node name="Label" type="Label" parent="SafeArea/StageRoot/TableCore/BossHpPlaque"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+text = "Boss HP 6"
+
+[node name="PlayerHpPlaque" type="PanelContainer" parent="SafeArea/StageRoot/TableCore"]
+layout_mode = 1
+anchor_left = 0.05
+anchor_top = 0.70
+anchor_right = 0.23
+anchor_bottom = 0.84
+
+[node name="Label" type="Label" parent="SafeArea/StageRoot/TableCore/PlayerHpPlaque"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
 text = "玩家 HP 6"
 
-[node name="CenterStack" type="VBoxContainer" parent="SafeArea/RootHBox/MainStage/TableStage/MarginContainer/VBoxContainer/ClashArea"]
+[node name="BossChipStacks" type="Control" parent="SafeArea/StageRoot/TableCore"]
+custom_minimum_size = Vector2(180, 110)
+layout_mode = 1
+anchor_left = 0.03
+anchor_top = 0.24
+anchor_right = 0.22
+anchor_bottom = 0.44
+
+[node name="PlayerChipStacks" type="Control" parent="SafeArea/StageRoot/TableCore"]
+custom_minimum_size = Vector2(336, 110)
+layout_mode = 1
+anchor_left = 0.64
+anchor_top = 0.68
+anchor_right = 0.98
+anchor_bottom = 0.92
+
+[node name="LeftStatusStage" type="Control" parent="SafeArea/StageRoot"]
+layout_mode = 1
+anchor_left = 0.00
+anchor_top = 0.58
+anchor_right = 0.24
+anchor_bottom = 0.98
+
+[node name="LeftStatusHandle" type="Button" parent="SafeArea/StageRoot/LeftStatusStage"]
+layout_mode = 1
+anchor_left = 0.00
+anchor_top = 0.32
+anchor_right = 0.08
+anchor_bottom = 0.66
+text = "◂"
+
+[node name="LeftStatusDrawer" type="Control" parent="SafeArea/StageRoot/LeftStatusStage"]
+layout_mode = 1
+anchor_left = 0.05
+anchor_top = 0.00
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="MarginContainer" type="MarginContainer" parent="SafeArea/StageRoot/LeftStatusStage/LeftStatusDrawer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_right = 8
+
+[node name="VBoxContainer" type="VBoxContainer" parent="SafeArea/StageRoot/LeftStatusStage/LeftStatusDrawer/MarginContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="StatusPanel" parent="SafeArea/StageRoot/LeftStatusStage/LeftStatusDrawer/MarginContainer/VBoxContainer" instance=ExtResource("2")]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="AddonPanel" parent="SafeArea/StageRoot/LeftStatusStage/LeftStatusDrawer/MarginContainer/VBoxContainer" instance=ExtResource("4")]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="RightDrawerHotzone" type="Control" parent="SafeArea/StageRoot"]
+layout_mode = 1
+anchor_left = 0.985
+anchor_top = 0.50
+anchor_right = 1.0
+anchor_bottom = 0.96
+mouse_filter = 0
+
+[node name="RightDrawer" type="Control" parent="SafeArea/StageRoot"]
+layout_mode = 1
+anchor_left = 0.77
+anchor_top = 0.52
+anchor_right = 1.01
+anchor_bottom = 0.97
+mouse_filter = 0
+modulate = Color(1, 1, 1, 0.0)
+
+[node name="DrawerPanel" type="PanelContainer" parent="SafeArea/StageRoot/RightDrawer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="SafeArea/StageRoot/RightDrawer/DrawerPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 14
+
+[node name="VBoxContainer" type="VBoxContainer" parent="SafeArea/StageRoot/RightDrawer/DrawerPanel/MarginContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 12
 
-[node name="TableTitle" type="Label" parent="SafeArea/RootHBox/MainStage/TableStage/MarginContainer/VBoxContainer/ClashArea/CenterStack"]
-layout_mode = 2
-size_flags_horizontal = 3
-horizontal_alignment = 1
-text = "桌面对峙"
-
-[node name="RoundResultLabel" type="Label" parent="SafeArea/RootHBox/MainStage/TableStage/MarginContainer/VBoxContainer/ClashArea/CenterStack"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-horizontal_alignment = 1
-vertical_alignment = 1
-autowrap_mode = 3
-text = "桌面已经摆开。你还有 5 张牌可以决定这一局的走向。"
-
-[node name="BossGauge" type="VBoxContainer" parent="SafeArea/RootHBox/MainStage/TableStage/MarginContainer/VBoxContainer/ClashArea"]
-custom_minimum_size = Vector2(180, 0)
-layout_mode = 2
-size_flags_vertical = 3
-theme_override_constants/separation = 8
-
-[node name="BossGaugeTitle" type="Label" parent="SafeArea/RootHBox/MainStage/TableStage/MarginContainer/VBoxContainer/ClashArea/BossGauge"]
-layout_mode = 2
-horizontal_alignment = 2
-text = "Boss"
-
-[node name="BossHpBar" type="ProgressBar" parent="SafeArea/RootHBox/MainStage/TableStage/MarginContainer/VBoxContainer/ClashArea/BossGauge"]
-layout_mode = 2
-size_flags_horizontal = 3
-max_value = 6.0
-value = 6.0
-show_percentage = false
-
-[node name="BossHpValue" type="Label" parent="SafeArea/RootHBox/MainStage/TableStage/MarginContainer/VBoxContainer/ClashArea/BossGauge"]
-layout_mode = 2
-horizontal_alignment = 2
-autowrap_mode = 3
-text = "Boss HP 6"
-
-[node name="PlayerHandStage" type="PanelContainer" parent="SafeArea/RootHBox/MainStage"]
-custom_minimum_size = Vector2(0, 268)
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-
-[node name="MarginContainer" type="MarginContainer" parent="SafeArea/RootHBox/MainStage/PlayerHandStage"]
-layout_mode = 2
-theme_override_constants/margin_left = 18
-theme_override_constants/margin_top = 16
-theme_override_constants/margin_right = 18
-theme_override_constants/margin_bottom = 16
-
-[node name="VBoxContainer" type="VBoxContainer" parent="SafeArea/RootHBox/MainStage/PlayerHandStage/MarginContainer"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/separation = 10
-
-[node name="HandTitle" type="Label" parent="SafeArea/RootHBox/MainStage/PlayerHandStage/MarginContainer/VBoxContainer"]
-layout_mode = 2
-text = "手牌区"
-
-[node name="HandInfoLabel" type="Label" parent="SafeArea/RootHBox/MainStage/PlayerHandStage/MarginContainer/VBoxContainer"]
-layout_mode = 2
-autowrap_mode = 3
-text = "剩余战斗牌 5 / 已打出 0"
-
-[node name="HandScroll" type="ScrollContainer" parent="SafeArea/RootHBox/MainStage/PlayerHandStage/MarginContainer/VBoxContainer"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-horizontal_scroll_mode = 1
-vertical_scroll_mode = 0
-
-[node name="CardRow" type="HBoxContainer" parent="SafeArea/RootHBox/MainStage/PlayerHandStage/MarginContainer/VBoxContainer/HandScroll"]
-layout_mode = 2
-size_flags_vertical = 3
-theme_override_constants/separation = 14
-
-[node name="SideRail" type="VBoxContainer" parent="SafeArea/RootHBox"]
-custom_minimum_size = Vector2(340, 0)
-layout_mode = 2
-size_flags_vertical = 3
-theme_override_constants/separation = 14
-
-[node name="StatusPanel" parent="SafeArea/RootHBox/SideRail" instance=ExtResource("2")]
+[node name="ActionPanel" type="PanelContainer" parent="SafeArea/StageRoot/RightDrawer/DrawerPanel/MarginContainer/VBoxContainer"]
+custom_minimum_size = Vector2(0, 116)
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="AddonPanel" parent="SafeArea/RootHBox/SideRail" instance=ExtResource("4")]
+[node name="MarginContainer" type="MarginContainer" parent="SafeArea/StageRoot/RightDrawer/DrawerPanel/MarginContainer/VBoxContainer/ActionPanel"]
 layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 12
 
-[node name="ActionPanel" type="PanelContainer" parent="SafeArea/RootHBox/SideRail"]
-custom_minimum_size = Vector2(0, 118)
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="MarginContainer" type="MarginContainer" parent="SafeArea/RootHBox/SideRail/ActionPanel"]
-layout_mode = 2
-theme_override_constants/margin_left = 16
-theme_override_constants/margin_top = 14
-theme_override_constants/margin_right = 16
-theme_override_constants/margin_bottom = 14
-
-[node name="VBoxContainer" type="VBoxContainer" parent="SafeArea/RootHBox/SideRail/ActionPanel/MarginContainer"]
+[node name="VBoxContainer" type="VBoxContainer" parent="SafeArea/StageRoot/RightDrawer/DrawerPanel/MarginContainer/VBoxContainer/ActionPanel/MarginContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 8
 
-[node name="ActionTitle" type="Label" parent="SafeArea/RootHBox/SideRail/ActionPanel/MarginContainer/VBoxContainer"]
+[node name="ActionTitle" type="Label" parent="SafeArea/StageRoot/RightDrawer/DrawerPanel/MarginContainer/VBoxContainer/ActionPanel/MarginContainer/VBoxContainer"]
 layout_mode = 2
-text = "操作提示"
+text = "情报抽屉"
 
-[node name="NoticeLabel" type="Label" parent="SafeArea/RootHBox/SideRail/ActionPanel/MarginContainer/VBoxContainer"]
+[node name="PeekButton" type="Button" parent="SafeArea/StageRoot/RightDrawer/DrawerPanel/MarginContainer/VBoxContainer/ActionPanel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 40)
+size_flags_horizontal = 3
+text = "查看牌池"
+
+[node name="NoticeLabel" type="Label" parent="SafeArea/StageRoot/RightDrawer/DrawerPanel/MarginContainer/VBoxContainer/ActionPanel/MarginContainer/VBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 autowrap_mode = 3
-text = "从下方手牌中打出 1 张战斗牌。你也可以先启用 1 张加注牌，再决定是否查看 Boss 牌池。"
+text = "从手牌中打出 1 张战斗牌。"
 
-[node name="LogPanel" type="PanelContainer" parent="SafeArea/RootHBox/SideRail"]
+[node name="LogPanel" type="PanelContainer" parent="SafeArea/StageRoot/RightDrawer/DrawerPanel/MarginContainer/VBoxContainer"]
 custom_minimum_size = Vector2(0, 170)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="MarginContainer" type="MarginContainer" parent="SafeArea/RootHBox/SideRail/LogPanel"]
+[node name="MarginContainer" type="MarginContainer" parent="SafeArea/StageRoot/RightDrawer/DrawerPanel/MarginContainer/VBoxContainer/LogPanel"]
 layout_mode = 2
-theme_override_constants/margin_left = 16
-theme_override_constants/margin_top = 14
-theme_override_constants/margin_right = 16
-theme_override_constants/margin_bottom = 14
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 12
 
-[node name="VBoxContainer" type="VBoxContainer" parent="SafeArea/RootHBox/SideRail/LogPanel/MarginContainer"]
+[node name="VBoxContainer" type="VBoxContainer" parent="SafeArea/StageRoot/RightDrawer/DrawerPanel/MarginContainer/VBoxContainer/LogPanel/MarginContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_constants/separation = 10
+theme_override_constants/separation = 8
 
-[node name="LogTitle" type="Label" parent="SafeArea/RootHBox/SideRail/LogPanel/MarginContainer/VBoxContainer"]
+[node name="LogTitle" type="Label" parent="SafeArea/StageRoot/RightDrawer/DrawerPanel/MarginContainer/VBoxContainer/LogPanel/MarginContainer/VBoxContainer"]
 layout_mode = 2
-text = "牌桌日志"
+text = "日志"
 
-[node name="LogScroll" type="ScrollContainer" parent="SafeArea/RootHBox/SideRail/LogPanel/MarginContainer/VBoxContainer"]
+[node name="LogScroll" type="ScrollContainer" parent="SafeArea/StageRoot/RightDrawer/DrawerPanel/MarginContainer/VBoxContainer/LogPanel/MarginContainer/VBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 vertical_scroll_mode = 1
 
-[node name="LogText" type="RichTextLabel" parent="SafeArea/RootHBox/SideRail/LogPanel/MarginContainer/VBoxContainer/LogScroll"]
+[node name="LogText" type="RichTextLabel" parent="SafeArea/StageRoot/RightDrawer/DrawerPanel/MarginContainer/VBoxContainer/LogPanel/MarginContainer/VBoxContainer/LogScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
 bbcode_enabled = false
 fit_content = true
 scroll_active = false
 autowrap_mode = 3
+
+[node name="PlayerHandStage" type="Control" parent="SafeArea/StageRoot"]
+layout_mode = 1
+anchor_left = 0.16
+anchor_top = 0.69
+anchor_right = 0.84
+anchor_bottom = 0.99
+
+[node name="HandTitle" type="Label" parent="SafeArea/StageRoot/PlayerHandStage"]
+layout_mode = 1
+anchor_left = 0.28
+anchor_top = 0.00
+anchor_right = 0.72
+anchor_bottom = 0.10
+horizontal_alignment = 1
+vertical_alignment = 1
+text = "玩家手牌"
+
+[node name="HandInfoLabel" type="Label" parent="SafeArea/StageRoot/PlayerHandStage"]
+layout_mode = 1
+anchor_left = 0.16
+anchor_top = 0.09
+anchor_right = 0.84
+anchor_bottom = 0.19
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+text = "剩余战斗牌 5 / 已打出 0"
+
+[node name="HandArea" type="Control" parent="SafeArea/StageRoot/PlayerHandStage"]
+custom_minimum_size = Vector2(0, 220)
+layout_mode = 1
+anchor_left = 0.00
+anchor_top = 0.12
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="CardRow" type="Control" parent="SafeArea/StageRoot/PlayerHandStage/HandArea"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 
 [node name="TooltipPanel" parent="." instance=ExtResource("6")]
 offset_right = 320.0

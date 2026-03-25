@@ -38,36 +38,70 @@ func _test_logic(loader, failures: Array[String]) -> void:
 	var peek_system = PEEK_SYSTEM_SCRIPT.new()
 
 	var state = _fresh_state(loader)
-	_assert(
-		state.current_set_state.boss_deck == loader.get_boss("team_lead").get("deck", []),
-		"Set should initialize the full boss deck for the current set.",
-		failures
-	)
+	_assert(state.bod == 3 and state.spr == 3 and state.rep == 3, "Player long-term states should start at 3.", failures)
+	_assert(state.boss_bod == 3 and state.boss_spr == 3 and state.boss_rep == 3, "Boss long-term states should start at 3.", failures)
+	_assert(state.current_set_state.remaining_player_battle_cards.size() == 5, "Player should start each set with 5 battle cards.", failures)
+	_assert(state.current_set_state.remaining_boss_battle_cards.size() == 5, "Boss should start each set with 5 battle cards.", failures)
+	_assert(state.current_set_state.boss_deck.size() == 5, "Boss deck view should track 5 boss cards.", failures)
 	_assert(state.current_set_state.boss_used_cards.is_empty(), "Boss used cards should start empty.", failures)
 	_assert(not state.current_set_state.boss_revealed, "Boss deck should start hidden.", failures)
-	state.begin_round(["tl_pressure", "tl_procedure", "tl_alignment"])
+
+	state.begin_round(state.current_set_state.remaining_boss_battle_cards)
 	var result = resolver.resolve_round(state, "g_steady", "tl_procedure", {"addon_id": "", "cover": 0})
-	_assert(result.get("margin", 0) == 2, "Growth vs defense should create +2 margin.", failures)
-	_assert(state.current_set_state.next_bonus == 1, "G-Steady should set Next +1.", failures)
+	_assert(result.get("margin", 0) == 2, "Growth vs defense should still produce +2 margin.", failures)
+	_assert(state.current_set_state.next_bonus == 1, "G-Steady should still set Next +1.", failures)
 	_assert(state.current_set_state.boss_hp == 4, "Boss HP should drop by 2 on the opening win.", failures)
-	_assert(not "g_steady" in state.current_set_state.remaining_player_battle_cards, "Played battle cards should leave the current set hand.", failures)
+	_assert(not "g_steady" in state.current_set_state.remaining_player_battle_cards, "Played player cards should leave the set hand.", failures)
+	_assert(int(state.boss_spr) == 2, "G-Steady should apply a boss SPR penalty on hit.", failures)
 
 	state = _fresh_state(loader)
-	state.begin_round(["tl_pressure", "tl_procedure", "tl_alignment"])
+	state.boss_spr = 1
+	state.begin_round(state.current_set_state.remaining_boss_battle_cards)
 	result = resolver.resolve_round(state, "c_audit", "tl_pressure", {"addon_id": "", "cover": 0})
-	_assert(result.get("margin", 0) == 1, "C-Audit vs aggression should end with +1 margin.", failures)
+	_assert(result.get("boss_total", 0) == 1, "Boss SPR <= 1 should reduce boss card power by 1 before multipliers.", failures)
 
 	state = _fresh_state(loader)
-	state.begin_round(["tl_pressure", "tl_procedure", "tl_alignment"])
+	var baseline_state = _fresh_state(loader)
+	baseline_state.begin_round(baseline_state.current_set_state.remaining_boss_battle_cards)
+	var baseline_result = resolver.resolve_round(baseline_state, "g_burst", "tl_pressure", {"addon_id": "", "cover": 0})
+	state.bod = 1
+	state.begin_round(state.current_set_state.remaining_boss_battle_cards)
+	result = resolver.resolve_round(state, "g_burst", "tl_pressure", {"addon_id": "", "cover": 0})
+	_assert(
+		int(result.get("player_damage", 0)) == int(baseline_result.get("player_damage", 0)) + 1,
+		"Player BOD <= 1 should add 1 extra damage when hit.",
+		failures
+	)
+
+	state = _fresh_state(loader)
+	state.boss_bod = 1
+	state.begin_round(state.current_set_state.remaining_boss_battle_cards)
+	result = resolver.resolve_round(state, "g_steady", "tl_procedure", {"addon_id": "", "cover": 0})
+	_assert(result.get("boss_damage", 0) == 3, "Boss BOD <= 1 should add 1 extra damage when boss is hit.", failures)
+
+	state = _fresh_state(loader)
+	state.begin_round(state.current_set_state.remaining_boss_battle_cards)
 	result = resolver.resolve_round(state, "g_burst", "tl_pressure", {"addon_id": "stop_loss", "cover": 0})
-	_assert(result.get("player_damage", 0) == 1, "StopLoss should cap round damage to 1 HP.", failures)
-	_assert(state.current_set_state.next_penalty == 1, "G-Burst should set Next -1.", failures)
+	_assert(result.get("player_damage", 0) == 1, "StopLoss should still cap round damage to 1 HP.", failures)
+	_assert(state.current_set_state.next_penalty == 1, "G-Burst should still set Next -1.", failures)
 
 	state = _fresh_state(loader)
-	state.begin_round(["tl_pressure", "tl_procedure", "tl_alignment"])
+	state.begin_round(state.current_set_state.remaining_boss_battle_cards)
+	var no_leverage_result = resolver.resolve_round(state, "g_steady", "tl_procedure", {"addon_id": "", "cover": 0})
+
+	state = _fresh_state(loader)
+	state.begin_round(state.current_set_state.remaining_boss_battle_cards)
 	result = resolver.resolve_round(state, "g_steady", "tl_procedure", {"addon_id": "leverage", "cover": 0})
-	_assert(result.get("boss_damage", 0) == 3, "Leverage should add 1 extra boss damage on a winning round.", failures)
-	_assert(result.get("pos_after", 0) == 3, "Leverage should also add +1 POS on top of the round margin.", failures)
+	_assert(
+		int(result.get("boss_damage", 0)) == int(no_leverage_result.get("boss_damage", 0)) + 1,
+		"Leverage should add 1 extra boss damage on a winning round.",
+		failures
+	)
+	_assert(
+		int(result.get("pos_after", 0)) == int(no_leverage_result.get("pos_after", 0)) + 1,
+		"Leverage should also add +1 POS on top of the round margin.",
+		failures
+	)
 
 	state = _fresh_state(loader)
 	state.current_set_state.player_hp = 3
@@ -75,19 +109,23 @@ func _test_logic(loader, failures: Array[String]) -> void:
 	state.current_set_state.round_index = 4
 	state.current_set_state.remaining_player_battle_cards.clear()
 	state.current_set_state.remaining_player_battle_cards.append("d_cover")
-	state.begin_round(["tl_procedure"])
+	state.current_set_state.remaining_boss_battle_cards.clear()
+	state.current_set_state.remaining_boss_battle_cards.append("tl_procedure")
+	state.begin_round(state.current_set_state.remaining_boss_battle_cards)
 	result = resolver.resolve_round(state, "d_cover", "tl_procedure", {"addon_id": "", "cover": 0})
 	_assert(result.get("set_finished", false), "Fifth round should finish the set.", failures)
 	_assert(result.get("set_winner", "") == "boss", "Configured tie winner should favor the boss.", failures)
 
 	state = _fresh_state(loader)
-	state.begin_round(["tl_pressure", "tl_procedure", "tl_alignment"])
+	state.begin_round(state.current_set_state.remaining_boss_battle_cards)
 	var addon_result = addon_system.activate_addon(state, "intel")
 	_assert(addon_result.get("ok", false), "Intel should be activatable inside a round.", failures)
 	_assert(int(state.get_remaining_addons().get("intel", 0)) == 0, "Activated addons should be consumed for the whole challenge.", failures)
 	state.start_set(challenge_rules)
+	state.current_set_state.configure_boss_deck(loader.get_boss("team_lead").get("deck", []))
 	_assert(int(state.get_remaining_addons().get("intel", 0)) == 0, "Addons should not refresh between sets.", failures)
 	_assert(state.current_set_state.remaining_player_battle_cards.size() == 5, "A new set should restore the five-card hand.", failures)
+	_assert(state.current_set_state.remaining_boss_battle_cards.size() == 5, "A new set should restore the five-card boss deck.", failures)
 
 	state = _fresh_state(loader)
 	state.challenge_state.player_set_wins = 1
@@ -99,12 +137,20 @@ func _test_logic(loader, failures: Array[String]) -> void:
 	state.spr = 1
 	peek_system.peek_pool(state, state.current_set_state.boss_deck)
 	_assert(state.current_set_state.boss_revealed, "Peeking should reveal the full boss deck for the set.", failures)
-	_assert(state.is_failed(), "Run should fail immediately when SPR reaches zero.", failures)
+	_assert(state.is_failed(), "Run should enter a failed terminal state when a long-term status reaches zero.", failures)
 
 	state = _fresh_state(loader)
-	state.begin_round(["tl_pressure", "tl_procedure", "tl_alignment"])
+	state.boss_rep = 1
+	state.begin_round(state.current_set_state.remaining_boss_battle_cards)
+	result = resolver.resolve_round(state, "a_tempo", "tl_alignment", {"addon_id": "", "cover": 0})
+	_assert(result.get("challenge_finished", false), "Boss long-term collapse should immediately end the challenge.", failures)
+	_assert(result.get("challenge_outcome", "") == "victory", "Boss long-term collapse should count as player victory.", failures)
+
+	state = _fresh_state(loader)
+	state.current_set_state.consume_boss_card("tl_pressure")
 	state.current_set_state.mark_boss_card_used("tl_pressure")
 	_assert(state.current_set_state.boss_used_cards.size() == 1, "Used boss cards should be tracked for deck visualization.", failures)
+	_assert(not "tl_pressure" in state.current_set_state.remaining_boss_battle_cards, "Used boss cards should leave the remaining boss hand.", failures)
 	state.start_set(challenge_rules)
 	state.current_set_state.configure_boss_deck(loader.get_boss("team_lead").get("deck", []))
 	_assert(state.current_set_state.boss_used_cards.is_empty(), "Boss used cards should reset on a new set.", failures)
@@ -117,14 +163,14 @@ func _test_ai(loader, failures: Array[String]) -> void:
 	ai.set_seed(1337)
 
 	var pool = ai.prepare_pool(boss_def, state)
-	_assert(pool.size() == 3, "Boss pool size should be 3.", failures)
+	_assert(pool.size() == 5, "Boss pool should expose all 5 remaining boss cards in MVP mode.", failures)
 	for card_id in pool:
 		_assert(card_id in boss_def.get("deck", []), "Boss pool should only contain deck cards.", failures)
 
 	var counts = {"counter": 0, "neutral": 0, "wrong": 0}
 	var rules = MATCHUP_RULES_SCRIPT.new(loader.get_balance("matchup_rules", {}))
-	for _index in range(300):
-		var pick = ai.pick_card(["tl_pressure", "tl_alignment", "tl_procedure"], "growth", state)
+	for _index in range(500):
+		var pick = ai.pick_card(boss_def.get("deck", []), "growth", state)
 		var category = rules.categorize(loader.get_boss_card(pick).get("family", ""), "growth")
 		counts[category] += 1
 	_assert(counts["counter"] > counts["neutral"], "Counter picks should outnumber neutral picks.", failures)
@@ -163,6 +209,12 @@ func _test_scene_instancing(loader, failures: Array[String]) -> void:
 	battle_scene.call("_on_player_card_selected", first_card_id)
 	await process_frame
 	_assert(battle_state.current_set_state.boss_used_cards.size() == 1, "BattleScene should record used boss cards after a round resolves.", failures)
+	_assert(battle_state.current_set_state.remaining_boss_battle_cards.size() == 4, "BattleScene should consume one boss card after a round.", failures)
+	var clash_area = battle_scene.get_node_or_null("SafeArea/StageRoot/TableCore/ClashArea")
+	_assert(clash_area != null, "BattleScene should have a central ClashArea.", failures)
+	if clash_area != null:
+		var summary_label = clash_area.get_node_or_null("MarginContainer/VBoxContainer/SummaryLabel")
+		_assert(summary_label != null and str(summary_label.text) != "本回合结算会显示在这里。", "ClashArea should update after a round resolves.", failures)
 	battle_scene.queue_free()
 	await process_frame
 

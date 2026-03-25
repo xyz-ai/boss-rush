@@ -5,7 +5,7 @@ const SHOP_SCENE := preload("res://scenes/shop/ShopScene.tscn")
 const COLLAPSE_EFFECTS_SCRIPT := preload("res://scripts/systems/CollapseEffects.gd")
 const CONSTANTS := preload("res://scripts/util/Constants.gd")
 
-@onready var _content_root: MarginContainer = $ContentRoot
+@onready var _content_root: Control = $ContentRoot
 @onready var _screen_effects = $ScreenEffects
 
 var _collapse_effects
