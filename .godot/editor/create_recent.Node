@@ -1,7 +1,7 @@
-TextureRect
-Button
 Control
+HBoxContainer
+Button
+TextureRect
 Label
 VBoxContainer
-HBoxContainer
 VFlowContainer

@@ -1,5 +1,4 @@
-res://scenes/battle/BattleScene.gd
-res://scripts/core/BossAI.gd
-res://scripts/core/RunState.gd
+res://scenes/main/Main.tscn
+res://scenes/main/Main.gd
 res://tests/smoke_runner.gd
-res://scenes/battle/ClashAreaView.gd
+res://scripts/game/BattleResolver.gd
