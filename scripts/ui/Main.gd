@@ -61,16 +61,15 @@ func _init(host: Control) -> void:
 
 func ready() -> void:
 	_bind_nodes()
-	_apply_stage_layout()
 	_setup_views()
 	_ensure_overlay_log()
 	if _screen_effects != null and _screen_effects.has_method("bind_target"):
 		_screen_effects.bind_target(_content_root)
 	_start_new_challenge()
 
-func handle_notification(what: int) -> void:
-	if what == Control.NOTIFICATION_RESIZED:
-		_apply_stage_layout()
+func handle_notification(_what: int) -> void:
+	# Main.tscn owns the stage geometry now; runtime code no longer rewrites it.
+	pass
 
 func get_state_snapshot() -> Dictionary:
 	return {
@@ -224,7 +223,6 @@ func _refresh_ui() -> void:
 	_boss_deck_view.set_deck(_boss_state.cards, _boss_revealed, _boss_state.used_slots)
 	_boss_deck_view.set_reveal_enabled(not _challenge_over)
 	_refresh_overlay_log()
-	_apply_stage_layout()
 
 func _on_reveal_requested() -> void:
 	if _challenge_over or _boss_revealed:
@@ -361,124 +359,3 @@ func _print_round_debug(result: Dictionary) -> void:
 	print("[Battle] Boss played   -> %s" % boss_card.get("display_name", ""))
 	print("[Battle] HP            -> Player %d / Boss %d" % [_player_state.hp, _boss_state.hp])
 	print("[Battle] Round/Turn    -> %d / %d" % [_current_set_index, _current_turn_index])
-
-func _apply_stage_layout() -> void:
-	if _host == null or not is_instance_valid(_host):
-		return
-	var viewport_size: Vector2 = _host.get_viewport_rect().size
-	if viewport_size.x < 100.0 or viewport_size.y < 100.0:
-		return
-
-	_pin_rect(_host, Vector2.ZERO, viewport_size)
-	_pin_rect(_background, Vector2.ZERO, viewport_size)
-	if _screen_effects != null:
-		_pin_rect(_screen_effects, Vector2.ZERO, viewport_size)
-
-	var safe_margin_x: float = clampf(viewport_size.x * 0.03, 24.0, 52.0)
-	var safe_margin_y: float = clampf(viewport_size.y * 0.03, 18.0, 42.0)
-	var stage_rect := Rect2(
-		Vector2(safe_margin_x, safe_margin_y),
-		Vector2(viewport_size.x - safe_margin_x * 2.0, viewport_size.y - safe_margin_y * 2.0)
-	)
-	_pin_rect(_content_root, stage_rect.position, stage_rect.size)
-
-	var stage_size := _content_root.size
-	var boss_width: float = clampf(stage_size.x * 0.52, 520.0, 760.0)
-	var boss_height: float = clampf(stage_size.y * 0.25, 180.0, 240.0)
-	_pin_rect(_boss_area, Vector2((stage_size.x - boss_width) * 0.5, 0.0), Vector2(boss_width, boss_height))
-	_boss_portrait.scale = Vector2.ONE
-	_boss_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_boss_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	_pin_rect(
-		_boss_portrait,
-		Vector2((boss_width - boss_width * 0.42) * 0.5, 0.0),
-		Vector2(boss_width * 0.42, boss_height * 0.95)
-	)
-
-	var table_top: float = stage_size.y * 0.18
-	var table_height: float = stage_size.y - table_top
-	_pin_rect(_table_area, Vector2(0.0, table_top), Vector2(stage_size.x, table_height))
-
-	var board_width: float = clampf(_table_area.size.x * 0.84, 900.0, 1320.0)
-	var board_height: float = clampf(_table_area.size.y * 0.64, 430.0, 620.0)
-	var board_position := Vector2(
-		(_table_area.size.x - board_width) * 0.5,
-		clampf(_table_area.size.y * 0.10, 36.0, 84.0)
-	)
-	_table_board.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_table_board.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	_pin_rect(_table_board, board_position, Vector2(board_width, board_height))
-
-	var center_info_size := Vector2(180.0, 52.0)
-	_pin_rect(
-		_center_info,
-		Vector2((_table_area.size.x - center_info_size.x) * 0.5, board_position.y + 8.0),
-		center_info_size
-	)
-
-	var player_hp_size := Vector2(188.0, 64.0)
-	var boss_hp_size := Vector2(188.0, 64.0)
-	_pin_rect(
-		_player_hp_label,
-		Vector2(board_position.x + 40.0, board_position.y + board_height * 0.57),
-		player_hp_size
-	)
-	_pin_rect(
-		_boss_hp_label,
-		Vector2(board_position.x + board_width - boss_hp_size.x - 40.0, board_position.y + board_height * 0.19),
-		boss_hp_size
-	)
-
-	var deck_width: float = clampf(board_width * 0.66, 580.0, 880.0)
-	var deck_height: float = 170.0
-	_pin_rect(
-		_boss_deck_root,
-		Vector2((_table_area.size.x - deck_width) * 0.5, board_position.y + 16.0),
-		Vector2(deck_width, deck_height)
-	)
-	_pin_rect(_reveal_button, Vector2((deck_width - 136.0) * 0.5, 0.0), Vector2(136.0, 42.0))
-	_pin_rect(_deck_row, Vector2(0.0, 54.0), Vector2(deck_width, 116.0))
-
-	var clash_width: float = clampf(board_width * 0.46, 420.0, 620.0)
-	var clash_height: float = 280.0
-	_pin_rect(
-		_clash_root,
-		Vector2((_table_area.size.x - clash_width) * 0.5, board_position.y + board_height * 0.26),
-		Vector2(clash_width, clash_height)
-	)
-	var clash_card_size := Vector2(140.0, 184.0)
-	_pin_rect(
-		_boss_card_slot,
-		Vector2((clash_width - clash_card_size.x) * 0.5, 0.0),
-		clash_card_size
-	)
-	_pin_rect(
-		_player_card_slot,
-		Vector2((clash_width - clash_card_size.x) * 0.5, clash_height - clash_card_size.y),
-		clash_card_size
-	)
-
-	var hand_width: float = clampf(stage_size.x * 0.74, 860.0, 1120.0)
-	var hand_height: float = clampf(stage_size.y * 0.23, 210.0, 250.0)
-	_pin_rect(
-		_player_area,
-		Vector2((_table_area.size.x - hand_width) * 0.5, _table_area.size.y - hand_height - 8.0),
-		Vector2(hand_width, hand_height)
-	)
-	_pin_rect(_hand_anchor, Vector2.ZERO, _player_area.size)
-
-	var overlay_width: float = clampf(stage_size.x * 0.24, 280.0, 380.0)
-	var overlay_height: float = 140.0
-	_pin_rect(
-		_overlay_ui,
-		Vector2(0.0, table_top + board_position.y + board_height * 0.46),
-		Vector2(overlay_width, overlay_height)
-	)
-
-func _pin_rect(control: Control, position: Vector2, size: Vector2) -> void:
-	control.anchor_left = 0.0
-	control.anchor_top = 0.0
-	control.anchor_right = 0.0
-	control.anchor_bottom = 0.0
-	control.position = position
-	control.size = size

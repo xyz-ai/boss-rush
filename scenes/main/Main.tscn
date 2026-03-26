@@ -39,65 +39,66 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 103.0
-offset_top = 64.0
-offset_right = -84.0
-offset_bottom = -75.0
 grow_horizontal = 2
 grow_vertical = 2
 
 [node name="BossArea" type="Control" parent="ContentRoot" unique_id=481842816]
 layout_mode = 1
-anchors_preset = 10
-anchor_right = 1.0
-offset_right = -1733.0
-offset_bottom = 300.0
+anchor_left = 0.18
+anchor_right = 0.82
+anchor_bottom = 0.24
 grow_horizontal = 2
 pivot_offset_ratio = Vector2(0.5, 0.5)
 
 [node name="BossPortrait" type="TextureRect" parent="ContentRoot/BossArea" unique_id=383902541]
 layout_mode = 1
-anchors_preset = 10
+anchors_preset = 15
 anchor_right = 1.0
-offset_left = 430.0
-offset_top = -84.0
-offset_right = 1966.0
-offset_bottom = 940.0
+anchor_bottom = 1.0
+offset_left = 121.39999
+offset_top = 6.0
+offset_right = 301.59998
+offset_bottom = 605.80005
 grow_horizontal = 2
-scale = Vector2(0.6, 0.6)
+grow_vertical = 2
+scale = Vector2(0.7, 0.7)
 texture = ExtResource("4_dc040")
+expand_mode = 1
 stretch_mode = 6
 
 [node name="TableArea" type="Control" parent="ContentRoot" unique_id=967982060]
 layout_mode = 1
-anchors_preset = 14
-anchor_top = 0.5
+anchor_top = 0.18
 anchor_right = 1.0
-anchor_bottom = 0.5
+anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
 [node name="TableBoard" type="TextureRect" parent="ContentRoot/TableArea" unique_id=452076222]
 layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 57.0
-offset_top = -343.5
-offset_right = 57.0
-offset_bottom = 680.5
+anchors_preset = -1
+anchor_left = 0.1
+anchor_top = 0.08
+anchor_right = 0.9
+anchor_bottom = 0.76
+offset_left = 165.0
+offset_top = 171.75198
+offset_right = 165.0
+offset_bottom = 171.75195
 grow_horizontal = 2
 grow_vertical = 2
+scale = Vector2(0.8, 0.8)
 texture = ExtResource("5_1rhdn")
+expand_mode = 1
+stretch_mode = 6
 
 [node name="CenterInfo" type="VBoxContainer" parent="ContentRoot/TableArea" unique_id=880188217]
 layout_mode = 1
-anchors_preset = 14
-anchor_top = 0.5
-anchor_right = 1.0
-anchor_bottom = 0.5
-offset_top = -25.0
-offset_bottom = 25.0
+anchors_preset = -1
+anchor_left = 0.43
+anchor_top = 0.2
+anchor_right = 0.57
+anchor_bottom = 0.3
 grow_horizontal = 2
 grow_vertical = 2
 
@@ -109,118 +110,105 @@ layout_mode = 2
 
 [node name="PlayerHP" type="Label" parent="ContentRoot/TableArea" unique_id=2046956963]
 layout_mode = 1
-anchors_preset = 9
-anchor_bottom = 1.0
-offset_left = 311.0
-offset_top = 0.5
-offset_right = 312.0
-offset_bottom = 23.5
+anchors_preset = -1
+anchor_left = 0.16
+anchor_top = 0.58
+anchor_right = 0.28
+anchor_bottom = 0.7
 grow_vertical = 2
 
 [node name="BossHP" type="Label" parent="ContentRoot/TableArea" unique_id=1735764275]
 layout_mode = 1
-anchors_preset = 11
-anchor_left = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -173.0
-offset_top = 25.5
-offset_right = -172.0
-offset_bottom = 48.5
+anchors_preset = -1
+anchor_left = 0.72
+anchor_top = 0.22
+anchor_right = 0.84
+anchor_bottom = 0.34
 grow_horizontal = 0
 grow_vertical = 2
 
 [node name="ClashArea" type="Control" parent="ContentRoot/TableArea" unique_id=492163122]
 layout_mode = 1
-anchors_preset = 14
-anchor_top = 0.5
-anchor_right = 1.0
-anchor_bottom = 0.5
+anchor_left = 0.35
+anchor_top = 0.28
+anchor_right = 0.65
+anchor_bottom = 0.68
 grow_horizontal = 2
 grow_vertical = 2
 
 [node name="PlayerCardSlot" type="TextureRect" parent="ContentRoot/TableArea/ClashArea" unique_id=572966045]
 layout_mode = 1
-anchors_preset = 12
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 58.0
-offset_top = 175.5
-offset_right = 58.0
-offset_bottom = 475.5
+anchors_preset = -1
+anchor_left = 0.36
+anchor_top = 0.58
+anchor_right = 0.64
+anchor_bottom = 0.98
 grow_horizontal = 2
 grow_vertical = 0
 
 [node name="BossCardSlot" type="TextureRect" parent="ContentRoot/TableArea/ClashArea" unique_id=105397548]
 layout_mode = 1
-anchors_preset = 10
-anchor_right = 1.0
-offset_left = 58.0
-offset_top = -205.5
-offset_right = 58.0
-offset_bottom = -105.5
+anchors_preset = -1
+anchor_left = 0.36
+anchor_top = 0.02
+anchor_right = 0.64
+anchor_bottom = 0.42
 grow_horizontal = 2
 
 [node name="BossDeckView" type="Control" parent="ContentRoot/TableArea" unique_id=1302266318]
 layout_mode = 1
-anchors_preset = 9
-anchor_bottom = 1.0
-offset_left = 278.0
-offset_top = -106.5
-offset_right = 328.0
-offset_bottom = -56.5
+anchor_left = 0.22
+anchor_top = 0.04
+anchor_right = 0.78
+anchor_bottom = 0.22
 grow_vertical = 2
 
 [node name="RevealDeckButton" type="Button" parent="ContentRoot/TableArea/BossDeckView" unique_id=1085194416]
 layout_mode = 1
-offset_left = 397.0
-offset_top = -44.0
-offset_right = 447.0
-offset_bottom = 6.0
+anchors_preset = -1
+anchor_left = 0.4
+anchor_right = 0.6
+anchor_bottom = 0.22
 
 [node name="DeckRow" type="HBoxContainer" parent="ContentRoot/TableArea/BossDeckView" unique_id=1696114397]
 layout_mode = 1
-offset_left = 1027.0
-offset_top = -37.0
-offset_right = 1077.0
-offset_bottom = 13.0
+anchors_preset = -1
+anchor_top = 0.28
+anchor_right = 1.0
+anchor_bottom = 1.0
 
 [node name="PlayerArea" type="Control" parent="ContentRoot/TableArea" unique_id=979608475]
 layout_mode = 1
-anchors_preset = 12
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 21.0
-offset_top = 219.5
-offset_right = 21.0
-offset_bottom = 519.5
+anchor_left = 0.17
+anchor_top = 0.72
+anchor_right = 0.83
+anchor_bottom = 0.98
 grow_horizontal = 2
 grow_vertical = 0
 
 [node name="HandAnchor" type="HBoxContainer" parent="ContentRoot/TableArea/PlayerArea" unique_id=1965159488]
 layout_mode = 1
-anchors_preset = 12
-anchor_top = 1.0
+anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 15.0
-offset_top = -305.0
-offset_right = 15.0
-offset_bottom = -105.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = -8.0
 grow_horizontal = 2
 grow_vertical = 0
 
 [node name="OverlayUI" type="Control" parent="ContentRoot" unique_id=2089476458]
 layout_mode = 1
-anchors_preset = 10
-anchor_right = 1.0
-offset_left = 37.0
-offset_top = 413.0
-offset_right = 37.0
-offset_bottom = 513.0
+anchor_left = 0.02
+anchor_top = 0.58
+anchor_right = 0.24
+anchor_bottom = 0.78
 grow_horizontal = 2
 
 [node name="ScreenEffects" parent="." unique_id=1583024753 instance=ExtResource("2")]
 layout_mode = 1
+offset_left = 2.0
+offset_top = 2.0
+offset_right = 2.0
+offset_bottom = 2.0
