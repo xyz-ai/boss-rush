@@ -6,3 +6,5 @@ res://scenes/battle/ClashAreaView.gd
 res://scenes/main/Main.gd
 res://scenes/main/Main.tscn
 res://scripts/ui/Main.gd
+res://scripts/ui/BossDeckView.gd
+res://scenes/ui/ScreenEffects.tscn

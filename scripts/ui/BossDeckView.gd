@@ -19,8 +19,8 @@ func _init(root: Control, reveal_button: Button, deck_row: HBoxContainer, card_s
 	_card_scene = card_scene
 	_deck_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	_deck_row.add_theme_constant_override("separation", 10)
-	_reveal_button.text = "Reveal Deck"
-	_reveal_button.pressed.connect(_on_reveal_pressed)
+	
+
 
 func set_deck(cards: Array[MvpBattleCard], revealed: bool, used_slots: Array[int]) -> void:
 	_cards = cards
@@ -43,9 +43,7 @@ func _refresh_button_state() -> void:
 		_reveal_button.text = "Deck Revealed"
 	elif not _reveal_enabled:
 		_reveal_button.text = "Reveal Locked"
-	else:
-		_reveal_button.text = "Reveal Deck"
-	_reveal_button.disabled = _revealed or not _reveal_enabled
+
 
 func _rebuild_cards() -> void:
 	for child in _deck_row.get_children():

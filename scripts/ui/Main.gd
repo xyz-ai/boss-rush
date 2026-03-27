@@ -126,7 +126,7 @@ func _bind_nodes() -> void:
 	assert(_boss_hp_label != null, "Main.tscn is missing BossHP.")
 	assert(_hand_anchor != null, "Main.tscn is missing HandAnchor.")
 	assert(_boss_deck_root != null, "Main.tscn is missing BossDeckView.")
-	assert(_reveal_button != null, "Main.tscn is missing RevealDeckButton.")
+	
 	assert(_deck_row != null, "Main.tscn is missing DeckRow.")
 	assert(_clash_root != null, "Main.tscn is missing ClashArea.")
 	assert(_player_card_slot != null, "Main.tscn is missing PlayerCardSlot.")

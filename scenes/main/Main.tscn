@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://botjw7r3wvlpd"]
 
 [ext_resource type="Script" uid="uid://com7qowr7kh81" path="res://scenes/main/Main.gd" id="1"]
-[ext_resource type="PackedScene" path="res://scenes/ui/ScreenEffects.tscn" id="2"]
+[ext_resource type="PackedScene" uid="uid://b3mcvllc0heso" path="res://scenes/ui/ScreenEffects.tscn" id="2"]
 [ext_resource type="Theme" path="res://themes/default_theme.tres" id="3"]
 [ext_resource type="Texture2D" uid="uid://3jv760jkrpcm" path="res://assets/battle/background/bg_office_dark.png" id="3_gyg6b"]
 [ext_resource type="Texture2D" uid="uid://d1ytde133eqh8" path="res://assets/battle/boss/team_lead/boss_team_lead_silhouette.png" id="4_dc040"]
@@ -47,6 +47,8 @@ layout_mode = 1
 anchor_left = 0.18
 anchor_right = 0.82
 anchor_bottom = 0.24
+offset_left = -15.600006
+offset_bottom = 184.80002
 grow_horizontal = 2
 pivot_offset_ratio = Vector2(0.5, 0.5)
 
@@ -55,13 +57,13 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 121.39999
-offset_top = 6.0
-offset_right = 301.59998
-offset_bottom = 605.80005
+offset_left = 181.0
+offset_top = 32.999996
+offset_right = 47.964233
+offset_bottom = 316.49994
 grow_horizontal = 2
 grow_vertical = 2
-scale = Vector2(0.7, 0.7)
+scale = Vector2(0.8, 0.8)
 texture = ExtResource("4_dc040")
 expand_mode = 1
 stretch_mode = 6
@@ -81,10 +83,10 @@ anchor_left = 0.1
 anchor_top = 0.08
 anchor_right = 0.9
 anchor_bottom = 0.76
-offset_left = 165.0
-offset_top = 171.75198
-offset_right = 165.0
-offset_bottom = 171.75195
+offset_left = 88.0
+offset_top = 140.75198
+offset_right = 301.75
+offset_bottom = 313.54395
 grow_horizontal = 2
 grow_vertical = 2
 scale = Vector2(0.8, 0.8)
@@ -99,14 +101,23 @@ anchor_left = 0.43
 anchor_top = 0.2
 anchor_right = 0.57
 anchor_bottom = 0.3
+offset_left = -11.600037
+offset_top = 200.47998
+offset_right = 75.599976
+offset_bottom = 171.47998
 grow_horizontal = 2
 grow_vertical = 2
 
 [node name="RoundLabel" type="Label" parent="ContentRoot/TableArea/CenterInfo" unique_id=570709795]
 layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 1
+horizontal_alignment = 2
 
 [node name="TurnLabel" type="Label" parent="ContentRoot/TableArea/CenterInfo" unique_id=755353802]
 layout_mode = 2
+size_flags_horizontal = 12
+size_flags_vertical = 1
 
 [node name="PlayerHP" type="Label" parent="ContentRoot/TableArea" unique_id=2046956963]
 layout_mode = 1
@@ -115,6 +126,10 @@ anchor_left = 0.16
 anchor_top = 0.58
 anchor_right = 0.28
 anchor_bottom = 0.7
+offset_left = 85.80002
+offset_top = -189.04797
+offset_right = 48.80005
+offset_bottom = -183.32
 grow_vertical = 2
 
 [node name="BossHP" type="Label" parent="ContentRoot/TableArea" unique_id=1735764275]
@@ -124,8 +139,13 @@ anchor_left = 0.72
 anchor_top = 0.22
 anchor_right = 0.84
 anchor_bottom = 0.34
+offset_left = 31.599854
+offset_top = 182.768
+offset_right = -52.856934
+offset_bottom = 132.98425
 grow_horizontal = 0
 grow_vertical = 2
+scale = Vector2(1.3155817, 1.8056847)
 
 [node name="ClashArea" type="Control" parent="ContentRoot/TableArea" unique_id=492163122]
 layout_mode = 1
@@ -143,6 +163,10 @@ anchor_left = 0.36
 anchor_top = 0.58
 anchor_right = 0.64
 anchor_bottom = 0.98
+offset_left = 196.64001
+offset_top = -86.82721
+offset_right = 159.00003
+offset_bottom = -115.3504
 grow_horizontal = 2
 grow_vertical = 0
 
@@ -153,7 +177,19 @@ anchor_left = 0.36
 anchor_top = 0.02
 anchor_right = 0.64
 anchor_bottom = 0.42
+offset_left = -122.359985
+offset_top = 94.54721
+offset_right = -164.63995
+offset_bottom = 64.85121
 grow_horizontal = 2
+
+[node name="ClashResultLabel" type="Label" parent="ContentRoot/TableArea/ClashArea" unique_id=1157279961]
+layout_mode = 1
+anchors_preset = -1
+offset_left = 173.0
+offset_top = 49.63202
+offset_right = 459.0
+offset_bottom = 107.63202
 
 [node name="BossDeckView" type="Control" parent="ContentRoot/TableArea" unique_id=1302266318]
 layout_mode = 1
@@ -163,19 +199,19 @@ anchor_right = 0.78
 anchor_bottom = 0.22
 grow_vertical = 2
 
-[node name="RevealDeckButton" type="Button" parent="ContentRoot/TableArea/BossDeckView" unique_id=1085194416]
-layout_mode = 1
-anchors_preset = -1
-anchor_left = 0.4
-anchor_right = 0.6
-anchor_bottom = 0.22
-
 [node name="DeckRow" type="HBoxContainer" parent="ContentRoot/TableArea/BossDeckView" unique_id=1696114397]
 layout_mode = 1
 anchors_preset = -1
 anchor_top = 0.28
 anchor_right = 1.0
 anchor_bottom = 1.0
+
+[node name="BossHandCountLabel" type="Label" parent="ContentRoot/TableArea/BossDeckView" unique_id=1436533248]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 23.0
+
+[node name="BossHandAnimationAnchor" type="AnimationPlayer" parent="ContentRoot/TableArea/BossDeckView" unique_id=541194474]
 
 [node name="PlayerArea" type="Control" parent="ContentRoot/TableArea" unique_id=979608475]
 layout_mode = 1
@@ -198,17 +234,157 @@ offset_bottom = -8.0
 grow_horizontal = 2
 grow_vertical = 0
 
+[node name="PlayerStatusPanel" type="Panel" parent="ContentRoot/TableArea" unique_id=117066010]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 111.0
+offset_top = -227.0
+offset_right = 313.0
+offset_bottom = -25.0
+grow_vertical = 0
+
+[node name="PlayerBOD" type="Label" parent="ContentRoot/TableArea/PlayerStatusPanel" unique_id=1922061575]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -200.0
+offset_top = -193.0
+offset_bottom = -154.0
+grow_horizontal = 0
+grow_vertical = 0
+
+[node name="PlayerSPR" type="Label" parent="ContentRoot/TableArea/PlayerStatusPanel" unique_id=2119498581]
+layout_mode = 1
+anchors_preset = -1
+offset_left = 2.0
+offset_top = 74.0
+offset_right = 206.0
+offset_bottom = 109.0
+
+[node name="PlayerREP" type="Label" parent="ContentRoot/TableArea/PlayerStatusPanel" unique_id=463789460]
+layout_mode = 1
+anchors_preset = -1
+offset_left = 4.0
+offset_top = 162.0
+offset_right = 202.0
+offset_bottom = 187.0
+
+[node name="BossStatusPanel" type="Panel" parent="ContentRoot/TableArea" unique_id=1816047976]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -629.0
+offset_top = 38.59999
+offset_right = -436.0
+offset_bottom = 202.59998
+grow_horizontal = 0
+
+[node name="BossBOD" type="Label" parent="ContentRoot/TableArea/BossStatusPanel" unique_id=646621922]
+layout_mode = 0
+offset_right = 190.0
+offset_bottom = 42.0
+
+[node name="BossSPR" type="Label" parent="ContentRoot/TableArea/BossStatusPanel" unique_id=1432617824]
+layout_mode = 0
+offset_left = -2.0
+offset_top = 55.0
+offset_right = 194.0
+offset_bottom = 101.0
+
+[node name="BossREP" type="Label" parent="ContentRoot/TableArea/BossStatusPanel" unique_id=503164289]
+layout_mode = 0
+offset_top = 113.0
+offset_right = 198.0
+offset_bottom = 155.0
+
+[node name="BossBattleDeckView" type="Control" parent="ContentRoot/TableArea" unique_id=121311895]
+layout_mode = 1
+anchors_preset = 14
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = 665.0
+offset_top = -146.20001
+offset_right = -624.0
+offset_bottom = -35.200012
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="RevealDeckButton" type="Button" parent="ContentRoot/TableArea/BossBattleDeckView" unique_id=1085194416]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.4
+anchor_right = 0.6
+anchor_bottom = 0.22
+offset_left = 816.6
+offset_top = 48.999985
+offset_right = 816.6
+offset_bottom = 48.999985
+
+[node name="BattleDeckTitle" type="Label" parent="ContentRoot/TableArea/BossBattleDeckView" unique_id=682871794]
+layout_mode = 1
+anchors_preset = -1
+offset_left = 283.0
+offset_right = 384.0
+offset_bottom = 25.0
+
+[node name="BattleDeckRow" type="HBoxContainer" parent="ContentRoot/TableArea/BossBattleDeckView" unique_id=1777056394]
+layout_mode = 1
+anchors_preset = 9
+anchor_bottom = 1.0
+offset_right = 659.0
+grow_vertical = 2
+
+[node name="BossBetArea" type="Control" parent="ContentRoot/TableArea" unique_id=88288340]
+layout_mode = 1
+anchors_preset = 14
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = 562.0
+offset_top = -29.200012
+offset_right = -523.0
+offset_bottom = 136.79999
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="BetAreaTitle" type="Label" parent="ContentRoot/TableArea/BossBetArea" unique_id=491765211]
+layout_mode = 1
+anchors_preset = -1
+offset_left = 351.0
+offset_top = 16.0
+offset_right = 494.0
+offset_bottom = 62.0
+
+[node name="BetRow" type="HBoxContainer" parent="ContentRoot/TableArea/BossBetArea" unique_id=935023374]
+layout_mode = 1
+anchors_preset = -1
+offset_left = 23.0
+offset_top = 55.0
+offset_right = 844.0
+offset_bottom = 134.0
+
 [node name="OverlayUI" type="Control" parent="ContentRoot" unique_id=2089476458]
 layout_mode = 1
 anchor_left = 0.02
 anchor_top = 0.58
 anchor_right = 0.24
 anchor_bottom = 0.78
+offset_left = -19.399998
+offset_top = -602.39996
+offset_right = -19.399994
+offset_bottom = -602.39996
 grow_horizontal = 2
 
 [node name="ScreenEffects" parent="." unique_id=1583024753 instance=ExtResource("2")]
 layout_mode = 1
 offset_left = 2.0
-offset_top = 2.0
+offset_top = 4.0
 offset_right = 2.0
-offset_bottom = 2.0
+offset_bottom = 4.0
