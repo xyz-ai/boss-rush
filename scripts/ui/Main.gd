@@ -78,13 +78,15 @@ func ready() -> void:
 	_bind_nodes()
 	_configure_mouse_filters()
 	_setup_views()
+	_sync_reveal_battle_deck_layout()
 	_ensure_overlay_log()
 	if _screen_effects != null and _screen_effects.has_method("bind_target"):
 		_screen_effects.bind_target(_content_root)
 	_start_new_challenge()
 
-func handle_notification(_what: int) -> void:
-	pass
+func handle_notification(what: int) -> void:
+	if what == Control.NOTIFICATION_RESIZED:
+		_sync_reveal_battle_deck_layout()
 
 func get_state_snapshot() -> Dictionary:
 	return {
@@ -295,7 +297,12 @@ func _refresh_ui() -> void:
 	_boss_deck_view.set_hand(_boss_state.cards, _boss_state.used_slots)
 	_boss_battle_deck_view.set_deck(_boss_state.cards, _boss_battle_revealed, _boss_state.used_slots)
 	_boss_battle_deck_view.set_reveal_enabled(not _challenge_over)
+	_sync_reveal_battle_deck_layout()
 	_refresh_overlay_log()
+
+func _sync_reveal_battle_deck_layout() -> void:
+	if _boss_battle_deck_view != null and _boss_battle_deck_view.has_method("update_layout"):
+		_boss_battle_deck_view.update_layout()
 
 func _on_reveal_requested() -> void:
 	if _challenge_over or _boss_battle_revealed:

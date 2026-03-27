@@ -17,14 +17,23 @@ func _init(root: Control, reveal_button: Button, deck_row: HBoxContainer, card_s
 	_reveal_button = reveal_button
 	_deck_row = deck_row
 	_card_scene = card_scene
-	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.mouse_filter = Control.MOUSE_FILTER_PASS
 	_deck_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	_deck_row.add_theme_constant_override("separation", 10)
 	_deck_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_reveal_button.text = "Reveal Battle Deck"
 	_reveal_button.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
+	_reveal_button.anchor_left = 0.0
+	_reveal_button.anchor_top = 0.0
+	_reveal_button.anchor_right = 0.0
+	_reveal_button.anchor_bottom = 0.0
+	_deck_row.anchor_left = 0.0
+	_deck_row.anchor_top = 0.0
+	_deck_row.anchor_right = 0.0
+	_deck_row.anchor_bottom = 0.0
 	if not _reveal_button.pressed.is_connected(_on_reveal_pressed):
 		_reveal_button.pressed.connect(_on_reveal_pressed)
+	update_layout()
 
 func set_deck(cards: Array[MvpBattleCard], revealed: bool, used_slots: Array[int]) -> void:
 	_cards = cards
@@ -32,10 +41,31 @@ func set_deck(cards: Array[MvpBattleCard], revealed: bool, used_slots: Array[int
 	_used_slots = used_slots.duplicate()
 	_rebuild_cards()
 	_refresh_button_state()
+	update_layout()
 
 func set_reveal_enabled(enabled: bool) -> void:
 	_reveal_enabled = enabled
 	_refresh_button_state()
+	update_layout()
+
+func update_layout() -> void:
+	if _root == null or _reveal_button == null or _deck_row == null:
+		return
+	var root_size := _root.size
+	if root_size.x <= 0.0 or root_size.y <= 0.0:
+		return
+
+	var button_width := clampf(root_size.x * 0.30, 220.0, 300.0)
+	var button_height := clampf(root_size.y * 0.24, 36.0, 44.0)
+	var button_x: float = floorf((root_size.x - button_width) * 0.5)
+	var button_y: float = floorf(root_size.y * 0.18)
+	_reveal_button.position = Vector2(button_x, button_y)
+	_reveal_button.size = Vector2(button_width, button_height)
+	_reveal_button.custom_minimum_size = _reveal_button.size
+
+	var row_y: float = floorf(root_size.y * 0.48)
+	_deck_row.position = Vector2(0.0, row_y)
+	_deck_row.size = Vector2(root_size.x, maxf(root_size.y - row_y, 0.0))
 
 func _on_reveal_pressed() -> void:
 	if _reveal_button.disabled:
