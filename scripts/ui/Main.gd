@@ -2,6 +2,7 @@ extends RefCounted
 class_name MvpMainController
 
 const CARD_VIEW_SCENE := preload("res://scenes/ui/CardView.tscn")
+const BOSS_BATTLE_DECK_VIEW_SCRIPT := preload("res://scripts/ui/BossBattleDeckView.gd")
 
 const MAX_SETS := 3
 const WINS_TO_CLEAR := 2
@@ -10,7 +11,7 @@ const SET_HP := 6
 const STARTING_BOD := 3
 const STARTING_SPR := 3
 const STARTING_REP := 3
-const MAX_LOG_LINES := 8
+const MAX_LOG_LINES := 5
 
 var _host: Control
 
@@ -30,16 +31,30 @@ var _overlay_log_label: RichTextLabel
 
 var _hand_anchor: HBoxContainer
 var _boss_deck_root: Control
-var _reveal_button: Button
+var _boss_hand_count_label: Label
+var _boss_hand_animation_anchor: Control
 var _deck_row: HBoxContainer
+var _boss_battle_deck_root: Control
+var _battle_deck_title: Label
+var _reveal_battle_deck_button: Button
+var _battle_deck_row: HBoxContainer
 var _clash_root: Control
 var _player_card_slot: Control
 var _boss_card_slot: Control
+var _clash_result_label: Label
 var _player_area: Control
 var _screen_effects: Control
+var _player_bod_label: Label
+var _player_spr_label: Label
+var _player_rep_label: Label
+var _boss_bod_label: Label
+var _boss_spr_label: Label
+var _boss_rep_label: Label
+var _boss_bet_area: Control
 
 var _player_hand_view: MvpPlayerHandView
 var _boss_deck_view: MvpBossDeckView
+var _boss_battle_deck_view
 var _clash_area_view: MvpClashAreaView
 var _boss_ai: MvpBossAI = MvpBossAI.new()
 var _resolver: MvpBattleResolver = MvpBattleResolver.new()
@@ -51,7 +66,7 @@ var _current_set_index: int = 1
 var _current_turn_index: int = 1
 var _player_set_wins: int = 0
 var _boss_set_wins: int = 0
-var _boss_revealed: bool = false
+var _boss_battle_revealed: bool = false
 var _challenge_over: bool = false
 var _input_locked: bool = false
 var _logs: Array[String] = []
@@ -61,6 +76,7 @@ func _init(host: Control) -> void:
 
 func ready() -> void:
 	_bind_nodes()
+	_configure_mouse_filters()
 	_setup_views()
 	_ensure_overlay_log()
 	if _screen_effects != null and _screen_effects.has_method("bind_target"):
@@ -68,7 +84,6 @@ func ready() -> void:
 	_start_new_challenge()
 
 func handle_notification(_what: int) -> void:
-	# Main.tscn owns the stage geometry now; runtime code no longer rewrites it.
 	pass
 
 func get_state_snapshot() -> Dictionary:
@@ -77,7 +92,7 @@ func get_state_snapshot() -> Dictionary:
 		"current_turn_index": _current_turn_index,
 		"player_set_wins": _player_set_wins,
 		"boss_set_wins": _boss_set_wins,
-		"boss_revealed": _boss_revealed,
+		"boss_battle_revealed": _boss_battle_revealed,
 		"challenge_over": _challenge_over,
 		"player": _player_state.snapshot() if _player_state != null else {},
 		"boss": _boss_state.snapshot() if _boss_state != null else {},
@@ -105,12 +120,25 @@ func _bind_nodes() -> void:
 	_overlay_ui = _host.get_node("ContentRoot/OverlayUI") as Control
 	_hand_anchor = _host.get_node("ContentRoot/TableArea/PlayerArea/HandAnchor") as HBoxContainer
 	_boss_deck_root = _host.get_node("ContentRoot/TableArea/BossDeckView") as Control
-	_reveal_button = _host.get_node("ContentRoot/TableArea/BossDeckView/RevealDeckButton") as Button
+	_boss_hand_count_label = _host.get_node("ContentRoot/TableArea/BossDeckView/BossHandCountLabel") as Label
+	_boss_hand_animation_anchor = _host.get_node("ContentRoot/TableArea/BossDeckView/BossHandAnimationAnchor") as Control
 	_deck_row = _host.get_node("ContentRoot/TableArea/BossDeckView/DeckRow") as HBoxContainer
+	_boss_battle_deck_root = _host.get_node("ContentRoot/TableArea/BossBattleDeckView") as Control
+	_battle_deck_title = _host.get_node("ContentRoot/TableArea/BossBattleDeckView/BattleDeckTitle") as Label
+	_reveal_battle_deck_button = _host.get_node("ContentRoot/TableArea/BossBattleDeckView/RevealBattleDeckButton") as Button
+	_battle_deck_row = _host.get_node("ContentRoot/TableArea/BossBattleDeckView/BattleDeckRow") as HBoxContainer
 	_clash_root = _host.get_node("ContentRoot/TableArea/ClashArea") as Control
 	_player_card_slot = _host.get_node("ContentRoot/TableArea/ClashArea/PlayerCardSlot") as Control
 	_boss_card_slot = _host.get_node("ContentRoot/TableArea/ClashArea/BossCardSlot") as Control
+	_clash_result_label = _host.get_node("ContentRoot/TableArea/ClashArea/ClashResultLabel") as Label
 	_player_area = _host.get_node("ContentRoot/TableArea/PlayerArea") as Control
+	_player_bod_label = _host.get_node("ContentRoot/TableArea/PlayerStatusPanel/MarginContainer/VBoxContainer/PlayerBOD") as Label
+	_player_spr_label = _host.get_node("ContentRoot/TableArea/PlayerStatusPanel/MarginContainer/VBoxContainer/PlayerSPR") as Label
+	_player_rep_label = _host.get_node("ContentRoot/TableArea/PlayerStatusPanel/MarginContainer/VBoxContainer/PlayerREP") as Label
+	_boss_bod_label = _host.get_node("ContentRoot/TableArea/BossStatusPanel/MarginContainer/VBoxContainer/BossBOD") as Label
+	_boss_spr_label = _host.get_node("ContentRoot/TableArea/BossStatusPanel/MarginContainer/VBoxContainer/BossSPR") as Label
+	_boss_rep_label = _host.get_node("ContentRoot/TableArea/BossStatusPanel/MarginContainer/VBoxContainer/BossREP") as Label
+	_boss_bet_area = _host.get_node("ContentRoot/TableArea/BossBetArea") as Control
 	_screen_effects = _host.get_node_or_null("ScreenEffects") as Control
 
 	assert(_background != null, "Main.tscn is missing Background.")
@@ -126,21 +154,67 @@ func _bind_nodes() -> void:
 	assert(_boss_hp_label != null, "Main.tscn is missing BossHP.")
 	assert(_hand_anchor != null, "Main.tscn is missing HandAnchor.")
 	assert(_boss_deck_root != null, "Main.tscn is missing BossDeckView.")
-	
+	assert(_boss_hand_count_label != null, "Main.tscn is missing BossHandCountLabel.")
+	assert(_boss_hand_animation_anchor != null, "Main.tscn is missing BossHandAnimationAnchor.")
 	assert(_deck_row != null, "Main.tscn is missing DeckRow.")
+	assert(_boss_battle_deck_root != null, "Main.tscn is missing BossBattleDeckView.")
+	assert(_battle_deck_title != null, "Main.tscn is missing BattleDeckTitle.")
+	assert(_reveal_battle_deck_button != null, "Main.tscn is missing RevealBattleDeckButton.")
+	assert(_battle_deck_row != null, "Main.tscn is missing BattleDeckRow.")
 	assert(_clash_root != null, "Main.tscn is missing ClashArea.")
 	assert(_player_card_slot != null, "Main.tscn is missing PlayerCardSlot.")
 	assert(_boss_card_slot != null, "Main.tscn is missing BossCardSlot.")
+	assert(_clash_result_label != null, "Main.tscn is missing ClashResultLabel.")
 	assert(_player_area != null, "Main.tscn is missing PlayerArea.")
+	assert(_player_bod_label != null and _player_spr_label != null and _player_rep_label != null, "Main.tscn is missing PlayerStatusPanel labels.")
+	assert(_boss_bod_label != null and _boss_spr_label != null and _boss_rep_label != null, "Main.tscn is missing BossStatusPanel labels.")
+	assert(_boss_bet_area != null, "Main.tscn is missing BossBetArea.")
+
+func _configure_mouse_filters() -> void:
+	# Keep passive display layers from eating clicks meant for the reveal button.
+	_background.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_table_board.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_center_info.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_round_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_turn_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_overlay_ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_boss_battle_deck_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_boss_deck_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_boss_hand_count_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_boss_hand_animation_anchor.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_deck_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_battle_deck_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_battle_deck_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_reveal_battle_deck_button.mouse_filter = Control.MOUSE_FILTER_STOP
 
 func _setup_views() -> void:
 	_player_hand_view = MvpPlayerHandView.new(_hand_anchor, CARD_VIEW_SCENE)
 	_player_hand_view.card_play_requested.connect(_on_card_play_requested)
 
-	_boss_deck_view = MvpBossDeckView.new(_boss_deck_root, _reveal_button, _deck_row, CARD_VIEW_SCENE)
-	_boss_deck_view.reveal_requested.connect(_on_reveal_requested)
+	_boss_deck_view = MvpBossDeckView.new(
+		_boss_deck_root,
+		_boss_hand_count_label,
+		_boss_hand_animation_anchor,
+		_deck_row,
+		CARD_VIEW_SCENE
+	)
 
-	_clash_area_view = MvpClashAreaView.new(_clash_root, _player_card_slot, _boss_card_slot, CARD_VIEW_SCENE)
+	_boss_battle_deck_view = BOSS_BATTLE_DECK_VIEW_SCRIPT.new(
+		_boss_battle_deck_root,
+		_reveal_battle_deck_button,
+		_battle_deck_row,
+		CARD_VIEW_SCENE
+	)
+	if not _boss_battle_deck_view.reveal_requested.is_connected(_on_reveal_requested):
+		_boss_battle_deck_view.reveal_requested.connect(_on_reveal_requested)
+
+	_clash_area_view = MvpClashAreaView.new(
+		_clash_root,
+		_player_card_slot,
+		_boss_card_slot,
+		_clash_result_label,
+		CARD_VIEW_SCENE
+	)
 
 func _ensure_overlay_log() -> void:
 	if _overlay_ui == null:
@@ -176,7 +250,7 @@ func _start_new_challenge() -> void:
 	_boss_set_wins = 0
 	_current_set_index = 1
 	_current_turn_index = 1
-	_boss_revealed = false
+	_boss_battle_revealed = false
 	_challenge_over = false
 	_input_locked = false
 
@@ -194,7 +268,7 @@ func _start_new_challenge() -> void:
 func _reset_for_current_set() -> void:
 	_player_state.reset_for_new_set(SET_HP)
 	_boss_state.reset_for_new_set(SET_HP)
-	_boss_revealed = false
+	_boss_battle_revealed = false
 	_current_turn_index = 1
 	_input_locked = false
 	_clash_area_view.clear_clash()
@@ -202,33 +276,32 @@ func _reset_for_current_set() -> void:
 func _refresh_ui() -> void:
 	_round_label.text = "Round %d / %d" % [_current_set_index, MAX_SETS]
 	_turn_label.text = "Turn %d / %d" % [_current_turn_index, MAX_TURNS]
-	_player_hp_label.text = "Player HP %d\nBOD %d  SPR %d  REP %d" % [
-		_player_state.hp,
-		_player_state.bod,
-		_player_state.spr,
-		_player_state.rep,
-	]
-	_boss_hp_label.text = "Boss HP %d\nBOD %d  SPR %d  REP %d" % [
-		_boss_state.hp,
-		_boss_state.bod,
-		_boss_state.spr,
-		_boss_state.rep,
-	]
+	_player_hp_label.text = "Player HP %d" % _player_state.hp
+	_boss_hp_label.text = "Boss HP %d" % _boss_state.hp
+	_player_bod_label.text = "BOD %d" % _player_state.bod
+	_player_spr_label.text = "SPR %d" % _player_state.spr
+	_player_rep_label.text = "REP %d" % _player_state.rep
+	_boss_bod_label.text = "BOD %d" % _boss_state.bod
+	_boss_spr_label.text = "SPR %d" % _boss_state.spr
+	_boss_rep_label.text = "REP %d" % _boss_state.rep
+	_battle_deck_title.text = "Boss Battle Deck"
+	_boss_bet_area.visible = false
 
 	_player_hand_view.set_hand(
 		_player_state.cards,
 		_player_state.used_slots,
 		not _challenge_over and not _input_locked
 	)
-	_boss_deck_view.set_deck(_boss_state.cards, _boss_revealed, _boss_state.used_slots)
-	_boss_deck_view.set_reveal_enabled(not _challenge_over)
+	_boss_deck_view.set_hand(_boss_state.cards, _boss_state.used_slots)
+	_boss_battle_deck_view.set_deck(_boss_state.cards, _boss_battle_revealed, _boss_state.used_slots)
+	_boss_battle_deck_view.set_reveal_enabled(not _challenge_over)
 	_refresh_overlay_log()
 
 func _on_reveal_requested() -> void:
-	if _challenge_over or _boss_revealed:
+	if _challenge_over or _boss_battle_revealed:
 		return
-	_boss_revealed = true
-	push_log("Boss deck revealed for the current set.")
+	_boss_battle_revealed = true
+	push_log("Boss battle deck revealed for the current set.")
 	_refresh_ui()
 
 func _on_card_play_requested(slot_index: int) -> void:
@@ -319,7 +392,6 @@ func _determine_set_winner() -> String:
 		return "player"
 	if _boss_state.rep > _player_state.rep:
 		return "boss"
-	# MVP default: if HP and REP are both tied, the boss wins the set.
 	return "boss"
 
 func _finish_set(set_winner: String) -> void:

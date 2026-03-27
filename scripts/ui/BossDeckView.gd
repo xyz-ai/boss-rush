@@ -1,65 +1,51 @@
 extends RefCounted
 class_name MvpBossDeckView
 
-signal reveal_requested
-
 var _root: Control
-var _reveal_button: Button
+var _hand_count_label: Label
+var _animation_anchor: Control
 var _deck_row: HBoxContainer
 var _card_scene: PackedScene
 var _cards: Array[MvpBattleCard] = []
-var _revealed: bool = false
 var _used_slots: Array[int] = []
-var _reveal_enabled: bool = true
 
-func _init(root: Control, reveal_button: Button, deck_row: HBoxContainer, card_scene: PackedScene) -> void:
+func _init(
+	root: Control,
+	hand_count_label: Label,
+	animation_anchor: Control,
+	deck_row: HBoxContainer,
+	card_scene: PackedScene
+) -> void:
 	_root = root
-	_reveal_button = reveal_button
+	_hand_count_label = hand_count_label
+	_animation_anchor = animation_anchor
 	_deck_row = deck_row
 	_card_scene = card_scene
 	_deck_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	_deck_row.add_theme_constant_override("separation", 10)
-	
+	_deck_row.add_theme_constant_override("separation", 8)
+	if _animation_anchor != null:
+		_animation_anchor.visible = false
 
-
-func set_deck(cards: Array[MvpBattleCard], revealed: bool, used_slots: Array[int]) -> void:
+func set_hand(cards: Array[MvpBattleCard], used_slots: Array[int]) -> void:
 	_cards = cards
-	_revealed = revealed
 	_used_slots = used_slots.duplicate()
+	_refresh_count_label()
 	_rebuild_cards()
-	_refresh_button_state()
 
-func set_reveal_enabled(enabled: bool) -> void:
-	_reveal_enabled = enabled
-	_refresh_button_state()
-
-func _on_reveal_pressed() -> void:
-	if _reveal_button.disabled:
-		return
-	reveal_requested.emit()
-
-func _refresh_button_state() -> void:
-	if _revealed:
-		_reveal_button.text = "Deck Revealed"
-	elif not _reveal_enabled:
-		_reveal_button.text = "Reveal Locked"
-
+func _refresh_count_label() -> void:
+	var remaining_cards: int = maxi(_cards.size() - _used_slots.size(), 0)
+	_hand_count_label.text = "Boss Hand x%d" % remaining_cards
 
 func _rebuild_cards() -> void:
 	for child in _deck_row.get_children():
 		_deck_row.remove_child(child)
 		child.queue_free()
 
-	for slot_index in range(_cards.size()):
+	var remaining_cards: int = maxi(_cards.size() - _used_slots.size(), 0)
+	for index in range(remaining_cards):
 		var card_view: MvpCardView = _card_scene.instantiate()
-		card_view.name = "BossDeckCard%d" % slot_index
-		card_view.set_card_size(Vector2(84, 116))
-		card_view.configure(_cards[slot_index].to_dict(), _state_for_slot(slot_index), false)
+		card_view.name = "BossHandCard%d" % index
+		card_view.set_card_size(Vector2(68, 96))
+		var fallback_data: Dictionary = {} if _cards.is_empty() else _cards[min(index, _cards.size() - 1)].to_dict()
+		card_view.configure(fallback_data, "hidden", false)
 		_deck_row.add_child(card_view)
-
-func _state_for_slot(slot_index: int) -> String:
-	if _used_slots.has(slot_index):
-		return "used"
-	if _revealed:
-		return "normal"
-	return "hidden"

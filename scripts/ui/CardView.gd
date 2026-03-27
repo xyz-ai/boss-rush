@@ -2,8 +2,8 @@ extends Button
 class_name MvpCardView
 
 const HIDDEN_TEXTURE_PATH := "res://assets/battle/cards/backs/card_back_default.png"
-const ATTACK_TEXTURE_PATH := "res://assets/battle/cards/portraits/card_portrait_silhouette_02.png"
-const DEFEND_TEXTURE_PATH := "res://assets/battle/cards/portraits/card_portrait_silhouette_01.png"
+const AGGRESSION_TEXTURE_PATH := "res://assets/battle/cards/portraits/card_portrait_silhouette_02.png"
+const DEFENSE_TEXTURE_PATH := "res://assets/battle/cards/portraits/card_portrait_silhouette_01.png"
 const PRESSURE_TEXTURE_PATH := "res://assets/battle/cards/portraits/card_portrait_silhouette_01.png"
 
 @onready var _card_art: TextureRect = $CardArt
@@ -53,7 +53,7 @@ func set_card_size(card_size: Vector2) -> void:
 
 func _refresh_visuals() -> void:
 	var card_name := str(_card_data.get("display_name", "Unknown"))
-	var card_tag := str(_card_data.get("tag", "attack"))
+	var card_tag := str(_card_data.get("tag", "aggression"))
 	var card_power := int(_card_data.get("base_power", 0))
 	var base_fill := _color_for_tag(card_tag)
 	var border_color := base_fill.lightened(0.18)
@@ -119,9 +119,9 @@ func _make_style(fill: Color, border: Color) -> StyleBoxFlat:
 
 func _color_for_tag(card_tag: String) -> Color:
 	match card_tag:
-		"attack":
+		"aggression":
 			return Color(0.45, 0.18, 0.16, 0.98)
-		"defend":
+		"defense":
 			return Color(0.16, 0.28, 0.42, 0.98)
 		"pressure":
 			return Color(0.46, 0.32, 0.14, 0.98)
@@ -130,10 +130,10 @@ func _color_for_tag(card_tag: String) -> Color:
 
 func _texture_for_tag(card_tag: String) -> Texture2D:
 	match card_tag:
-		"attack":
-			return _load_texture(ATTACK_TEXTURE_PATH)
-		"defend":
-			return _load_texture(DEFEND_TEXTURE_PATH)
+		"aggression":
+			return _load_texture(AGGRESSION_TEXTURE_PATH)
+		"defense":
+			return _load_texture(DEFENSE_TEXTURE_PATH)
 		"pressure":
 			return _load_texture(PRESSURE_TEXTURE_PATH)
 		_:

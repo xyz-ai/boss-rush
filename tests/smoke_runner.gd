@@ -234,30 +234,35 @@ func _test_main_mvp(failures: Array[String]) -> void:
 	var round_label: Label = scene.get_node_or_null("ContentRoot/TableArea/CenterInfo/RoundLabel")
 	var turn_label: Label = scene.get_node_or_null("ContentRoot/TableArea/CenterInfo/TurnLabel")
 	var hand_anchor: HBoxContainer = scene.get_node_or_null("ContentRoot/TableArea/PlayerArea/HandAnchor")
-	var reveal_button: Button = scene.get_node_or_null("ContentRoot/TableArea/BossDeckView/RevealDeckButton")
-	var deck_row: HBoxContainer = scene.get_node_or_null("ContentRoot/TableArea/BossDeckView/DeckRow")
+	var boss_hand_count_label: Label = scene.get_node_or_null("ContentRoot/TableArea/BossDeckView/BossHandCountLabel")
+	var boss_hand_row: HBoxContainer = scene.get_node_or_null("ContentRoot/TableArea/BossDeckView/DeckRow")
+	var reveal_button: Button = scene.get_node_or_null("ContentRoot/TableArea/BossBattleDeckView/RevealBattleDeckButton")
+	var battle_deck_row: HBoxContainer = scene.get_node_or_null("ContentRoot/TableArea/BossBattleDeckView/BattleDeckRow")
 	var player_hp: Label = scene.get_node_or_null("ContentRoot/TableArea/PlayerHP")
 	var boss_hp: Label = scene.get_node_or_null("ContentRoot/TableArea/BossHP")
 	var player_slot: Control = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/PlayerCardSlot")
 	var boss_slot: Control = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/BossCardSlot")
+	var clash_result_label: Label = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/ClashResultLabel")
 
 	_assert(round_label != null and round_label.text == "Round 1 / 3", "Main MVP should start at Round 1 / 3.", failures)
 	_assert(turn_label != null and turn_label.text == "Turn 1 / 5", "Main MVP should start at Turn 1 / 5.", failures)
 	_assert(hand_anchor != null and hand_anchor.get_child_count() == 5, "Main MVP should spawn 5 player cards.", failures)
-	_assert(deck_row != null and deck_row.get_child_count() == 5, "Main MVP should spawn 5 boss deck cards.", failures)
+	_assert(boss_hand_row != null and boss_hand_row.get_child_count() == 5, "Boss hand view should start with 5 remaining cards.", failures)
+	_assert(battle_deck_row != null and battle_deck_row.get_child_count() == 5, "Boss battle deck should always expose 5 slots.", failures)
+	_assert(boss_hand_count_label != null and boss_hand_count_label.text == "Boss Hand x5", "Boss hand count should start at 5.", failures)
 
-	if deck_row != null and deck_row.get_child_count() > 0:
-		var first_deck_card = deck_row.get_child(0)
-		_assert(first_deck_card.has_method("get_view_state"), "Boss deck cards should expose a view state for testing.", failures)
-		if first_deck_card.has_method("get_view_state"):
-			_assert(first_deck_card.get_view_state() == "hidden", "Boss deck should start hidden.", failures)
+	if battle_deck_row != null and battle_deck_row.get_child_count() > 0:
+		var first_battle_deck_card = battle_deck_row.get_child(0)
+		_assert(first_battle_deck_card.has_method("get_view_state"), "Boss battle deck cards should expose a view state for testing.", failures)
+		if first_battle_deck_card.has_method("get_view_state"):
+			_assert(first_battle_deck_card.get_view_state() == "hidden", "Boss battle deck should start hidden.", failures)
 
 	if reveal_button != null:
 		reveal_button.emit_signal("pressed")
 		await process_frame
 
-	if deck_row != null and deck_row.get_child_count() > 0:
-		var revealed_card = deck_row.get_child(0)
+	if battle_deck_row != null and battle_deck_row.get_child_count() > 0:
+		var revealed_card = battle_deck_row.get_child(0)
 		if revealed_card.has_method("get_view_state"):
 			_assert(revealed_card.get_view_state() == "normal", "Reveal button should expose unrevealed boss cards.", failures)
 
@@ -271,16 +276,20 @@ func _test_main_mvp(failures: Array[String]) -> void:
 	_assert(turn_label != null and turn_label.text == "Turn 2 / 5", "Resolving one turn should advance to Turn 2 / 5.", failures)
 	_assert(player_slot != null and player_slot.get_child_count() == 1, "Clash area should show the player's current card.", failures)
 	_assert(boss_slot != null and boss_slot.get_child_count() == 1, "Clash area should show the boss's current card.", failures)
+	_assert(clash_result_label != null and not clash_result_label.text.is_empty(), "Clash result label should show a round summary.", failures)
 	_assert(player_hp != null and "Player HP" in player_hp.text, "Player HP label should remain populated after a clash.", failures)
 	_assert(boss_hp != null and "Boss HP" in boss_hp.text, "Boss HP label should remain populated after a clash.", failures)
+	_assert(boss_hand_row != null and boss_hand_row.get_child_count() == 4, "Boss hand view should shrink to 4 remaining cards after one play.", failures)
+	_assert(boss_hand_count_label != null and boss_hand_count_label.text == "Boss Hand x4", "Boss hand count should update after one play.", failures)
+	_assert(battle_deck_row != null and battle_deck_row.get_child_count() == 5, "Boss battle deck should keep 5 visible slots after use.", failures)
 
-	if deck_row != null:
+	if battle_deck_row != null:
 		var used_found := false
-		for child in deck_row.get_children():
+		for child in battle_deck_row.get_children():
 			if child.has_method("get_view_state") and child.get_view_state() == "used":
 				used_found = true
 				break
-		_assert(used_found, "A boss deck slot should turn used after the boss plays a card.", failures)
+		_assert(used_found, "A boss battle deck slot should turn used after the boss plays a card.", failures)
 
 	scene.queue_free()
 	await process_frame
@@ -296,23 +305,29 @@ func _test_main_mvp_layout(size: Vector2i, failures: Array[String]) -> void:
 	await process_frame
 
 	var viewport_size := scene.get_viewport_rect().size
-	var reveal_button: Control = scene.get_node_or_null("ContentRoot/TableArea/BossDeckView/RevealDeckButton")
-	var deck_row: HBoxContainer = scene.get_node_or_null("ContentRoot/TableArea/BossDeckView/DeckRow")
+	var reveal_button: Control = scene.get_node_or_null("ContentRoot/TableArea/BossBattleDeckView/RevealBattleDeckButton")
+	var battle_deck_row: HBoxContainer = scene.get_node_or_null("ContentRoot/TableArea/BossBattleDeckView/BattleDeckRow")
+	var boss_hand_row: HBoxContainer = scene.get_node_or_null("ContentRoot/TableArea/BossDeckView/DeckRow")
 	var hand_anchor: HBoxContainer = scene.get_node_or_null("ContentRoot/TableArea/PlayerArea/HandAnchor")
 	var overlay_ui: Control = scene.get_node_or_null("ContentRoot/OverlayUI")
 	var player_hp: Control = scene.get_node_or_null("ContentRoot/TableArea/PlayerHP")
 	var boss_hp: Control = scene.get_node_or_null("ContentRoot/TableArea/BossHP")
 	var boss_portrait: Control = scene.get_node_or_null("ContentRoot/BossArea/BossPortrait")
 	var table_board: Control = scene.get_node_or_null("ContentRoot/TableArea/TableBoard")
+	var player_status_panel: Control = scene.get_node_or_null("ContentRoot/TableArea/PlayerStatusPanel")
+	var boss_status_panel: Control = scene.get_node_or_null("ContentRoot/TableArea/BossStatusPanel")
 
-	_assert_control_within_viewport(reveal_button, viewport_size, "RevealDeckButton should stay inside the viewport at %s." % size, failures)
-	_assert_control_within_viewport(deck_row, viewport_size, "DeckRow should stay inside the viewport at %s." % size, failures)
+	_assert_control_within_viewport(reveal_button, viewport_size, "RevealBattleDeckButton should stay inside the viewport at %s." % size, failures)
+	_assert_control_within_viewport(battle_deck_row, viewport_size, "BattleDeckRow should stay inside the viewport at %s." % size, failures)
+	_assert_control_within_viewport(boss_hand_row, viewport_size, "Boss hand DeckRow should stay inside the viewport at %s." % size, failures)
 	_assert_control_within_viewport(hand_anchor, viewport_size, "HandAnchor should stay inside the viewport at %s." % size, failures)
 	_assert_control_within_viewport(overlay_ui, viewport_size, "OverlayUI should stay inside the viewport at %s." % size, failures)
 	_assert_control_within_viewport(player_hp, viewport_size, "PlayerHP should stay inside the viewport at %s." % size, failures)
 	_assert_control_within_viewport(boss_hp, viewport_size, "BossHP should stay inside the viewport at %s." % size, failures)
 	_assert_control_within_viewport(boss_portrait, viewport_size, "BossPortrait should stay inside the viewport at %s." % size, failures)
 	_assert_control_within_viewport(table_board, viewport_size, "TableBoard should stay inside the viewport at %s." % size, failures)
+	_assert_control_within_viewport(player_status_panel, viewport_size, "PlayerStatusPanel should stay inside the viewport at %s." % size, failures)
+	_assert_control_within_viewport(boss_status_panel, viewport_size, "BossStatusPanel should stay inside the viewport at %s." % size, failures)
 
 	if hand_anchor != null:
 		_assert(hand_anchor.get_child_count() == 5, "Main MVP should still show 5 player cards at %s." % size, failures)
@@ -325,10 +340,15 @@ func _test_main_mvp_layout(size: Vector2i, failures: Array[String]) -> void:
 		reveal.emit_signal("pressed")
 		await process_frame
 
-	if deck_row != null:
-		for child in deck_row.get_children():
+	if battle_deck_row != null:
+		for child in battle_deck_row.get_children():
 			if child is Control:
-				_assert_control_within_viewport(child, viewport_size, "Each boss deck card should stay inside the viewport after reveal at %s." % size, failures)
+				_assert_control_within_viewport(child, viewport_size, "Each boss battle deck card should stay inside the viewport after reveal at %s." % size, failures)
+
+	if boss_hand_row != null:
+		for child in boss_hand_row.get_children():
+			if child is Control:
+				_assert_control_within_viewport(child, viewport_size, "Each boss hand card should stay inside the viewport after reveal at %s." % size, failures)
 
 	scene.queue_free()
 	await process_frame

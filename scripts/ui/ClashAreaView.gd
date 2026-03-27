@@ -7,24 +7,19 @@ var _boss_card_slot: Control
 var _card_scene: PackedScene
 var _result_label: Label
 
-func _init(root: Control, player_card_slot: Control, boss_card_slot: Control, card_scene: PackedScene) -> void:
+func _init(
+	root: Control,
+	player_card_slot: Control,
+	boss_card_slot: Control,
+	result_label: Label,
+	card_scene: PackedScene
+) -> void:
 	_root = root
 	_player_card_slot = player_card_slot
 	_boss_card_slot = boss_card_slot
+	_result_label = result_label
 	_card_scene = card_scene
-	_result_label = Label.new()
-	_result_label.name = "ResultLabel"
-	_result_label.layout_mode = 1
-	_result_label.anchor_left = 0.15
-	_result_label.anchor_top = 0.44
-	_result_label.anchor_right = 0.85
-	_result_label.anchor_bottom = 0.56
-	_result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_result_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_result_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_result_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_result_label.add_theme_color_override("font_color", Color(0.94, 0.95, 0.97, 1.0))
-	_root.add_child(_result_label)
+	assert(_result_label != null, "ClashAreaView requires an existing ClashResultLabel node.")
 	clear_clash()
 
 func show_clash(player_card: Dictionary, boss_card: Dictionary, summary_text: String) -> void:

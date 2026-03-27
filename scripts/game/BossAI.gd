@@ -80,11 +80,11 @@ func _weight_for_category(category: String) -> int:
 
 func _beats(attacker_tag: String, defender_tag: String) -> bool:
 	match attacker_tag:
-		"attack":
+		"aggression":
 			return defender_tag == "pressure"
 		"pressure":
-			return defender_tag == "defend"
-		"defend":
-			return defender_tag == "attack"
+			return defender_tag == "defense"
+		"defense":
+			return defender_tag == "aggression"
 		_:
 			return false

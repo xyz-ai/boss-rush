@@ -82,22 +82,22 @@ func _matchup_bonus(attacker_tag: String, defender_tag: String) -> int:
 
 func _status_for_tag(card_tag: String) -> String:
 	match card_tag:
-		"attack":
+		"aggression":
 			return "bod"
 		"pressure":
 			return "spr"
-		"defend":
+		"defense":
 			return "rep"
 		_:
 			return "rep"
 
 func _beats(attacker_tag: String, defender_tag: String) -> bool:
 	match attacker_tag:
-		"attack":
+		"aggression":
 			return defender_tag == "pressure"
 		"pressure":
-			return defender_tag == "defend"
-		"defend":
-			return defender_tag == "attack"
+			return defender_tag == "defense"
+		"defense":
+			return defender_tag == "aggression"
 		_:
 			return false
