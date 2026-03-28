@@ -17,16 +17,12 @@ func _init(root: Control, reveal_button: Button, deck_row: HBoxContainer, card_s
 	_reveal_button = reveal_button
 	_deck_row = deck_row
 	_card_scene = card_scene
-	_root.mouse_filter = Control.MOUSE_FILTER_PASS
+	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_deck_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	_deck_row.add_theme_constant_override("separation", 10)
 	_deck_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_reveal_button.text = "Reveal Battle Deck"
 	_reveal_button.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
-	_reveal_button.anchor_left = 0.0
-	_reveal_button.anchor_top = 0.0
-	_reveal_button.anchor_right = 0.0
-	_reveal_button.anchor_bottom = 0.0
 	_deck_row.anchor_left = 0.0
 	_deck_row.anchor_top = 0.0
 	_deck_row.anchor_right = 0.0
@@ -54,14 +50,6 @@ func update_layout() -> void:
 	var root_size := _root.size
 	if root_size.x <= 0.0 or root_size.y <= 0.0:
 		return
-
-	var button_width := clampf(root_size.x * 0.30, 220.0, 300.0)
-	var button_height := clampf(root_size.y * 0.24, 36.0, 44.0)
-	var button_x: float = floorf((root_size.x - button_width) * 0.5)
-	var button_y: float = floorf(root_size.y * 0.18)
-	_reveal_button.position = Vector2(button_x, button_y)
-	_reveal_button.size = Vector2(button_width, button_height)
-	_reveal_button.custom_minimum_size = _reveal_button.size
 
 	var row_y: float = floorf(root_size.y * 0.48)
 	_deck_row.position = Vector2(0.0, row_y)

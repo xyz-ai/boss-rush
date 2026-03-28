@@ -116,7 +116,8 @@ anchor_left = 0.24
 anchor_top = 0.18
 anchor_right = 0.76
 anchor_bottom = 0.35
-mouse_filter = 1
+grow_horizontal = 2
+mouse_filter = 2
 
 [node name="BattleDeckTitle" type="Label" parent="ContentRoot/TableArea/BossBattleDeckView" unique_id=472129304]
 layout_mode = 1
@@ -129,13 +130,18 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="RevealBattleDeckButton" type="Button" parent="ContentRoot/TableArea/BossBattleDeckView" unique_id=1662857374]
-layout_mode = 0
-anchors_preset = -1
-offset_right = 280.0
-offset_bottom = 40.0
-mouse_filter = 0
+layout_mode = 1
+offset_left = 92.20001
+offset_top = -22.808014
+offset_right = 372.2
+offset_bottom = 17.191986
+mouse_filter = 1
+theme_override_colors/font_color = Color(0.88, 0.061599992, 0.061599992, 1)
+theme_override_colors/font_pressed_color = Color(0.34065956, 0.6118352, 0.39859468, 1)
+theme_override_colors/icon_normal_color = Color(1, 0.65999997, 0.65999997, 1)
 action_mode = 0
 text = "Reveal Battle Deck"
+vertical_icon_alignment = 0
 
 [node name="BattleDeckRow" type="HBoxContainer" parent="ContentRoot/TableArea/BossBattleDeckView" unique_id=2067511316]
 layout_mode = 1
