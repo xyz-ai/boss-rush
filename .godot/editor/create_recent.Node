@@ -1,10 +1,10 @@
-HBoxContainer
 Label
 Control
+HBoxContainer
+Button
 AnimationPlayer
 AnimationTree
 Panel
-Button
 TextureRect
 VBoxContainer
 VFlowContainer
