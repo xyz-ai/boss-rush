@@ -6,6 +6,9 @@ const PEEK_SYSTEM_SCRIPT := preload("res://scripts/systems/PeekSystem.gd")
 const ADDON_SYSTEM_SCRIPT := preload("res://scripts/systems/AddonSystem.gd")
 const BOSS_AI_SCRIPT := preload("res://scripts/core/BossAI.gd")
 const MATCHUP_RULES_SCRIPT := preload("res://scripts/core/MatchupRules.gd")
+const MVP_BOSS_AI_SCRIPT := preload("res://scripts/game/BossAI.gd")
+const MVP_BATTLE_CARD_SCRIPT := preload("res://scripts/game/BattleCard.gd")
+const MVP_COMBAT_ACTOR_STATE_SCRIPT := preload("res://scripts/game/CombatActorState.gd")
 
 func _init() -> void:
 	call_deferred("_run")
@@ -19,6 +22,7 @@ func _run() -> void:
 		loader.reload_all()
 		_test_logic(loader, failures)
 		_test_ai(loader, failures)
+		_test_mvp_boss_ai(failures)
 	await _test_scene_instancing(loader, failures)
 	await _test_main_mvp(failures)
 
@@ -176,6 +180,82 @@ func _test_ai(loader, failures: Array[String]) -> void:
 		counts[category] += 1
 	_assert(counts["counter"] > counts["neutral"], "Counter picks should outnumber neutral picks.", failures)
 	_assert(counts["neutral"] > counts["wrong"], "Neutral picks should outnumber wrong picks.", failures)
+
+func _test_mvp_boss_ai(failures: Array[String]) -> void:
+	var ai: MvpBossAI = MVP_BOSS_AI_SCRIPT.new()
+	var player_aggression: MvpBattleCard = MVP_BATTLE_CARD_SCRIPT.new(MVP_BATTLE_CARD_SCRIPT.TYPE_AGGRESSION)
+
+	_assert(
+		ai._categorize(MVP_BATTLE_CARD_SCRIPT.TYPE_DEFENSE, MVP_BATTLE_CARD_SCRIPT.TYPE_AGGRESSION) == MvpBossAI.CATEGORY_COUNTER,
+		"Defense should categorize as counter versus aggression.",
+		failures
+	)
+	_assert(
+		ai._categorize(MVP_BATTLE_CARD_SCRIPT.TYPE_AGGRESSION, MVP_BATTLE_CARD_SCRIPT.TYPE_AGGRESSION) == MvpBossAI.CATEGORY_NEUTRAL,
+		"Same-type matchup should be treated as neutral in the 3-type triangle.",
+		failures
+	)
+	_assert(
+		ai._categorize(MVP_BATTLE_CARD_SCRIPT.TYPE_PRESSURE, MVP_BATTLE_CARD_SCRIPT.TYPE_AGGRESSION) == MvpBossAI.CATEGORY_WRONG,
+		"Pressure should categorize as wrong versus aggression.",
+		failures
+	)
+
+	var distribution_state: MvpCombatActorState = MVP_COMBAT_ACTOR_STATE_SCRIPT.new("Boss", [
+		MVP_BATTLE_CARD_SCRIPT.new(MVP_BATTLE_CARD_SCRIPT.TYPE_DEFENSE),
+		MVP_BATTLE_CARD_SCRIPT.new(MVP_BATTLE_CARD_SCRIPT.TYPE_AGGRESSION),
+		MVP_BATTLE_CARD_SCRIPT.new(MVP_BATTLE_CARD_SCRIPT.TYPE_PRESSURE),
+	])
+	var counts: Dictionary = {
+		MvpBossAI.CATEGORY_COUNTER: 0,
+		MvpBossAI.CATEGORY_NEUTRAL: 0,
+		MvpBossAI.CATEGORY_WRONG: 0,
+	}
+	ai.set_seed(1337)
+	for _index in range(600):
+		var slot_index: int = ai.choose_slot(distribution_state, player_aggression)
+		var chosen_card: MvpBattleCard = distribution_state.get_card_at(slot_index)
+		var category: String = ai._categorize(chosen_card.type, player_aggression.type)
+		counts[category] = int(counts.get(category, 0)) + 1
+	_assert(int(counts.get(MvpBossAI.CATEGORY_COUNTER, 0)) > int(counts.get(MvpBossAI.CATEGORY_NEUTRAL, 0)), "MVP BossAI should favor counter picks over neutral picks.", failures)
+	_assert(int(counts.get(MvpBossAI.CATEGORY_NEUTRAL, 0)) > int(counts.get(MvpBossAI.CATEGORY_WRONG, 0)), "MVP BossAI should favor neutral picks over wrong picks.", failures)
+
+	var no_counter_state: MvpCombatActorState = MVP_COMBAT_ACTOR_STATE_SCRIPT.new("Boss", [
+		MVP_BATTLE_CARD_SCRIPT.new(MVP_BATTLE_CARD_SCRIPT.TYPE_AGGRESSION),
+		MVP_BATTLE_CARD_SCRIPT.new(MVP_BATTLE_CARD_SCRIPT.TYPE_PRESSURE),
+	])
+	var no_counter_buckets: Dictionary = ai._build_available_buckets(no_counter_state, player_aggression)
+	_assert(
+		ai._resolve_category_with_fallback(MvpBossAI.CATEGORY_COUNTER, no_counter_buckets) == MvpBossAI.CATEGORY_NEUTRAL,
+		"When counter cards are exhausted, fallback should prefer neutral cards before wrong cards.",
+		failures
+	)
+
+	var wrong_only_state: MvpCombatActorState = MVP_COMBAT_ACTOR_STATE_SCRIPT.new("Boss", [
+		MVP_BATTLE_CARD_SCRIPT.new(MVP_BATTLE_CARD_SCRIPT.TYPE_PRESSURE),
+		MVP_BATTLE_CARD_SCRIPT.new(MVP_BATTLE_CARD_SCRIPT.TYPE_PRESSURE),
+	])
+	var wrong_only_buckets: Dictionary = ai._build_available_buckets(wrong_only_state, player_aggression)
+	_assert(
+		ai._resolve_category_with_fallback(MvpBossAI.CATEGORY_COUNTER, wrong_only_buckets) == MvpBossAI.CATEGORY_WRONG,
+		"When only wrong-category cards remain, fallback should still return a legal remaining category.",
+		failures
+	)
+
+	var constrained_state: MvpCombatActorState = MVP_COMBAT_ACTOR_STATE_SCRIPT.new("Boss", MVP_BATTLE_CARD_SCRIPT.build_boss_template(MVP_BATTLE_CARD_SCRIPT.TEMPLATE_A_ID))
+	constrained_state.mark_card_used(0)
+	constrained_state.mark_card_used(4)
+	ai.set_seed(2025)
+	for _attempt in range(80):
+		var chosen_slot: int = ai.choose_slot(constrained_state, player_aggression)
+		_assert(chosen_slot != 0 and chosen_slot != 4, "MVP BossAI should never choose an already used slot.", failures)
+		_assert(not constrained_state.is_slot_used(chosen_slot), "MVP BossAI should only choose currently unused slots.", failures)
+
+	var exhausted_state: MvpCombatActorState = MVP_COMBAT_ACTOR_STATE_SCRIPT.new("Boss", [
+		MVP_BATTLE_CARD_SCRIPT.new(MVP_BATTLE_CARD_SCRIPT.TYPE_PRESSURE),
+	])
+	exhausted_state.mark_card_used(0)
+	_assert(ai.choose_slot(exhausted_state, player_aggression) == -1, "MVP BossAI should return -1 instead of crashing when no legal slots remain.", failures)
 
 func _test_scene_instancing(loader, failures: Array[String]) -> void:
 	for scene_path in [

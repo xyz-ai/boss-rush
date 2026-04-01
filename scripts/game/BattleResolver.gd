@@ -76,30 +76,11 @@ func _spr_penalty(actor_state: MvpCombatActorState) -> int:
 	return 1 if actor_state.spr <= 1 else 0
 
 func _matchup_bonus(attacker_tag: String, defender_tag: String) -> int:
-	if _beats(attacker_tag, defender_tag):
+	if MvpBattleCard.beats(attacker_tag, defender_tag):
 		return 1
-	if _beats(defender_tag, attacker_tag):
+	if MvpBattleCard.beats(defender_tag, attacker_tag):
 		return -1
 	return 0
 
 func _status_for_type(card_type: String) -> String:
-	match card_type:
-		"aggression":
-			return "bod"
-		"pressure":
-			return "spr"
-		"defense":
-			return "rep"
-		_:
-			return "rep"
-
-func _beats(attacker_tag: String, defender_tag: String) -> bool:
-	match attacker_tag:
-		"aggression":
-			return defender_tag == "pressure"
-		"pressure":
-			return defender_tag == "defense"
-		"defense":
-			return defender_tag == "aggression"
-		_:
-			return false
+	return MvpBattleCard.status_for_type(card_type)

@@ -11,6 +11,7 @@ var _cards: Array[MvpBattleCard] = []
 var _revealed: bool = false
 var _used_slots: Array[int] = []
 var _reveal_enabled: bool = true
+var _card_views: Array[MvpCardView] = []
 
 func _init(root: Control, reveal_button: Button, deck_row: HBoxContainer, card_scene: PackedScene) -> void:
 	_root = root
@@ -35,7 +36,7 @@ func set_deck(cards: Array[MvpBattleCard], revealed: bool, used_slots: Array[int
 	_cards = cards
 	_revealed = revealed
 	_used_slots = used_slots.duplicate()
-	_rebuild_cards()
+	_sync_card_views()
 	_refresh_button_state()
 	update_layout()
 
@@ -69,17 +70,25 @@ func _refresh_button_state() -> void:
 		_reveal_button.text = "Reveal Battle Deck"
 	_reveal_button.disabled = _revealed or not _reveal_enabled
 
-func _rebuild_cards() -> void:
-	for child in _deck_row.get_children():
-		_deck_row.remove_child(child)
-		child.queue_free()
+func _sync_card_views() -> void:
+	while _card_views.size() > _cards.size():
+		var trailing_view: MvpCardView = _card_views.pop_back()
+		if is_instance_valid(trailing_view):
+			_deck_row.remove_child(trailing_view)
+			trailing_view.queue_free()
+
+	while _card_views.size() < _cards.size():
+		var next_slot_index: int = _card_views.size()
+		var card_view: MvpCardView = _card_scene.instantiate()
+		card_view.name = "BossBattleDeckCard%d" % next_slot_index
+		card_view.set_card_size(Vector2(86, 118))
+		_deck_row.add_child(card_view)
+		_card_views.append(card_view)
 
 	for slot_index in range(_cards.size()):
-		var card_view: MvpCardView = _card_scene.instantiate()
-		card_view.name = "BossBattleDeckCard%d" % slot_index
-		card_view.set_card_size(Vector2(86, 118))
-		card_view.configure(_cards[slot_index].to_dict(), _state_for_slot(slot_index), false)
-		_deck_row.add_child(card_view)
+		var current_view: MvpCardView = _card_views[slot_index]
+		current_view.name = "BossBattleDeckCard%d" % slot_index
+		current_view.configure(_cards[slot_index].to_dict(), _state_for_slot(slot_index), false)
 
 func _state_for_slot(slot_index: int) -> String:
 	if _used_slots.has(slot_index):
