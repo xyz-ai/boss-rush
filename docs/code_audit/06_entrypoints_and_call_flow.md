@@ -1,174 +1,189 @@
 # Entrypoints and Call Flow
 
 ## 模块范围
-本文件按“启动后实际发生什么”的顺序，说明：
-- 当前项目入口
-- 当前主链路如何初始化
-- 玩家点击出牌后如何推进
-- 并行 BattleScene 链路的入口是什么
+本文件梳理当前项目主链路的入口与调用流。  
+重点覆盖：
 
-## 当前主链路入口
+- 从项目启动到进入主战斗界面
+- 从点击玩家出牌到 Boss 出牌、结算、刷新 UI
+- 从一局结束到下一局开始
+- 从 reveal 操作到 BossBattleDeckView 刷新的过程
 
-## 第 1 步：项目启动
-- 文件：`project.godot`
-- 关键配置：
-  - `run/main_scene="uid://botjw7r3wvlpd"`
-  - Autoload：
-    - `SignalBus`
-    - `DataLoader`
-    - `GameRun`
+## 一、项目启动链路
+### 启动入口
+1. [project.godot](../../project.godot) 指定主场景为 [scenes/main/Main.tscn](../../scenes/main/Main.tscn)
+2. Godot 实例化 `Main.tscn`
+3. [scenes/main/Main.gd](../../scenes/main/Main.gd) `_ready()` 执行
+4. `Main.gd` 创建 [scripts/ui/Main.gd](../../scripts/ui/Main.gd) 中的 `MvpMainController`
+5. `Main.gd` 调用 `controller.ready()`
 
-## 第 2 步：加载主场景
-- 场景：`res://scenes/main/Main.tscn`
-- 这个场景只是静态舞台壳子
-
-## 第 3 步：Main 场景把控制权交给控制器
-- 文件：`res://scenes/main/Main.gd`
-- 调用链：
-  1. `_ready()`
-  2. `MAIN_CONTROLLER_SCRIPT.new(self)`
-  3. `_controller.ready()`
-
-## 当前主链路初始化流程
-
-### 第 4 步：`scripts/ui/Main.gd::ready()`
-按当前代码，初始化顺序是：
+### `MvpMainController.ready()` 调用顺序
 1. `_bind_nodes()`
-2. `_setup_views()`
-3. `_ensure_overlay_log()`
-4. 可选：`_screen_effects.bind_target(_content_root)`
-5. `_start_new_challenge()`
+2. `_configure_mouse_filters()`
+3. `_setup_views()`
+4. `_sync_reveal_battle_deck_layout()`
+5. `_ensure_overlay_log()`
+6. `ScreenEffects.bind_target(_content_root)`
+7. `_start_new_challenge()`
 
-### 第 5 步：绑定静态节点
-`_bind_nodes()` 从 `Main.tscn` 取得：
-- Background
-- ContentRoot
-- BossArea / BossPortrait
-- TableArea / TableBoard
-- CenterInfo / RoundLabel / TurnLabel
-- PlayerHP / BossHP
-- OverlayUI
-- HandAnchor
-- BossDeckView / RevealDeckButton / DeckRow
-- ClashArea / PlayerCardSlot / BossCardSlot
-- PlayerArea
-- ScreenEffects
+## 二、初始化战斗链路
+### `_start_new_challenge()`
+1. 清空日志
+2. 重置比分与 controller 状态
+3. 随机化 Boss 模板随机数生成器
+4. 创建玩家 `MvpCombatActorState`
+5. 创建 Boss `MvpCombatActorState`
+6. 设置双方长期状态为 `BOD 3 / SPR 3 / REP 3`
+7. 调用 `_reset_for_current_set()`
+8. 写初始日志
+9. 调用 `_refresh_ui()`
 
-### 第 6 步：创建子视图控制器
-`_setup_views()` 创建：
-- `MvpPlayerHandView`
-- `MvpBossDeckView`
-- `MvpClashAreaView`
+### `_reset_for_current_set()`
+1. 玩家 deck blueprint 固定为 `Aggression / Aggression / Defense / Pressure / Pressure`
+2. Boss 从 `template_a / template_b / template_c` 中随机选 1 套
+3. 用 blueprint 重置双方本局牌组
+4. 重置双方 HP 到 `SET_HP`
+5. 清空 used slots
+6. reveal 设回 `false`
+7. `Turn` 设回 `1`
+8. 清空 clash area
 
-这三个对象分别接管动态内容生成。
-
-### 第 7 步：创建运行时日志
-`_ensure_overlay_log()` 会：
-- `RichTextLabel.new()`
-- 加到 `OverlayUI`
-
-### 第 8 步：开始挑战
-`_start_new_challenge()` 会：
-1. 清空日志和比分
-2. 构造 `_player_state`
-3. 构造 `_boss_state`
-4. 设置双方长期状态 `BOD / SPR / REP = 3`
-5. 调用 `_reset_for_current_set()`
-6. 记录初始日志
-7. 调用 `_refresh_ui()`
-
-## 当前主链路出牌流程
-
-### 第 9 步：刷新 UI
-`_refresh_ui()` 做的事情：
-1. 刷新 `RoundLabel / TurnLabel`
-2. 刷新 `PlayerHP / BossHP`
-3. 调用 `PlayerHandView.set_hand(...)`
-4. 调用 `BossDeckView.set_deck(...)`
-5. 调用 `BossDeckView.set_reveal_enabled(...)`
-6. 刷新 overlay 日志文本
-
-### 第 10 步：玩家点击手牌
-触发链路：
-1. `CardView.pressed`
-2. `PlayerHandView._on_card_pressed(slot_index)`
-3. `card_play_requested.emit(slot_index)`
-4. `MvpMainController._on_card_play_requested(slot_index)`
-
-### 第 11 步：Boss 自动选牌
-在 `_on_card_play_requested()` 里：
-1. 读取玩家卡
-2. 调用 `_boss_ai.choose_slot(_boss_state, player_card)`
-3. 锁输入 `_input_locked = true`
-4. 调用 `_resolver.resolve_round(...)`
-
-### 第 12 步：应用回合结果
-`_apply_round_result(result)`：
-1. 标记双方 slot 为已用
-2. 扣双方 HP
-3. 写入状态变化
-4. 调用 `_clash_area_view.show_clash(...)`
-5. 写日志
-6. 打印调试输出
-7. 判定挑战崩溃 / set 结束 / 挑战结束 / 下一回合
-
-### 第 13 步：推进下一回合或下一局
-如果当前 set 没结束：
-- `Turn + 1`
-- 解除输入锁
-- `push_log("Turn X begins.")`
-- `_refresh_ui()`
-
-如果当前 set 结束：
-- `_finish_set(set_winner)`
-- 更新比分
-- 如果有人先赢 2 局或打满 3 局，进入 `_finish_challenge()`
-- 否则新 set 重置：
-  - HP
-  - used_slots
-  - reveal 状态
-  - 当前 turn
-  - ClashArea
-
-## 当前主链路 Reveal Deck 流程
-1. `RevealDeckButton.pressed`
-2. `MvpBossDeckView._on_reveal_pressed()`
+## 三、Reveal 链路
+### 触发链
+1. 玩家点击 `RevealBattleDeckButton`
+2. [BossBattleDeckView.gd](../../scripts/ui/BossBattleDeckView.gd) `_on_reveal_pressed()`
 3. `reveal_requested.emit()`
-4. `MvpMainController._on_reveal_requested()`
-5. `_boss_revealed = true`
-6. `push_log("Boss deck revealed...")`
-7. `_refresh_ui()`
+4. [scripts/ui/Main.gd](../../scripts/ui/Main.gd) `_on_reveal_requested()`
 
-## 当前主链路中谁决定最终显示
-### 静态壳子
-- `Main.tscn`
+### 状态写回
+1. 若挑战未结束且当前 set 尚未 reveal：
+2. `_boss_battle_revealed = true`
+3. 写一条日志
+4. 调用 `_refresh_ui()`
 
-### 动态内容
-- `scripts/ui/Main.gd`
-- `scripts/ui/PlayerHandView.gd`
-- `scripts/ui/BossDeckView.gd`
-- `scripts/ui/ClashAreaView.gd`
+### 视图刷新
+1. `_boss_battle_deck_view.set_deck(_boss_state.cards, _boss_battle_revealed, _boss_state.used_slots)`
+2. `BossBattleDeckView` 重建 5 张牌
+3. 未使用槽位从 `hidden` 变成 `normal`
+4. 已使用槽位保持 `used`
 
-### 战斗计算
-- `scripts/game/BossAI.gd`
-- `scripts/game/BattleResolver.gd`
-- `scripts/game/CombatActorState.gd`
+## 四、玩家出牌到回合结算链路
+### 事件入口
+1. 玩家点击玩家手牌中的 `CardView`
+2. [PlayerHandView.gd](../../scripts/ui/PlayerHandView.gd) `_on_card_pressed(slot_index)`
+3. `card_play_requested.emit(slot_index)`
+4. [scripts/ui/Main.gd](../../scripts/ui/Main.gd) `_on_card_play_requested(slot_index)`
 
-## 并行 BattleScene 链路入口
+### 回合处理顺序
+1. 检查：
+   - `challenge_over`
+   - `input_locked`
+   - 槽位是否已使用
+2. 读取玩家当前牌
+3. `BossAI.choose_slot(_boss_state, player_card)` 选 Boss 槽位
+4. 锁输入
+5. `BattleResolver.resolve_round(...)` 计算结果
+6. `_apply_round_result(result)`
 
-虽然不是当前主入口，但它是另一条有效调用链。
+## 五、结果应用链路
+### `_apply_round_result(result)`
+1. `mark_card_used()` 标记双方使用的槽位
+2. `modify_hp()` 应用双方本回合伤害
+3. 逐条写入 `log_lines`
+4. 对 `status_changes` 调 `_apply_status_change()`
+5. `ClashAreaView.show_clash(player_card, boss_card, summary_text)`
+6. 记录当前 HP 和比分日志
+7. `print` 调试输出
+8. 依次判定：
+   - 玩家长期状态是否崩溃
+   - Boss 长期状态是否崩溃
+   - 当前 set 是否结束
+9. 若本局未结束：
+   - `Turn + 1`
+   - 解锁输入
+   - 写日志
+   - `_refresh_ui()`
 
-### 入口链
-1. `GameRun.start_new_run()`
-2. `GameRun.enter_boss()`
-3. `SignalBus.emit_signal("screen_requested", SCREEN_BATTLE, {"boss": boss_def})`
-4. 某个壳层切到 `scenes/battle/BattleScene.tscn`
-5. `BattleScene.bind_context(run_state, boss_def)`
-6. `BattleScene._setup_scene()`
+### `_apply_status_change(change)`
+1. 判断目标是 `player` 还是 `boss`
+2. 调对应 `CombatActorState.modify_status()`
+3. 写日志
 
-### 该链路特点
-- 由 `GameRun / RunState / SetState / ChallengeState / DataLoader` 驱动
-- 数据来自 JSON
-- BattleScene 自己绑定并刷新完整 UI
-- 这条链路更接近未来正式架构，但当前不是 `project.godot` 的直接 main_scene
+## 六、一局结束到下一局开始
+### `_is_set_finished()`
+满足任意条件即结束当前 set：
+- 玩家 HP <= 0
+- Boss HP <= 0
+- Turn 到达上限
+- 玩家牌用尽
+- Boss 牌用尽
 
+### `_determine_set_winner()`
+判定顺序：
+1. 先看谁 HP 先归零
+2. 再比较剩余 HP
+3. 再比较 `REP`
+4. 若还相同，Boss 胜
+
+### `_finish_set(set_winner)`
+1. 更新 set 胜场
+2. 写日志
+3. 若已达到挑战结束条件：
+   - `_finish_challenge(...)`
+4. 否则：
+   - `current_set_index += 1`
+   - `_reset_for_current_set()`
+   - 写“新 set 开始”日志
+   - `_refresh_ui()`
+
+## 七、挑战结束链路
+### `_finish_challenge(challenge_winner, reason)`
+1. `_challenge_over = true`
+2. `_input_locked = false`
+3. 写结果日志和最终比分日志
+4. `print` 一条 challenge ended
+5. `_refresh_ui()`
+
+### 当前表现
+- 当前主链路没有单独的总结弹窗。
+- 挑战结果主要通过日志和当前 UI 禁止继续交互来表现。
+
+## 八、`_refresh_ui()` 是当前主链路的刷新中枢
+每次调用会做这些事：
+1. 更新 `RoundLabel / TurnLabel`
+2. 更新 `PlayerHP / BossHP`
+3. 更新 `PlayerBOD / PlayerSPR / PlayerREP`
+4. 更新 `BossBOD / BossSPR / BossREP`
+5. 固定 `BattleDeckTitle`
+6. 隐藏 `BossBetArea`
+7. 刷新玩家手牌
+8. 刷新 Boss 剩余手牌
+9. 刷新 BossBattleDeck 5 槽位状态
+10. 调用 `_sync_reveal_battle_deck_layout()`
+11. 刷新 overlay 日志
+
+## 九、定位主流程时该先看哪里
+### 想查“点击玩家牌后发生了什么”
+先看：
+- `PlayerHandView._on_card_pressed()`
+- `Main._on_card_play_requested()`
+- `BattleResolver.resolve_round()`
+- `Main._apply_round_result()`
+
+### 想查“Reveal 为什么不更新”
+先看：
+- `BossBattleDeckView._on_reveal_pressed()`
+- `Main._on_reveal_requested()`
+- `Main._refresh_ui()`
+- `BossBattleDeckView.set_deck()`
+
+### 想查“为什么新局会重置这些内容”
+先看：
+- `Main._finish_set()`
+- `Main._reset_for_current_set()`
+
+## 当前调用链的关键结论
+1. 当前主链路调用流是清晰的，入口集中在 `MvpMainController`。
+2. 玩家出牌、Boss 出牌、结算、刷新 UI 全部通过一条顺序逻辑完成，没有第二套隐藏回合控制器。
+3. Reveal 的状态归属在 controller，不在 view。
+4. set/challenge 的推进同样由 controller 持有，不在 `scripts/game/*` 里封装成独立状态机。

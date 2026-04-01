@@ -1,62 +1,102 @@
 extends RefCounted
 class_name MvpBattleCard
 
-const PLAYER_TEST_DATA: Array[Dictionary] = [
-	{"id": "player_aggression", "display_name": "Aggression", "base_power": 2, "tag": "aggression"},
-	{"id": "player_defense", "display_name": "Defense", "base_power": 2, "tag": "defense"},
-	{"id": "player_pressure", "display_name": "Pressure", "base_power": 2, "tag": "pressure"},
-	{"id": "player_aggression_ii", "display_name": "Aggression II", "base_power": 1, "tag": "aggression"},
-	{"id": "player_defense_ii", "display_name": "Defense II", "base_power": 1, "tag": "defense"},
+const TYPE_AGGRESSION := "aggression"
+const TYPE_DEFENSE := "defense"
+const TYPE_PRESSURE := "pressure"
+const VALID_TYPES := [TYPE_AGGRESSION, TYPE_DEFENSE, TYPE_PRESSURE]
+
+const PLAYER_TEMPLATE := [
+	TYPE_AGGRESSION,
+	TYPE_AGGRESSION,
+	TYPE_DEFENSE,
+	TYPE_PRESSURE,
+	TYPE_PRESSURE,
 ]
 
-const BOSS_TEST_DATA: Array[Dictionary] = [
-	{"id": "boss_aggression", "display_name": "Aggression", "base_power": 2, "tag": "aggression"},
-	{"id": "boss_defense", "display_name": "Defense", "base_power": 2, "tag": "defense"},
-	{"id": "boss_pressure", "display_name": "Pressure", "base_power": 2, "tag": "pressure"},
-	{"id": "boss_aggression_ii", "display_name": "Aggression II", "base_power": 1, "tag": "aggression"},
-	{"id": "boss_defense_ii", "display_name": "Defense II", "base_power": 1, "tag": "defense"},
-]
+const BOSS_TEMPLATES := {
+	"template_a": [
+		TYPE_AGGRESSION,
+		TYPE_AGGRESSION,
+		TYPE_PRESSURE,
+		TYPE_PRESSURE,
+		TYPE_DEFENSE,
+	],
+	"template_b": [
+		TYPE_DEFENSE,
+		TYPE_DEFENSE,
+		TYPE_AGGRESSION,
+		TYPE_PRESSURE,
+		TYPE_PRESSURE,
+	],
+	"template_c": [
+		TYPE_AGGRESSION,
+		TYPE_DEFENSE,
+		TYPE_PRESSURE,
+		TYPE_AGGRESSION,
+		TYPE_DEFENSE,
+	],
+}
 
-const VALID_TAGS := ["aggression", "defense", "pressure"]
+var type: String = TYPE_AGGRESSION
 
-var id: String = ""
-var display_name: String = ""
-var base_power: int = 0
-var tag: String = "aggression"
-
-func _init(card_id: String = "", card_name: String = "", power: int = 0, card_tag: String = "aggression") -> void:
-	id = card_id
-	display_name = card_name
-	base_power = power
-	tag = card_tag if card_tag in VALID_TAGS else "aggression"
+func _init(card_type: String = TYPE_AGGRESSION) -> void:
+	type = card_type if card_type in VALID_TYPES else TYPE_AGGRESSION
 
 static func from_dict(data: Dictionary) -> MvpBattleCard:
-	return MvpBattleCard.new(
-		str(data.get("id", "")),
-		str(data.get("display_name", "Card")),
-		int(data.get("base_power", 0)),
-		str(data.get("tag", "aggression"))
-	)
+	return MvpBattleCard.new(str(data.get("type", TYPE_AGGRESSION)))
 
 static func build_player_test_deck() -> Array[MvpBattleCard]:
-	return _build_deck(PLAYER_TEST_DATA)
+	return _build_cards_from_types(PLAYER_TEMPLATE)
 
-static func build_boss_test_deck() -> Array[MvpBattleCard]:
-	return _build_deck(BOSS_TEST_DATA)
+static func build_boss_template(template_id: String) -> Array[MvpBattleCard]:
+	var template_types: Array = BOSS_TEMPLATES.get(template_id, BOSS_TEMPLATES["template_a"])
+	return _build_cards_from_types(template_types)
 
-static func _build_deck(source_data: Array[Dictionary]) -> Array[MvpBattleCard]:
+static func pick_random_boss_template(rng: RandomNumberGenerator) -> Dictionary:
+	var template_ids: Array = BOSS_TEMPLATES.keys()
+	template_ids.sort()
+	var chosen_index := rng.randi_range(0, template_ids.size() - 1)
+	var template_id := str(template_ids[chosen_index])
+	return {
+		"id": template_id,
+		"cards": build_boss_template(template_id),
+	}
+
+static func get_boss_template_types(template_id: String) -> Array[String]:
+	var types: Array[String] = []
+	for card_type in BOSS_TEMPLATES.get(template_id, BOSS_TEMPLATES["template_a"]):
+		types.append(str(card_type))
+	return types
+
+static func get_all_boss_templates() -> Dictionary:
+	var templates: Dictionary = {}
+	for template_id in BOSS_TEMPLATES.keys():
+		templates[template_id] = get_boss_template_types(str(template_id))
+	return templates
+
+static func display_name_for_type(card_type: String) -> String:
+	match card_type:
+		TYPE_AGGRESSION:
+			return "Aggression"
+		TYPE_DEFENSE:
+			return "Defense"
+		TYPE_PRESSURE:
+			return "Pressure"
+		_:
+			return "Aggression"
+
+static func _build_cards_from_types(source_types: Array) -> Array[MvpBattleCard]:
 	var deck: Array[MvpBattleCard] = []
-	for entry in source_data:
-		deck.append(MvpBattleCard.from_dict(entry))
+	for card_type in source_types:
+		deck.append(MvpBattleCard.new(str(card_type)))
 	return deck
 
 func duplicate_card() -> MvpBattleCard:
-	return MvpBattleCard.new(id, display_name, base_power, tag)
+	return MvpBattleCard.new(type)
 
 func to_dict() -> Dictionary:
 	return {
-		"id": id,
-		"display_name": display_name,
-		"base_power": base_power,
-		"tag": tag,
+		"type": type,
+		"display_name": display_name_for_type(type),
 	}

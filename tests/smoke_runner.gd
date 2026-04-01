@@ -231,6 +231,7 @@ func _test_main_mvp(failures: Array[String]) -> void:
 	await process_frame
 	await process_frame
 
+	var controller = scene.call("get_mvp_controller")
 	var round_label: Label = scene.get_node_or_null("ContentRoot/TableArea/CenterInfo/RoundLabel")
 	var turn_label: Label = scene.get_node_or_null("ContentRoot/TableArea/CenterInfo/TurnLabel")
 	var hand_anchor: HBoxContainer = scene.get_node_or_null("ContentRoot/TableArea/PlayerArea/HandAnchor")
@@ -250,6 +251,25 @@ func _test_main_mvp(failures: Array[String]) -> void:
 	_assert(boss_hand_row != null and boss_hand_row.get_child_count() == 5, "Boss hand view should start with 5 remaining cards.", failures)
 	_assert(battle_deck_row != null and battle_deck_row.get_child_count() == 5, "Boss battle deck should always expose 5 slots.", failures)
 	_assert(boss_hand_count_label != null and boss_hand_count_label.text == "Boss Hand x5", "Boss hand count should start at 5.", failures)
+	_assert(controller != null, "Main scene should expose its MVP controller for smoke testing.", failures)
+
+	if hand_anchor != null:
+		var expected_player_hand := ["Aggression", "Aggression", "Defense", "Pressure", "Pressure"]
+		var actual_player_hand: Array[String] = []
+		for child in hand_anchor.get_children():
+			if child.has_method("get_card_data"):
+				actual_player_hand.append(str(child.get_card_data().get("display_name", "")))
+		_assert(actual_player_hand == expected_player_hand, "Player hand should be the fixed 2-1-2 template.", failures)
+
+	if controller != null:
+		var snapshot: Dictionary = controller.get_state_snapshot()
+		var expected_templates := {
+			"template_a": ["Aggression", "Aggression", "Pressure", "Pressure", "Defense"],
+			"template_b": ["Defense", "Defense", "Aggression", "Pressure", "Pressure"],
+			"template_c": ["Aggression", "Defense", "Pressure", "Aggression", "Defense"],
+		}
+		var template_id := str(snapshot.get("current_boss_template_id", ""))
+		_assert(expected_templates.has(template_id), "Boss should choose one of the three fixed templates.", failures)
 
 	if battle_deck_row != null and battle_deck_row.get_child_count() > 0:
 		var first_battle_deck_card = battle_deck_row.get_child(0)
@@ -261,10 +281,22 @@ func _test_main_mvp(failures: Array[String]) -> void:
 		reveal_button.emit_signal("pressed")
 		await process_frame
 
-	if battle_deck_row != null and battle_deck_row.get_child_count() > 0:
-		var revealed_card = battle_deck_row.get_child(0)
-		if revealed_card.has_method("get_view_state"):
-			_assert(revealed_card.get_view_state() == "normal", "Reveal button should expose unrevealed boss cards.", failures)
+	if battle_deck_row != null:
+		var revealed_names: Array[String] = []
+		for child in battle_deck_row.get_children():
+			if child.has_method("get_card_data"):
+				revealed_names.append(str(child.get_card_data().get("display_name", "")))
+		var expected_templates_after_reveal := {
+			"template_a": ["Aggression", "Aggression", "Pressure", "Pressure", "Defense"],
+			"template_b": ["Defense", "Defense", "Aggression", "Pressure", "Pressure"],
+			"template_c": ["Aggression", "Defense", "Pressure", "Aggression", "Defense"],
+		}
+		var reveal_snapshot: Dictionary = controller.get_state_snapshot() if controller != null else {}
+		var reveal_template_id := str(reveal_snapshot.get("current_boss_template_id", ""))
+		_assert(revealed_names == expected_templates_after_reveal.get(reveal_template_id, []), "Reveal should expose exactly one of the fixed boss templates.", failures)
+		for child in battle_deck_row.get_children():
+			if child.has_method("get_view_state"):
+				_assert(child.get_view_state() == "normal", "Reveal should switch every unused boss deck slot to normal.", failures)
 
 	if hand_anchor != null and hand_anchor.get_child_count() > 0:
 		var first_player_card = hand_anchor.get_child(0)

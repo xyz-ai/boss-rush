@@ -1,185 +1,200 @@
 # Runtime Generation and Refresh
 
 ## 模块范围
-本文件只整理一类问题：
-- 哪些内容是运行时动态生成
-- 谁触发生成
-- 是否会清空重建
-- 哪些节点只是编辑器静态壳子
+本文件专门整理当前主链路中“运行时生成、刷新、重建、重置”的代码路径。
 
-这份文档是后续排查“为什么编辑器里改了，运行却不是这样”的关键索引。
+重点回答：
 
-## 当前主链路：`Main.tscn + scripts/ui/*`
+- 哪些节点只是静态壳子
+- 哪些内容是运行时生成
+- 哪些刷新发生在初始化、每局、每回合
+- Reveal、used 灰掉、Boss 剩余手牌数、ClashArea 等是怎么刷新的
+- 当前是否存在状态残留或重复生成风险
 
-## 静态壳子
-这些节点存在于 `Main.tscn`，作为运行时内容的容器：
-- `ContentRoot`
-- `BossArea`
-- `TableArea`
-- `CenterInfo`
-- `ClashArea`
-- `PlayerCardSlot`
-- `BossCardSlot`
-- `BossDeckView`
-- `DeckRow`
-- `PlayerArea`
-- `HandAnchor`
+## 静态壳子 vs 动态内容
+### 静态壳子
+由 `Main.tscn` 直接提供：
+- `PlayerArea/HandAnchor`
+- `BossDeckView/DeckRow`
+- `BossBattleDeckView/BattleDeckRow`
+- `ClashArea/BossCardSlot`
+- `ClashArea/PlayerCardSlot`
 - `OverlayUI`
 
-这些节点本身由编辑器定义，不是运行时创建的。
+### 动态内容
+在运行时创建：
+- 玩家手牌 `CardView`
+- Boss 剩余手牌暗卡
+- BossBattleDeck 的 5 张槽位卡
+- ClashArea 双方当前牌
+- 运行时日志 `RichTextLabel`
 
-## 动态生成：玩家手牌
-### 文件
-- `res://scripts/ui/PlayerHandView.gd`
+## 初始化时会发生什么
+### 入口
+- `scenes/main/Main.gd._ready()`
+- 创建 `MvpMainController`
+- 调用 `controller.ready()`
 
-### 触发入口
-- `MvpMainController._refresh_ui()`
-- 调用：`_player_hand_view.set_hand(...)`
+### `MvpMainController.ready()`
+会依次执行：
+1. `_bind_nodes()`
+2. `_configure_mouse_filters()`
+3. `_setup_views()`
+4. `_sync_reveal_battle_deck_layout()`
+5. `_ensure_overlay_log()`
+6. `ScreenEffects.bind_target(_content_root)`
+7. `_start_new_challenge()`
 
-### 生成过程
-1. `set_hand()` 调用 `_clear_cards()`
-2. `_clear_cards()` 遍历 `HandAnchor` 现有子节点
-3. 对每个子节点执行 `queue_free()`
-4. 再次遍历当前可用手牌
-5. `instantiate()` `scenes/ui/CardView.tscn`
-6. `add_child()` 到 `HandAnchor`
+### 初始化时动态生成的内容
+- `OverlayUI` 下的 `RuntimeLogLabel`
+- 玩家初始 5 张手牌
+- Boss 剩余手牌 5 张 hidden 卡
+- BossBattleDeck 5 张 hidden 信息牌
+- 初始 clash 文案
 
-### 结论
-- `HandAnchor` 是静态壳子
-- 玩家手牌卡本体是运行时内容
-- 编辑器里手工摆在 `HandAnchor` 里的卡不会是最终运行结果
+## 每局重置时会发生什么
+### 入口
+- `MvpMainController._reset_for_current_set()`
 
-## 动态生成：Boss 牌列
-### 文件
-- `res://scripts/ui/BossDeckView.gd`
+### 每局重置的内容
+- 玩家 deck blueprint 重置为固定 `2-1-2`
+- Boss 随机选取一套固定模板
+- 玩家和 Boss 的 `hp` 重置为 `SET_HP`
+- 玩家和 Boss 的 `cards` 按 blueprint 重建
+- `used_slots` 清空
+- `_boss_battle_revealed = false`
+- `_current_turn_index = 1`
+- `_input_locked = false`
+- `ClashArea.clear_clash()`
 
-### 触发入口
-- `MvpMainController._refresh_ui()`
-- 调用：`_boss_deck_view.set_deck(...)`
+### 每局不重置的内容
+- `_player_set_wins`
+- `_boss_set_wins`
+- 玩家 `bod / spr / rep`
+- Boss `bod / spr / rep`
 
-### 生成过程
-1. `set_deck()` 保存 cards/revealed/used_slots
-2. `_rebuild_cards()` 遍历 `DeckRow` 子节点
-3. 对每个子节点执行 `queue_free()`
-4. 按 slot 数量 `instantiate()` `CardView`
-5. 根据 slot 状态配置为 `hidden / normal / used`
-6. `add_child()` 到 `DeckRow`
+这说明当前主链路里的长期状态是 **跨 set 持续** 的。
 
-### 结论
-- `BossDeckView` 和 `DeckRow` 是静态壳子
-- 牌列中的每一张 Boss 卡是运行时重建
-- 编辑器里直接手改 `DeckRow` 里动态卡的内容没有意义
+## 每回合刷新时会发生什么
+### 出牌流程后刷新
+玩家点击手牌后，controller 顺序是：
+1. `BossAI.choose_slot()`
+2. `BattleResolver.resolve_round()`
+3. `_apply_round_result(result)`
+4. 标记双方 used slot
+5. 应用 HP 变化
+6. 应用状态变化
+7. `ClashArea.show_clash(...)`
+8. 判定 collapse / set finish / challenge finish
+9. 若本局未结束，`_current_turn_index += 1`
+10. `_refresh_ui()`
 
-## 动态生成：中央 ClashArea
-### 文件
-- `res://scripts/ui/ClashAreaView.gd`
+### `_refresh_ui()` 当前会刷新什么
+- 回合标签
+- HP 标签
+- 状态标签
+- `BossBattleDeckView` 标题和按钮状态
+- 玩家手牌视图
+- BossDeckView 剩余手牌视图
+- BossBattleDeckView 五槽位状态
+- overlay 日志
 
-### 触发入口
-- `MvpMainController._apply_round_result()`
-- 调用：`_clash_area_view.show_clash(...)`
+## 具体到各个视图的重建机制
+### `PlayerHandView`
+- `set_hand(cards, used_slots, interactive)`
+- 先 `_clear_cards()`
+- 再为每个未使用槽位重新 `instantiate()` 一张 `CardView`
+- 风险：
+  - 每次刷新都会全量重建
+  - 好处是逻辑简单，不容易残留旧卡
 
-### 生成过程
-1. `_place_card()` 先清空目标 slot
-2. `_clear_slot()` 遍历 slot 子节点并 `queue_free()`
-3. `instantiate()` `CardView`
-4. `add_child()` 到 `PlayerCardSlot` 或 `BossCardSlot`
-5. 直接设置该卡在 slot 内的 anchor/offset，使其居中
+### `BossDeckView`
+- `set_hand(cards, used_slots)`
+- 按剩余数量重建 `DeckRow`
+- 不保留旧 children
+- 只显示剩余数量对应的 hidden 卡
 
-### 额外动态节点
-- `ClashAreaView._init()` 中还会 `Label.new()` 创建 `ResultLabel`
+### `BossBattleDeckView`
+- `set_deck(cards, revealed, used_slots)`
+- 每次写入内部状态后 `_rebuild_cards()`
+- 永远重建完整 5 槽位
+- 通过 `used_slots` 控制灰掉
+- 通过 `revealed` 控制 hidden/normal
+- 不删除槽位
 
-### 结论
-- `ClashArea`、`PlayerCardSlot`、`BossCardSlot` 是静态壳子
-- slot 内卡片和结果 Label 是运行时内容
-- 它仍会对子卡做局部定位，但不负责主舞台区块布局
+### `ClashAreaView`
+- `show_clash(player_card, boss_card, summary_text)`
+- 每次都清空旧 slot 内容，再创建当前回合卡牌
+- `clear_clash()` 会在新局开始时清空并恢复默认文案
 
-## 动态生成：Overlay 日志
-### 文件
-- `res://scripts/ui/Main.gd`
+### Overlay 日志
+- `RichTextLabel` 只创建一次
+- 之后通过 `_refresh_overlay_log()` 改 `.text`
+- 不是每次重建控件
 
-### 触发入口
-- `ready() -> _ensure_overlay_log()`
+## Reveal 的刷新链
+### 触发
+- `RevealBattleDeckButton.pressed`
+- `BossBattleDeckView._on_reveal_pressed()`
+- `reveal_requested.emit()`
+- `Main._on_reveal_requested()`
 
-### 生成过程
-1. `RichTextLabel.new()`
-2. 设置 anchor/offset/full rect
-3. `add_child()` 到 `OverlayUI`
+### 写回
+- `_boss_battle_revealed = true`
 
-### 结论
-- `OverlayUI` 是静态壳子
-- `RuntimeLogLabel` 是运行时动态创建
+### 刷新
+- `_refresh_ui()`
+- `BossBattleDeckView.set_deck(cards, true, used_slots)`
+- 5 张牌从 hidden 变成 normal / used
 
-## 当前主链路中“运行时刷新”而不是“运行时生成”的部分
-- `RoundLabel.text`
-- `TurnLabel.text`
-- `PlayerHP.text`
-- `BossHP.text`
-- `RevealDeckButton.text / disabled`
-- ScreenEffects profile
+### 重置
+- `_reset_for_current_set()` 中把 `_boss_battle_revealed` 设回 `false`
 
-这些不会重建节点，但会反复改节点内容。
+## Boss 剩余手牌数的刷新链
+### 数据源
+- `_boss_state.used_slots`
 
-## 当前主链路中仍然会改位置的地方
-### 局部，不影响主舞台块
-- `scripts/ui/ClashAreaView.gd`
-  - 对动态生成的 clash 卡片设置 anchor/offset
-  - 作用域只在 slot 内部
+### 刷新方式
+- `_refresh_ui()`
+- `BossDeckView.set_hand(_boss_state.cards, _boss_state.used_slots)`
+- `remaining_cards = cards.size - used_slots.size`
+- `DeckRow` 重建为对应数量的 hidden 卡
 
-### 全局视觉特效，不作为主布局系统
-- `scenes/ui/ScreenEffects.gd`
-  - 在 `_process()` 中把绑定目标写成 `_base_position + offset`
-  - 会造成抖动或下沉
+## 已使用灰掉的刷新链
+### 数据源
+- `_boss_state.used_slots`
 
-### Tooltip 局部位置
-- `scenes/ui/TooltipPanel.gd`
-  - 运行时写 `global_position`
+### 刷新方式
+- `_refresh_ui()`
+- `BossBattleDeckView.set_deck(cards, revealed, used_slots)`
+- `_state_for_slot(slot_index)` 返回：
+  - `used`
+  - `normal`
+  - `hidden`
 
-## 并行 BattleScene 链路中的运行时生成
+## 当前刷新机制的优点
+- 单点入口清晰，基本都从 `_refresh_ui()` 收敛。
+- 通过重建而不是复杂 diff，降低了状态残留概率。
+- Reveal、剩余手牌数、中央对撞区这几个 MVP 核心信息流都容易追踪。
 
-这套链路当前不是主入口，但测试仍会实例化它。
+## 当前刷新机制的风险
+### 1. 重建多于更新
+玩家手牌、BossDeck、BossBattleDeck、ClashArea 都倾向于全清再建。  
+当前数据量小问题不大，但以后若引入更多状态和动画，会成为约束。
 
-### `scenes/battle/BattleScene.gd`
-- `_build_player_cards()`：
-  - 清空 `CardRow`
-  - `instantiate()` `scenes/battle/CardView.tscn`
-  - `add_child()` 到 `CardRow`
-- `_refresh_chip_stacks()`：
-  - 清空 `PlayerChipStacks / BossChipStacks`
-  - 运行时构建筹码控件
-- `_build_chip_metric()`：
-  - `Control.new() / Label.new() / PanelContainer.new()` 等多层运行时构建
+### 2. Controller 刷新责任偏重
+`Main.gd` 不只是调视图，还决定 reveal、set 重置、turn 推进、日志写入和布局同步调用。  
+这会让“是状态问题还是视图问题”变得不那么容易分离。
 
-### `scenes/battle/BossDeckView.gd`
-- 每次 `refresh_from_state()` 会清空并重建整行对手牌列
-- 使用 `Control.new()`、`TextureRect.new()`、`Label.new()` 拼出每张卡
+### 3. 仍存在局部运行时布局同步
+`_sync_reveal_battle_deck_layout()` 仍会调用 `BossBattleDeckView.update_layout()`。  
+它当前只调 `BattleDeckRow`，但这是少数仍在运行时参与几何的路径。
 
-### `scenes/battle/AddonPanel.gd`
-- `_rebuild()` 会重建每条加注项 UI
-- 使用 `PanelContainer.new()`、`MarginContainer.new()`、`VBoxContainer.new()`、`Button.new()` 等
+### 4. `ScreenEffects` 会改 `ContentRoot.position`
+这不是重建问题，但会让“为什么运行时位置和编辑器不同”这类排查变复杂。
 
-### `scenes/shop/ShopScene.gd`
-- `_rebuild_items()` 会清空 `ItemRow` 后实例化 `ShopItemView`
+## 结论
+当前主链路刷新机制整体是清楚的：  
+**初始化建壳子，运行时按 set 和 turn 重建局部内容，主控制器统一刷新。**
 
-## 谁触发重建
-## 当前主链路
-- `Main.gd -> MvpMainController._refresh_ui()`
-
-## 并行 BattleScene 链路
-- `BattleScene.gd._refresh_ui()`
-- 某些场合还会由结果弹窗继续、下一局开始、窥牌、加注再次触发
-
-## 调试结论
-如果某个 UI 改动在编辑器里有效、运行时却“不见了”，先判断它属于哪一类：
-
-### 如果它是静态壳子
-看是否被脚本改了 geometry 或文本。
-
-### 如果它是动态内容
-看生成脚本：
-- `PlayerHandView.gd`
-- `BossDeckView.gd`
-- `ClashAreaView.gd`
-- 并行链路中的 `BattleScene.gd` / `AddonPanel.gd` / `BossDeckView.gd`
-
-动态内容在运行时会清空重建，编辑器里直接手改动态子节点通常不会保留。
-
+它的最大优点是简单、可验证；最大风险是 controller 过重和重建式刷新会越来越难承载复杂表现。

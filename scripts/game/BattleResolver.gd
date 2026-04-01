@@ -1,6 +1,8 @@
 extends RefCounted
 class_name MvpBattleResolver
 
+const BASE_SCORE := 1
+
 func resolve_round(
 	player_state: MvpCombatActorState,
 	boss_state: MvpCombatActorState,
@@ -12,10 +14,10 @@ func resolve_round(
 	assert(player_card != null, "Player card slot is invalid for MVP battle resolution.")
 	assert(boss_card != null, "Boss card slot is invalid for MVP battle resolution.")
 
-	var player_modifier: int = _matchup_bonus(player_card.tag, boss_card.tag)
-	var boss_modifier: int = _matchup_bonus(boss_card.tag, player_card.tag)
-	var player_total: int = maxi(0, player_card.base_power + player_modifier - _spr_penalty(player_state))
-	var boss_total: int = maxi(0, boss_card.base_power + boss_modifier - _spr_penalty(boss_state))
+	var player_modifier: int = _matchup_bonus(player_card.type, boss_card.type)
+	var boss_modifier: int = _matchup_bonus(boss_card.type, player_card.type)
+	var player_total: int = maxi(0, BASE_SCORE + player_modifier - _spr_penalty(player_state))
+	var boss_total: int = maxi(0, BASE_SCORE + boss_modifier - _spr_penalty(boss_state))
 
 	var player_damage: int = 0
 	var boss_damage: int = 0
@@ -24,8 +26,8 @@ func resolve_round(
 	var logs: Array[String] = []
 	var summary_text: String = "Tie round. No damage dealt."
 
-	logs.append("Player played %s." % player_card.display_name)
-	logs.append("Boss played %s." % boss_card.display_name)
+	logs.append("Player played %s." % MvpBattleCard.display_name_for_type(player_card.type))
+	logs.append("Boss played %s." % MvpBattleCard.display_name_for_type(boss_card.type))
 	logs.append("Effective power -> Player %d / Boss %d." % [player_total, boss_total])
 
 	if player_total > boss_total:
@@ -36,7 +38,7 @@ func resolve_round(
 			logs.append("Boss BOD <= 1, so incoming damage is increased by 1.")
 		status_changes.append({
 			"target": "boss",
-			"stat": _status_for_tag(player_card.tag),
+			"stat": _status_for_type(player_card.type),
 			"amount": -1,
 		})
 		summary_text = "Player wins the clash. Boss takes %d damage." % boss_damage
@@ -48,7 +50,7 @@ func resolve_round(
 			logs.append("Player BOD <= 1, so incoming damage is increased by 1.")
 		status_changes.append({
 			"target": "player",
-			"stat": _status_for_tag(boss_card.tag),
+			"stat": _status_for_type(boss_card.type),
 			"amount": -1,
 		})
 		summary_text = "Boss wins the clash. Player takes %d damage." % player_damage
@@ -80,8 +82,8 @@ func _matchup_bonus(attacker_tag: String, defender_tag: String) -> int:
 		return -1
 	return 0
 
-func _status_for_tag(card_tag: String) -> String:
-	match card_tag:
+func _status_for_type(card_type: String) -> String:
+	match card_type:
 		"aggression":
 			return "bod"
 		"pressure":

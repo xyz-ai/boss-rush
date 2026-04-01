@@ -1,229 +1,196 @@
 # Gameplay Module Audit
 
 ## 模块范围
-本文件审计两套战斗逻辑：
-- 当前主链路：`scripts/game/`
-- 并行数据驱动链路：`scripts/core/`、`scripts/data/`、`scripts/systems/`
+本文件聚焦当前主链路战斗逻辑，即 [scripts/game/](../../scripts/game) 下的模块：
 
-目标是说明：
-- 每个脚本负责什么
-- 输入输出是什么
-- 是否依赖 UI
-- 当前主链路是否实际使用
+- [BattleCard.gd](../../scripts/game/BattleCard.gd)
+- [CombatActorState.gd](../../scripts/game/CombatActorState.gd)
+- [BossAI.gd](../../scripts/game/BossAI.gd)
+- [BattleResolver.gd](../../scripts/game/BattleResolver.gd)
 
-## 当前主链路：`scripts/game/`
+同时说明这些逻辑如何被 [scripts/ui/Main.gd](../../scripts/ui/Main.gd) 调用。
 
-### 文件：`scripts/game/BattleCard.gd`
-- 路径：`res://scripts/game/BattleCard.gd`
-- 类名：`MvpBattleCard`
-- 作用：MVP 测试卡牌定义
+## 当前战斗逻辑的总体特点
+当前主链路战斗逻辑已经被压缩成一套 **极简 3 类牌模型**：
+
+- `aggression`
+- `defense`
+- `pressure`
+
+克制关系固定为：
+
+- `aggression > pressure`
+- `pressure > defense`
+- `defense > aggression`
+
+这套主链路逻辑与 `scripts/core/*` 的数据驱动战斗系统是分开的。当前玩家真正启动的 `Main.tscn` 路径，使用的是这里的 `scripts/game/*`。
+
+## 关键文件说明
+### `scripts/game/BattleCard.gd`
+- 路径：[scripts/game/BattleCard.gd](../../scripts/game/BattleCard.gd)
+- 作用：极简牌模型与模板定义。
 - 主要负责：
-  - 定义玩家 5 张测试牌
-  - 定义 Boss 5 张测试牌
-  - 提供 `build_player_test_deck()` 和 `build_boss_test_deck()`
-- 输入输出：
-  - 输入：硬编码常量
-  - 输出：`Array[MvpBattleCard]`
-- 是否依赖 UI：否
-- 当前主链路是否使用：是
-- 注意事项：
-  - 它不是数据驱动
-  - 当前主链路仍然使用这套硬编码牌组，而不是 JSON
+  - 定义三种合法类型
+  - 定义玩家固定模板
+  - 定义 Boss 三套固定模板
+  - `display_name` 派生
+  - `to_dict()` 输出给 UI 使用
 
-### 文件：`scripts/game/CombatActorState.gd`
-- 路径：`res://scripts/game/CombatActorState.gd`
-- 类名：`MvpCombatActorState`
-- 作用：当前 MVP 玩家/Boss 状态容器
+### 当前玩家固定模板
+- `Aggression`
+- `Aggression`
+- `Defense`
+- `Pressure`
+- `Pressure`
+
+### 当前 Boss 三套模板
+- `template_a`
+  - `Aggression / Aggression / Pressure / Pressure / Defense`
+- `template_b`
+  - `Defense / Defense / Aggression / Pressure / Pressure`
+- `template_c`
+  - `Aggression / Defense / Pressure / Aggression / Defense`
+
+### 设计特点
+- 不依赖 JSON 数据
+- 不存在变体卡、额外标签、基础值差异
+- `to_dict()` 已缩减到最小 UI 所需字段
+
+### `scripts/game/CombatActorState.gd`
+- 路径：[scripts/game/CombatActorState.gd](../../scripts/game/CombatActorState.gd)
+- 作用：主链路单个 actor 的运行时状态容器。
 - 主要负责：
-  - 保存 `hp / bod / spr / rep`
-  - 保存当前 set 的 cards 和 used_slots
-  - 提供 `mark_card_used()`、`modify_hp()`、`modify_status()`、`is_collapsed()`
-- 输入输出：
-  - 输入：测试卡牌列表和起始状态
-  - 输出：可变 actor 状态
-- 是否依赖 UI：否
-- 当前主链路是否使用：是
-- 注意事项：
-  - 这是当前 MVP 的状态真源
-  - UI 只是读取这个状态
+  - `hp / bod / spr / rep`
+  - 本局 `cards`
+  - 本局 `used_slots`
+  - deck blueprint 持有与按局重建
 
-### 文件：`scripts/game/BossAI.gd`
-- 路径：`res://scripts/game/BossAI.gd`
-- 类名：`MvpBossAI`
-- 作用：当前 MVP Boss 出牌选择器
+### 数据层次
+- **挑战级持久状态**
+  - `bod / spr / rep`
+  - 在 `start_new_challenge()` 时初始化为 3
+  - 在 `reset_for_new_set()` 时不会自动重置
+- **局级状态**
+  - `hp`
+  - `cards`
+  - `used_slots`
+  - 在 `reset_for_new_set()` 时重建
+
+### 注意事项
+- `snapshot()` 目前不包含完整 deck 组成，只包含 hp/status/used_slots。
+- 这意味着外部如果要记录“这一局实际用了哪套模板”，必须在 controller 层额外保留。
+
+### `scripts/game/BossAI.gd`
+- 路径：[scripts/game/BossAI.gd](../../scripts/game/BossAI.gd)
+- 作用：Boss 在主链路里的最小决策器。
 - 主要负责：
-  - 根据玩家当前牌的 tag，把 Boss 剩余牌分成 `counter / neutral / wrong`
-  - 以 `50 / 30 / 20` 权重选择 slot
-- 输入输出：
-  - 输入：`boss_state`、`player_card`
-  - 输出：Boss 选中的 slot index
-- 是否依赖 UI：否
-- 当前主链路是否使用：是
-- 注意事项：
-  - 它不是随机抽牌系统
-  - 它是当前 MVP 信息博弈体验的重要组成部分
+  - 根据玩家当前出的牌，把 Boss 剩余可用牌分到 `counter / neutral / wrong`
+  - 按 `50 / 30 / 20` 选择类别
+  - 从选中类别里随机选一张剩余牌
 
-### 文件：`scripts/game/BattleResolver.gd`
-- 路径：`res://scripts/game/BattleResolver.gd`
-- 类名：`MvpBattleResolver`
-- 作用：当前 MVP 单回合结算器
+### 决策机制
+- 若 Boss 还有能克制玩家的牌，优先概率最高
+- 若目标类别为空，会自动从剩余非空 bucket 回退
+- 决策对象是 **剩余未使用槽位**
+
+### 依赖
+- 只依赖 `MvpCombatActorState` 和 `MvpBattleCard`
+- 不依赖 Godot 场景节点
+
+### `scripts/game/BattleResolver.gd`
+- 路径：[scripts/game/BattleResolver.gd](../../scripts/game/BattleResolver.gd)
+- 作用：主链路单回合结算器。
 - 主要负责：
-  - 读取玩家牌和 Boss 牌
-  - 计算克制修正
-  - 应用 `SPR <= 1` 的威力减值
-  - 应用 `BOD <= 1` 的额外承伤
-  - 决定双方伤害和长期状态变化
-  - 返回日志、summary、damage、winner
-- 输入输出：
-  - 输入：`player_state`、`boss_state`、双方 slot
-  - 输出：一个包含伤害、卡牌、summary、status_changes 的 `Dictionary`
-- 是否依赖 UI：否
-- 当前主链路是否使用：是
-- 注意事项：
-  - 它不直接推进 set/challenge，只负责一回合结果
-  - set/challenge 推进仍由 `scripts/ui/Main.gd` 决定
+  - 根据双方牌类型计算回合结果
+  - 计算 HP 伤害
+  - 生成长期状态变化
+  - 返回供 controller 应用和显示的结果字典
 
-## 并行数据驱动链路：`scripts/core/`
+### 当前结算模型
+- 统一基础强度：`BASE_SCORE = 1`
+- 克制加成：
+  - 克制 `+1`
+  - 被克 `-1`
+  - 同类 `0`
+- `spr <= 1`：
+  - 本回合牌有效强度额外 `-1`
+- `bod <= 1`：
+  - 受到伤害时额外再吃 `+1`
 
-### 文件：`scripts/core/GameRun.gd`
-- 路径：`res://scripts/core/GameRun.gd`
-- 作用：并行完整 Run 流程的全局控制器
-- 主要负责：
-  - 启动一局 Run
-  - 进入 Boss
-  - 打开商店
-  - 结束总结
-  - 维护 `logging_system` 和 `shop_generator`
-- 是否依赖 UI：间接依赖
-- 当前主链路是否使用：Autoload 存在，但不是当前 `Main.tscn` 战斗链路的直接控制器
-- 注意事项：
-  - 并行 BattleScene 链路会依赖它
-  - 当前 smoke 也会走到它
+### 长期状态映射
+- `aggression -> bod`
+- `pressure -> spr`
+- `defense -> rep`
 
-### 文件：`scripts/core/RunState.gd`
-- 作用：并行链路的总状态对象
-- 主要负责：
-  - 保存玩家长期状态：`pos / bod / spr / rep / life`
-  - 保存 Boss 长期状态：`boss_bod / boss_spr / boss_rep`
-  - 持有 `challenge_state / current_set_state`
-  - 提供 `begin_challenge()`、`start_set()`、`consume_battle_card()`、`finish_set()`
-- 是否依赖 UI：否
-- 当前主链路是否使用：否
-- 注意事项：
-  - 这是并行正式链路的中心状态对象
-  - 当前主 MVP 没有使用它，而是自己维护 `MvpCombatActorState`
+### 结算输出
+`resolve_round()` 返回一个结果字典，包含：
+- 出牌槽位
+- 双方卡牌 `to_dict()`
+- 双方有效分数
+- 双方本回合受伤
+- 胜者
+- `status_changes`
+- `summary_text`
+- `log_lines`
 
-### 文件：`scripts/core/ChallengeState.gd`
-- 作用：记录挑战级状态
-- 主要负责：
-  - `current_set_index`
-  - `player_set_wins / boss_set_wins`
-  - `remaining_addons`
-  - `equipped_battle_loadout`
-- 当前主链路是否使用：否
+## 模块间数据流
+### 出牌前
+- `Main.gd` 持有 `_player_state` 与 `_boss_state`
+- 玩家点击手牌后，controller 取出玩家卡
+- `BossAI.choose_slot()` 读取 `_boss_state` 剩余槽位并选出 Boss 牌
 
-### 文件：`scripts/core/SetState.gd`
-- 作用：记录局内状态
-- 主要负责：
-  - `round_index`
-  - `player_hp / boss_hp`
-  - `remaining_player_battle_cards`
-  - `remaining_boss_battle_cards`
-  - `boss_deck / boss_used_cards / boss_revealed`
-  - `next_bonus / next_penalty / cover`
-- 当前主链路是否使用：否
-- 注意事项：
-  - 它已经包含 BossDeck 三态所需的正式状态字段
+### 结算时
+- `BattleResolver.resolve_round(player_state, boss_state, player_slot, boss_slot)`
+- 只负责算结果，不直接改 UI
 
-### 文件：`scripts/core/BossAI.gd`
-- 作用：并行链路的 Boss 选牌器
-- 主要负责：
-  - 使用 `DataLoader` 和 `MatchupRules`
-  - 从剩余 Boss 牌中按 `counter / neutral / wrong` 选牌
-- 当前主链路是否使用：否
+### 结算后
+- `Main.gd._apply_round_result()`：
+  - 标记 used slot
+  - 扣 HP
+  - 应用 status change
+  - 刷 clash area
+  - 判定 set / challenge 是否结束
 
-### 文件：`scripts/core/BattleResolver.gd`
-- 作用：并行链路的正式回合结算器
-- 主要负责：
-  - 读取 JSON 卡牌定义
-  - 处理长期状态成本
-  - 处理 `Next / Cover / Addon / POS`
-  - 推进 set 和 challenge
-  - 生成完整 result snapshot
-- 当前主链路是否使用：否
-- 注意事项：
-  - 它比 `scripts/game/BattleResolver.gd` 更完整
-  - 但当前 main_scene 并未接这套 resolver
+## 当前逻辑集中度判断
+### 哪些逻辑已经下沉到 gameplay 层
+- 卡牌类型和模板
+- actor 运行时状态
+- Boss 决策
+- 回合胜负公式
 
-### 文件：`scripts/core/MatchupRules.gd`
-- 作用：封装 family 克制关系
-- 当前主链路是否使用：仅并行链路和测试使用
+### 哪些逻辑仍在 controller 层
+- set / challenge 推进
+- reveal 状态
+- set winner 判定
+- 日志输出
+- 回合结果应用顺序
 
-### 文件：`scripts/core/ShopGenerator.gd`
-- 作用：生成并应用商店 offer
-- 当前主链路是否使用：否
+### 结论
+当前主链路 gameplay 层已经足够支撑 MVP，但还不是完整的独立战斗域模型。  
+尤其 `set` 和 `challenge` 级数据仍主要掌握在 `scripts/ui/Main.gd` 中，而不是独立状态对象中。
 
-### 文件：`scripts/core/SaveManager.gd`
-- 作用：存档接口占位
-- 当前主链路是否使用：否，当前是辅助/预留文件
+## 按数据生命周期划分
+### 挑战级
+- `_player_set_wins`
+- `_boss_set_wins`
+- `_challenge_over`
+- actor 的 `bod / spr / rep`
 
-## 数据加载层：`scripts/data/`
+### 局级
+- `_current_set_index`
+- `_current_boss_template_id`
+- `_boss_battle_revealed`
+- actor 的 `hp`
+- actor 的 `cards`
+- actor 的 `used_slots`
 
-### 文件：`scripts/data/DataLoader.gd`
-- 作用：JSON 数据总加载器，Autoload
-- 主要负责：
-  - 读取 battle/addon/boss cards
-  - 读取 boss 定义
-  - 读取 matchup/ui thresholds/starting values/challenge rules/loadouts/shop pool
-  - 向其他系统提供查询接口
-- 当前主链路是否使用：
-  - 当前 `Main.tscn` 战斗主链路不依赖它作为卡牌来源
-  - 并行 BattleScene 和 `GameRun` 强依赖
-- 注意事项：
-  - 当前项目存在“主链路硬编码卡牌”和“并行链路 JSON 数据驱动”并存的情况
+### 回合级
+- `_current_turn_index`
+- `resolve_round()` 产出的 `result`
+- `ClashArea` 当前显示内容
 
-### 文件：`CardDatabase.gd / BossDatabase.gd / AddonDatabase.gd`
-- 作用：数据库查询包装
-- 当前主链路是否使用：否
-- 当前并行链路是否使用：是
-
-## 系统层：`scripts/systems/`
-
-### 文件：`scripts/systems/PeekSystem.gd`
-- 作用：处理“查看 Boss 卡池”
-- 主要负责：
-  - 读取 `run_state.current_set_state`
-  - 扣 SPR
-  - 设置 `boss_revealed = true`
-- 当前主链路是否使用：否
-- 并行 BattleScene 是否使用：是
-
-### 文件：`scripts/systems/AddonSystem.gd`
-- 作用：处理加注牌消耗和回合上下文
-- 当前主链路是否使用：否
-- 并行 BattleScene 是否使用：是
-
-### 文件：`scripts/systems/CollapseEffects.gd`
-- 作用：把 `BOD / SPR / REP` 映射到视觉 profile
-- 当前主链路是否使用：间接，`ScreenEffects` 可接 profile
-- 并行 BattleScene 是否使用：是
-
-### 文件：`scripts/systems/LoggingSystem.gd`
-- 作用：日志存储器
-- 当前主链路是否使用：当前主 MVP 主要直接用 controller 内部 `_logs`
-- 并行 BattleScene 是否使用：是，通过 `GameRun.logging_system`
-
-## 当前战斗逻辑与 UI 的耦合情况
-## 当前主链路
-- `scripts/game/*` 不直接依赖 Godot UI 节点
-- `scripts/ui/Main.gd` 持有这些逻辑对象并驱动 UI
-- 这是当前主链路比较清晰的一面
-
-## 并行链路
-- `scripts/core/*` 和 `scripts/systems/*` 同样不直接依赖具体 UI 节点
-- 但由 `scenes/battle/BattleScene.gd` 统一桥接，耦合面更广
-
-## 当前最重要的判断
-- 如果你要改“当前可玩的 MVP 战斗闭环”，优先看 `scripts/game/* + scripts/ui/*`
-- 如果你要改“未来更正式的数据驱动挑战流程”，优先看 `scripts/core/* + scripts/data/* + scripts/systems/* + scenes/battle/*`
-
+## 关键判断
+1. 当前主链路战斗系统已经不是旧的多标签/多变体逻辑，而是极简 3 类牌系统。
+2. Boss 不是随机混合发牌，而是每局从 3 套固定模板中选 1 套。
+3. `BossBattleDeckView` 的推理价值，直接来自固定模板 + reveal + used_slots。
+4. 当前最容易被误判的点，是把 `scripts/game/*` 和 `scripts/core/*` 当成同一套系统。

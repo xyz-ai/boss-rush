@@ -207,6 +207,10 @@ anchor_left = 0.76
 anchor_top = 0.35
 anchor_right = 0.92
 anchor_bottom = 0.42
+offset_left = -175.19995
+offset_top = -85.359985
+offset_right = -175.19995
+offset_bottom = -85.359985
 text = "Boss HP 6"
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -218,6 +222,10 @@ anchor_left = 0.72
 anchor_top = 0.43
 anchor_right = 0.94
 anchor_bottom = 0.61
+offset_left = -111.400024
+offset_top = -290.208
+offset_right = -417.80005
+offset_bottom = -341.61603
 
 [node name="MarginContainer" type="MarginContainer" parent="ContentRoot/TableArea/BossStatusPanel" unique_id=247596208]
 layout_mode = 2
@@ -308,6 +316,10 @@ anchor_left = 0.08
 anchor_top = 0.67
 anchor_right = 0.24
 anchor_bottom = 0.74
+offset_left = 151.40001
+offset_top = -391.752
+offset_right = 151.40002
+offset_bottom = -391.752
 text = "Player HP 6"
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -319,6 +331,10 @@ anchor_left = 0.06
 anchor_top = 0.74
 anchor_right = 0.28
 anchor_bottom = 0.94
+offset_left = 399.8
+offset_top = -307.74402
+offset_right = 71.20001
+offset_bottom = -375.60803
 
 [node name="MarginContainer" type="MarginContainer" parent="ContentRoot/TableArea/PlayerStatusPanel" unique_id=1326282966]
 layout_mode = 2

@@ -1,198 +1,210 @@
 # Scene Structure
 
 ## 模块范围
-本文件描述项目当前主要场景结构，重点回答：
-- 当前主场景长什么样
-- 哪些节点是编辑器静态节点
-- 哪些 UI 内容是运行时动态生成
-- 并行的 BattleScene 路径长什么样
+本文件梳理当前场景层级与节点职责，重点以当前启动入口 [scenes/main/Main.tscn](../../scenes/main/Main.tscn) 为准。
+
+目标是回答：
+
+- 主场景里哪些节点是静态壳子
+- 哪些节点主要承载运行时动态内容
+- `BossArea / TableArea / PlayerArea / OverlayUI / ScreenEffects` 各自做什么
+- `TableArea` 内部现在如何分工
 
 ## 当前主场景：`scenes/main/Main.tscn`
-
-## 场景职责
-- 这是当前项目实际运行的主场景
-- 它提供主舞台壳子和主要 UI 区域
-- 战斗数据和动态卡牌内容不直接写死在场景里，而是由 `scripts/ui/Main.gd` 驱动子视图生成
-
-## 当前主场景树
-### `Main`
-- 类型：`Control`
-- 作用：整个 MVP 界面的根节点
-
-### `Background`
-- 类型：`TextureRect`
-- 作用：全屏背景贴图
-- 控制方式：编辑器静态节点
-
-### `ContentRoot`
-- 类型：`Control`
-- 作用：主 UI 壳子
-- 控制方式：编辑器静态节点
-
-### `ContentRoot/BossArea`
-- 作用：Boss 区域外壳
-- 子节点：`BossPortrait`
-- 控制方式：编辑器静态节点
-
-### `ContentRoot/TableArea`
-- 作用：桌面主舞台
-- 关键子节点：
-  - `TableBoard`
-  - `CenterInfo`
-  - `PlayerHP`
-  - `BossHP`
-  - `ClashArea`
-  - `BossDeckView`
-  - `PlayerArea`
-- 控制方式：编辑器静态节点
-
-### `ContentRoot/TableArea/CenterInfo`
-- 作用：显示回合/轮次文本
-- 子节点：
-  - `RoundLabel`
-  - `TurnLabel`
-- 控制方式：编辑器静态节点，文本由脚本刷新
-
-### `ContentRoot/TableArea/ClashArea`
-- 作用：中央对撞区壳子
-- 子节点：
-  - `PlayerCardSlot`
-  - `BossCardSlot`
-- 控制方式：
-  - Slot 本身由编辑器布局控制
-  - Slot 内显示的卡牌由 `ClashAreaView.gd` 动态生成
-
-### `ContentRoot/TableArea/BossDeckView`
-- 作用：Boss 牌列壳子
-- 子节点：
-  - `RevealDeckButton`
-  - `DeckRow`
-- 控制方式：
-  - 外壳和按钮位置由编辑器控制
-  - `DeckRow` 里的牌由 `BossDeckView.gd` 动态生成
-
-### `ContentRoot/TableArea/PlayerArea`
-- 作用：玩家手牌区壳子
-- 子节点：
-  - `HandAnchor`
-- 控制方式：
-  - 玩家手牌区位置由编辑器控制
-  - `HandAnchor` 里的牌由 `PlayerHandView.gd` 动态生成
-
-### `ContentRoot/OverlayUI`
-- 作用：运行时日志覆盖层容器
-- 控制方式：
-  - 容器本身由编辑器控制
-  - 具体的 `RuntimeLogLabel` 在运行时由 `scripts/ui/Main.gd` 动态创建
-
-### `ScreenEffects`
-- 作用：全屏崩坏/抖动/去饱和表现
-- 控制方式：
-  - 节点本身是静态实例
-  - 效果偏移由 `scenes/ui/ScreenEffects.gd` 在运行时驱动
-
-## 当前主场景中“编辑器静态节点”与“运行时动态内容”的边界
-## 编辑器静态节点
-这些节点是布局壳子，位置和大小应优先由编辑器控制：
+### 顶层结构
+`Main`
 - `Background`
 - `ContentRoot`
-- `BossArea`
-- `BossPortrait`
-- `TableArea`
-- `TableBoard`
-- `CenterInfo`
-- `RoundLabel`
-- `TurnLabel`
-- `PlayerHP`
-- `BossHP`
-- `ClashArea`
-- `PlayerCardSlot`
-- `BossCardSlot`
-- `BossDeckView`
-- `RevealDeckButton`
-- `DeckRow`
-- `PlayerArea`
-- `HandAnchor`
-- `OverlayUI`
+  - `BossArea`
+  - `TableArea`
+  - `OverlayUI`
 - `ScreenEffects`
 
-## 运行时动态生成的内容
-这些不是编辑器里固定摆好的内容：
-- 玩家手牌卡片：挂到 `HandAnchor`
-- Boss 牌列卡片：挂到 `DeckRow`
-- 中央对撞区卡片：挂到 `PlayerCardSlot / BossCardSlot`
-- 覆盖层日志 `RuntimeLogLabel`：挂到 `OverlayUI`
+### 顶层职责
+#### `Background`
+- 类型：`TextureRect`
+- 作用：整屏背景贴图。
+- 性质：静态显示层。
+- 备注：`mouse_filter = IGNORE`，不参与交互。
 
-## 当前主场景的职责划分
-### 场景壳子负责
-- 空间分区
-- 静态贴图和容器
-- Label/Button/Slot 的基础存在
+#### `ContentRoot`
+- 类型：`Control`
+- 作用：主视觉与交互节点的共同父节点。
+- 性质：主 UI 壳层。
+- 备注：`ScreenEffects` 会把它作为 target，在运行时轻微改动 `position`。
 
-### `scripts/ui/Main.gd` 负责
-- 找到这些节点
-- 初始化手牌、Boss 牌列、中央对撞区控制器
-- 刷新文本和动态内容
-- 推进回合/局/挑战
+#### `ScreenEffects`
+- 类型：实例化的 `scenes/ui/ScreenEffects.tscn`
+- 作用：轻微抖动、去饱和、裂痕等视觉效果。
+- 性质：效果层。
+- 风险：会在 `_process()` 中改动绑定目标的位置，是当前主链路里少数仍会直接改几何的系统。
 
-### 子视图负责
-- `PlayerHandView.gd`：玩家手牌内容
-- `BossDeckView.gd`：Boss 牌列内容
-- `ClashAreaView.gd`：中央对撞内容
+## `BossArea`
+### 当前结构
+`BossArea`
+- `BossPortrait`
 
-## 并行场景：`scenes/battle/BattleScene.tscn`
+### 职责
+- 表现 Boss 人物存在感。
+- 现在只承载 Boss 剪影/立绘，不承载 Reveal 业务信息。
+- 更偏背景与压迫感层，而不是信息层。
 
-## 当前使用状态
-- 当前不是 `project.godot` 的主场景
-- 但测试脚本会实例化它
-- 它仍然是项目中一条有效但并行的链路
+### 运行时特征
+- 主要由编辑器场景决定位置。
+- `scripts/ui/Main.gd` 不负责它的主布局，只绑定并读取节点。
 
-## 场景职责
-- 更完整、更数据驱动的战斗表现层
-- 含 Boss 区、桌面主舞台、左右抽屉、玩家手牌区、结果弹窗、Tooltip
-- 与 `scripts/core/`、`scripts/data/`、`scripts/systems/` 联动
+## `TableArea`
+`TableArea` 是当前主链路最重要的功能区域。它既承担桌面视觉，也承担主要战斗信息。
 
-## 关键结构
-### 背景层
-- `BackgroundLayer`
-- `BgOffice`
-- `DeskTable`
-- `VignetteOverlay`
-- `DustOrCrackOverlay`
-
-### 主舞台
-- `SafeArea/StageRoot`
-- `BossStage`
-- `TableCore`
-- `PlayerHandStage`
-- `LeftStatusStage`
-- `RightDrawer`
-
-### 关键子场景
-- `StatusPanel`
-- `BossPanel`
+### 当前结构
+`TableArea`
+- `TableBoard`
+- `CenterInfo`
+  - `RoundLabel`
+  - `SpacerLabel`
+  - `TurnLabel`
+- `BossBattleDeckView`
+  - `BattleDeckTitle`
+  - `RevealBattleDeckButton`
+  - `BattleDeckRow`
 - `BossDeckView`
-- `ClashAreaView`
-- `AddonPanel`
-- `ResultPopup`
-- `TooltipPanel`
+  - `BossHandCountLabel`
+  - `BossHandAnimationAnchor`
+  - `DeckRow`
+- `BossHP`
+- `BossStatusPanel`
+  - `MarginContainer`
+    - `VBoxContainer`
+      - `BossBOD`
+      - `BossSPR`
+      - `BossREP`
+- `ClashArea`
+  - `BossCardSlot`
+  - `ClashResultLabel`
+  - `PlayerCardSlot`
+- `BossBetArea`
+  - `BetAreaTitle`
+  - `BetRow`
+- `PlayerHP`
+- `PlayerStatusPanel`
+  - `MarginContainer`
+    - `VBoxContainer`
+      - `PlayerBOD`
+      - `PlayerSPR`
+      - `PlayerREP`
+- `PlayerArea`
+  - `HandAnchor`
 
-## 这个并行场景的特点
-- 它自身的静态壳子更复杂
-- 同时还包含大量运行时几何控制和动态内容生成
-- 不适合作为“当前主场景布局控制”的文档主线，但必须记录为并行路径
+### `TableBoard`
+- 类型：`TextureRect`
+- 作用：桌面底图。
+- 性质：纯显示层。
+- 备注：不承载交互，`mouse_filter = IGNORE`。
 
-## 其他与场景相关的 UI
-### `scenes/ui/ScreenEffects.tscn`
-- 当前主链路和并行 BattleScene 链路都可能用到
-- 重点是全局特效，不是主业务 UI
+### `CenterInfo`
+- 类型：`HBoxContainer`
+- 作用：显示战斗节奏信息。
+- 当前内容：
+  - `RoundLabel`
+  - `TurnLabel`
+- 性质：信息层，但不负责按钮或 reveal。
 
-### `scenes/ui/TooltipPanel.tscn`
-- 通用 Tooltip 场景
-- 通过 `SignalBus` 驱动
-- 运行时跟随鼠标位置，不是静态布局元素
+### `BossBattleDeckView`
+- 类型：`Control`
+- 作用：**信息层**。
+- 表示 Boss 本局固定 5 张对战牌池。
+- Reveal 前显示 hidden。
+- Reveal 后显示真实牌。
+- 已使用槽位变灰，但不删除槽位。
+- 这是当前主链路里“推理信息”的主要承载区。
 
-### `scenes/shop/ShopScene.tscn`
-- 当前不在主战斗场景里直接使用
-- 属于并行的完整流程链路一部分
+### `BossDeckView`
+- 类型：`Control`
+- 作用：**表现层**。
+- 表示 Boss 手里还剩几张牌。
+- `DeckRow` 只显示剩余数量对应的暗卡，不表示 reveal 后的完整牌池。
+- `BossHandAnimationAnchor` 当前只是未来动画占位。
 
+### `BossHP` / `PlayerHP`
+- 类型：`Label`
+- 作用：显示本局 HP。
+- 性质：信息层。
+- 不负责长期状态。
+
+### `BossStatusPanel` / `PlayerStatusPanel`
+- 类型：`PanelContainer`
+- 作用：显示长期状态 `BOD / SPR / REP`。
+- 性质：信息层。
+- 与 `HP` 分开，避免把所有数值堆在一个 Label 上。
+
+### `ClashArea`
+- 类型：`Control`
+- 作用：中央当前出牌展示区。
+- `BossCardSlot`：显示本回合 Boss 当前牌。
+- `PlayerCardSlot`：显示本回合玩家当前牌。
+- `ClashResultLabel`：显示一句结算摘要。
+- 性质：每回合变化的强刷新区。
+
+### `BossBetArea`
+- 类型：`Control`
+- 作用：未来 Boss 加注区占位。
+- 当前状态：存在但默认隐藏/弱化，不承载逻辑。
+
+### `PlayerArea`
+- 类型：`Control`
+- 作用：玩家手牌区壳子。
+- `HandAnchor` 是运行时动态生成玩家手牌 `CardView` 的容器。
+
+## `OverlayUI`
+- 类型：`Control`
+- 作用：承载运行时创建的日志 `RichTextLabel`。
+- 性质：静态壳子 + 动态内容承载点。
+- 备注：主日志文本不是场景里预放的，而是 `scripts/ui/Main.gd` 运行时 `RichTextLabel.new()` 创建的。
+
+## 哪些节点是布局节点，哪些是功能节点
+### 主要布局节点
+- `ContentRoot`
+- `BossArea`
+- `TableArea`
+- `PlayerArea`
+- `BossBattleDeckView`
+- `BossDeckView`
+- `ClashArea`
+- `PlayerStatusPanel`
+- `BossStatusPanel`
+
+### 主要功能节点
+- `RevealBattleDeckButton`
+- `BattleDeckRow`
+- `DeckRow`
+- `HandAnchor`
+- `BossCardSlot`
+- `PlayerCardSlot`
+- `ClashResultLabel`
+- `RoundLabel`
+- `TurnLabel`
+
+## 哪些内容是运行时动态生成的
+### 静态壳子
+由 `Main.tscn` 直接提供：
+- `BossBattleDeckView`
+- `BossDeckView`
+- `ClashArea`
+- `PlayerArea`
+- `OverlayUI`
+- `BossStatusPanel`
+- `PlayerStatusPanel`
+
+### 动态内容
+以下内容在运行时生成或重建：
+- `HandAnchor` 里的玩家手牌卡片
+- `BossDeckView/DeckRow` 里的 Boss 剩余手牌暗卡
+- `BossBattleDeckView/BattleDeckRow` 里的 5 张信息牌
+- `ClashArea/BossCardSlot` 与 `PlayerCardSlot` 里的本回合对撞卡
+- `OverlayUI` 里的运行时日志 `RichTextLabel`
+
+## 当前场景层级的关键判断
+1. `Main.tscn` 现在是编辑器主布局来源，不再由 `scripts/ui/Main.gd` 统一重排主舞台区块。
+2. `TableArea` 是当前玩法信息的核心舞台。
+3. `BossDeckView` 与 `BossBattleDeckView` 都在 `TableArea` 中，但职责不同：一个偏表现，一个偏推理信息。
+4. `PlayerArea/HandAnchor`、`BattleDeckRow`、`DeckRow`、`ClashArea` 都是“静态壳子 + 动态内容”的典型组合。

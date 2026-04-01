@@ -53,17 +53,16 @@ func set_card_size(card_size: Vector2) -> void:
 
 func _refresh_visuals() -> void:
 	var card_name := str(_card_data.get("display_name", "Unknown"))
-	var card_tag := str(_card_data.get("tag", "aggression"))
-	var card_power := int(_card_data.get("base_power", 0))
-	var base_fill := _color_for_tag(card_tag)
+	var card_type := str(_card_data.get("type", MvpBattleCard.TYPE_AGGRESSION))
+	var base_fill := _color_for_type(card_type)
 	var border_color := base_fill.lightened(0.18)
-	var label_text := "%s\n%s / %d" % [card_name, card_tag.capitalize(), card_power]
+	var label_text := card_name
 
 	match _view_state:
 		"hidden":
 			base_fill = Color(0.10, 0.12, 0.16, 0.98)
 			border_color = Color(0.46, 0.50, 0.58, 0.85)
-			label_text = "?\nHidden"
+			label_text = "Hidden"
 			_card_art.texture = _load_texture(HIDDEN_TEXTURE_PATH)
 			_card_art.modulate = Color(0.74, 0.78, 0.84, 0.90)
 			_state_overlay.visible = true
@@ -71,13 +70,13 @@ func _refresh_visuals() -> void:
 		"used":
 			base_fill = Color(0.18, 0.18, 0.18, 0.94)
 			border_color = Color(0.48, 0.48, 0.48, 0.84)
-			label_text = "%s\n%s / %d\nUSED" % [card_name, card_tag.capitalize(), card_power]
-			_card_art.texture = _texture_for_tag(card_tag)
+			label_text = "%s\nUSED" % card_name
+			_card_art.texture = _texture_for_type(card_type)
 			_card_art.modulate = Color(0.62, 0.62, 0.62, 0.74)
 			_state_overlay.visible = true
 			_state_overlay.color = Color(0.04, 0.04, 0.04, 0.36)
 		_:
-			_card_art.texture = _texture_for_tag(card_tag)
+			_card_art.texture = _texture_for_type(card_type)
 			_card_art.modulate = Color(1.0, 1.0, 1.0, 0.92)
 			_state_overlay.visible = false
 
@@ -117,8 +116,8 @@ func _make_style(fill: Color, border: Color) -> StyleBoxFlat:
 	style.content_margin_bottom = 8
 	return style
 
-func _color_for_tag(card_tag: String) -> Color:
-	match card_tag:
+func _color_for_type(card_type: String) -> Color:
+	match card_type:
 		"aggression":
 			return Color(0.45, 0.18, 0.16, 0.98)
 		"defense":
@@ -128,8 +127,8 @@ func _color_for_tag(card_tag: String) -> Color:
 		_:
 			return Color(0.24, 0.24, 0.24, 0.98)
 
-func _texture_for_tag(card_tag: String) -> Texture2D:
-	match card_tag:
+func _texture_for_type(card_type: String) -> Texture2D:
+	match card_type:
 		"aggression":
 			return _load_texture(AGGRESSION_TEXTURE_PATH)
 		"defense":

@@ -1,259 +1,193 @@
 # UI Module Audit
 
 ## 模块范围
-本文件审计以下内容：
-- `scripts/ui/`
-- `scenes/ui/`
-- 当前 UI 强相关的 `scenes/main/Main.gd`
-- 并行 BattleScene 路径中与 UI 表现直接相关的 `scenes/battle/*.gd`
+本文件审查当前主链路相关 UI 脚本与 UI 场景，重点覆盖：
 
-重点不是列文件，而是说明：
-- 谁负责节点绑定
-- 谁负责刷新 UI
-- 谁负责动态生成卡牌
-- 谁负责 BossDeck 三态
-- 谁负责中央对撞区
-- 谁会影响 UI 表现
+- [scripts/ui/Main.gd](../../scripts/ui/Main.gd)
+- [scripts/ui/PlayerHandView.gd](../../scripts/ui/PlayerHandView.gd)
+- [scripts/ui/BossDeckView.gd](../../scripts/ui/BossDeckView.gd)
+- [scripts/ui/BossBattleDeckView.gd](../../scripts/ui/BossBattleDeckView.gd)
+- [scripts/ui/ClashAreaView.gd](../../scripts/ui/ClashAreaView.gd)
+- [scripts/ui/CardView.gd](../../scripts/ui/CardView.gd)
+- [scenes/ui/ScreenEffects.gd](../../scenes/ui/ScreenEffects.gd)
 
-## 当前主 UI 链路
+## UI 模块总体职责划分
+当前主链路 UI 不是纯视图层。它有明显的三层结构：
 
-### 文件：`scenes/main/Main.gd`
-- 路径：`res://scenes/main/Main.gd`
-- 作用：主场景脚本的薄包装
+1. **主场景壳子**
+   - `Main.tscn`
+   - 负责节点存在、编辑器布局、静态层级
+
+2. **主控制器**
+   - `scripts/ui/Main.gd`
+   - 负责绑定节点、驱动战斗流程、调度各视图刷新
+
+3. **子视图**
+   - `PlayerHandView`
+   - `BossDeckView`
+   - `BossBattleDeckView`
+   - `ClashAreaView`
+   - `CardView`
+
+这种结构的好处是 MVP 推进快，问题也很明显：主控制器承担了较多 UI 编排责任。
+
+## 核心文件说明
+### `scripts/ui/Main.gd`
+- 路径：[scripts/ui/Main.gd](../../scripts/ui/Main.gd)
+- 作用：当前主链路的实际 UI 控制器和主流程 orchestrator。
 - 主要负责：
-  - 在 `_ready()` 中创建 `MvpMainController`
-  - 把场景控制权转交给 `scripts/ui/Main.gd`
-  - 转发 `_notification()`
+  - `_bind_nodes()`：读取 `Main.tscn` 所有关键节点
+  - `_configure_mouse_filters()`：设置被动显示节点不拦截点击
+  - `_setup_views()`：实例化各个视图 helper
+  - `_start_new_challenge()` / `_reset_for_current_set()`：初始化战斗与每局重置
+  - `_refresh_ui()`：统一刷新标签、牌列、clash、日志
+  - `_on_reveal_requested()`：处理 reveal 状态写回
+  - `_on_card_play_requested()`：玩家点牌后的主流程入口
+  - `_apply_round_result()` / `_finish_set()` / `_finish_challenge()`：推进回合、局和挑战
 - 影响范围：
-  - 是当前主链路的入口桥接点
-  - 自身不直接负责布局和战斗结算
+  - 几乎所有主链路 UI 都由它刷新
+  - 战斗流程也由它驱动
 - 依赖：
-  - `res://scripts/ui/Main.gd`
-- 注意事项：
-  - 这里不是业务逻辑中心
-  - 真正的主 UI 控制权在 `scripts/ui/Main.gd`
-
-### 文件：`scripts/ui/Main.gd`
-- 路径：`res://scripts/ui/Main.gd`
-- 类名：`MvpMainController`
-- 作用：当前 MVP 主 UI 控制器
-- 主要负责：
-  - 绑定 `Main.tscn` 中的节点
-  - 初始化玩家/Boss 状态
-  - 创建并管理 `PlayerHandView / BossDeckView / ClashAreaView`
-  - 刷新文本和动态内容
-  - 响应 reveal、出牌、回合推进、本局结束、挑战结束
-  - 输出运行时日志
-- 影响范围：
-  - 当前主链路里最核心的 UI 组织者
-  - 改它会同时影响：
-    - 玩家手牌刷新
-    - Boss 牌列刷新
-    - 中央结算显示
-    - HP / Round / Turn 文本
-    - 日志输出
-- 依赖：
-  - `scripts/ui/PlayerHandView.gd`
-  - `scripts/ui/BossDeckView.gd`
-  - `scripts/ui/ClashAreaView.gd`
   - `scripts/game/*`
-  - `scenes/ui/ScreenEffects.gd`
+  - `scripts/ui/*`
+  - `ScreenEffects`
 - 注意事项：
-  - 当前主布局几何已经不应由它控制
-  - 它现在应只负责绑定、刷新、流程推进
-  - 它仍然会动态创建 Overlay 日志 Label
+  - 这是当前主链路里最容易被误改的文件。
+  - 它已经同时承担 UI orchestration 和部分 game flow，职责偏重。
 
-### 文件：`scripts/ui/PlayerHandView.gd`
-- 路径：`res://scripts/ui/PlayerHandView.gd`
-- 类名：`MvpPlayerHandView`
-- 作用：玩家手牌内容生成器
+### `scripts/ui/PlayerHandView.gd`
+- 路径：[scripts/ui/PlayerHandView.gd](../../scripts/ui/PlayerHandView.gd)
+- 作用：玩家手牌视图生成器。
 - 主要负责：
-  - 清空 `HandAnchor`
-  - 实例化 `scenes/ui/CardView.tscn`
-  - 绑定玩家点击信号
-  - 根据已用 slot 隐藏已打出的牌
+  - 根据 `cards + used_slots` 重建 `HandAnchor`
+  - 为每张未使用牌创建 `CardView`
+  - 向上发 `card_play_requested(slot_index)`
 - 影响范围：
-  - 只影响玩家手牌区域内容
-  - 不影响主舞台块位置
+  - 只影响玩家手牌区
 - 依赖：
-  - `scripts/ui/CardView.gd`
-  - `scripts/game/BattleCard.gd`
+  - `CardView`
+  - `MvpBattleCard.to_dict()`
 - 注意事项：
-  - 它会重建整行手牌
-  - 如果你想在编辑器里手摆玩家卡，运行时不会保留
+  - 每次 `set_hand()` 都会全清再重建，不是局部更新。
+  - 这是 MVP 阶段可接受的实现，但会增加刷新频率下的重建成本。
 
-### 文件：`scripts/ui/BossDeckView.gd`
-- 路径：`res://scripts/ui/BossDeckView.gd`
-- 类名：`MvpBossDeckView`
-- 作用：BossDeck 三态显示控制器
+### `scripts/ui/BossDeckView.gd`
+- 路径：[scripts/ui/BossDeckView.gd](../../scripts/ui/BossDeckView.gd)
+- 作用：Boss 剩余手牌表现层。
 - 主要负责：
-  - 管理 `RevealDeckButton`
-  - 根据 `revealed / used_slots` 刷新牌列状态
-  - 动态生成 Boss 牌列卡片
+  - `Boss Hand xN` 文案
+  - `DeckRow` 里显示剩余数量对应的 hidden 卡背
+- 不负责：
+  - reveal
+  - 本局固定 5 张信息牌池
+  - 已使用灰掉的固定槽位逻辑
 - 影响范围：
-  - 只影响 `BossDeckView/DeckRow` 内容
-  - 不影响 `BossDeckView` 外壳位置
-- 依赖：
-  - `scripts/ui/CardView.gd`
+  - Boss 剩余手牌表现
 - 注意事项：
-  - 这是当前主链路中 Boss 信息博弈最关键的 UI 组件
-  - reveal 状态是“每局一次，持续到本局结束”
+  - 它当前职责已经和 `BossBattleDeckView` 明确分开，后续不要再混回去。
 
-### 文件：`scripts/ui/ClashAreaView.gd`
-- 路径：`res://scripts/ui/ClashAreaView.gd`
-- 类名：`MvpClashAreaView`
-- 作用：中央对撞区显示器
+### `scripts/ui/BossBattleDeckView.gd`
+- 路径：[scripts/ui/BossBattleDeckView.gd](../../scripts/ui/BossBattleDeckView.gd)
+- 作用：Boss 本局 5 张对战牌池的信息层视图。
 - 主要负责：
-  - 在 `PlayerCardSlot / BossCardSlot` 中显示本回合双方牌
-  - 动态创建 `ResultLabel`
-  - 覆盖显示当前回合结算文字
+  - `RevealBattleDeckButton` 信号出口
+  - `BattleDeckRow` 的 5 槽位重建
+  - hidden / normal / used 三态展示
+  - reveal 按钮禁用/文案状态
+- 不负责：
+  - reveal 状态最终归属
+  - 挑战级或 set 级战斗状态持有
 - 影响范围：
-  - 只影响中央对撞区内容
-  - 不影响 `ClashArea` 主壳子位置
-- 依赖：
-  - `scripts/ui/CardView.gd`
+  - Boss 信息推理区
 - 注意事项：
-  - 它会在 slot 内部直接居中生成卡片
-  - 这是局部定位，不是主舞台布局控制
+  - reveal 真正的状态源不在这个 view 内，而在 `MvpMainController._boss_battle_revealed`。
+  - 这个 view 目前还带有 `update_layout()`，虽然只处理 `BattleDeckRow` 局部布局，但依然是局部几何控制点。
 
-### 文件：`scripts/ui/CardView.gd`
-- 路径：`res://scripts/ui/CardView.gd`
-- 类名：`MvpCardView`
-- 作用：当前 MVP 用的可点击卡片视图
+### `scripts/ui/ClashAreaView.gd`
+- 路径：[scripts/ui/ClashAreaView.gd](../../scripts/ui/ClashAreaView.gd)
+- 作用：中央当前出牌和结果展示区。
 - 主要负责：
-  - 显示卡名、卡图、状态遮罩
-  - 区分 `normal / hidden / used`
-  - 决定按钮是否可点击
+  - 在 `BossCardSlot` 和 `PlayerCardSlot` 中创建并居中显示当前牌
+  - 更新 `ClashResultLabel`
+  - 新回合或新局时清空 clash
 - 影响范围：
-  - 同时用于玩家手牌和 BossDeck 卡片
-- 依赖：
-  - `scenes/ui/CardView.tscn`
+  - 中央对撞区
 - 注意事项：
-  - 当前主链路实际使用的是这一套 `scenes/ui/CardView.tscn + scripts/ui/CardView.gd`
-  - 不要和 `scenes/battle/CardView.tscn` 混淆
+  - 它不保存任何战斗状态，只展示最新结果。
+  - slot 内卡牌是运行时创建的，不是编辑器静态节点。
 
-## 通用 UI 场景与脚本
-
-### 文件：`scenes/ui/ScreenEffects.gd`
-- 路径：`res://scenes/ui/ScreenEffects.gd`
-- 作用：全局特效层
+### `scripts/ui/CardView.gd`
+- 路径：[scripts/ui/CardView.gd](../../scripts/ui/CardView.gd)
+- 作用：主链路通用卡牌显示控件。
 - 主要负责：
-  - 绑定目标节点
-  - 根据 effect profile 做轻微抖动、下沉、去饱和、裂痕显示
+  - 正常态、hidden、used 三态显示
+  - 3 类牌的标题、颜色和贴图映射
+  - 可点击控制
+- 当前卡牌显示模型：
+  - 只认 `type`
+  - 标题只显示 `Aggression / Defense / Pressure`
+  - 不再读取旧 `tag / base_power / 变体名`
 - 影响范围：
-  - 会对被绑定目标写 `position`
-  - 会影响整屏视觉感觉
-- 依赖：
-  - `SignalBus`
+  - 玩家手牌
+  - BossDeckView 卡背
+  - BossBattleDeckView 五槽位
+  - ClashArea 当前牌
+
+### `scenes/ui/ScreenEffects.gd`
+- 路径：[scenes/ui/ScreenEffects.gd](../../scenes/ui/ScreenEffects.gd)
+- 作用：轻量视觉效果层。
+- 主要负责：
+  - 绑定 `ContentRoot`
+  - 根据 profile 对目标做轻微位移
+  - 更新去饱和与裂痕 overlay
+- 影响范围：
+  - 会影响整个主 UI 的视觉位置
 - 注意事项：
-  - 它不是主布局系统
-  - 但因为会在运行时偏移绑定目标，排查“为什么整体在晃”时必须看它
+  - 它虽然是“效果层”，但会写 `_target.position`，这意味着它不是纯视觉不侵入。
 
-### 文件：`scenes/ui/TooltipPanel.gd`
-- 路径：`res://scenes/ui/TooltipPanel.gd`
-- 作用：通用 Tooltip
-- 主要负责：
-  - 监听 `SignalBus.tooltip_requested`
-  - 跟随鼠标更新 `global_position`
-- 影响范围：
-  - 只影响 Tooltip
-  - 不影响主舞台布局
-- 注意事项：
-  - 它属于典型“运行时位置驱动 UI”
+## 信息层与表现层的区分
+### 表现层
+- `BossDeckView`
+- `BossPortrait`
+- `ScreenEffects`
+- `Background / TableBoard`
 
-## 并行 BattleScene UI 链路
+### 信息层
+- `BossBattleDeckView`
+- `CenterInfo`
+- `PlayerHP / BossHP`
+- `PlayerStatusPanel / BossStatusPanel`
+- `ClashArea`
+- `OverlayUI` 运行时日志
 
-### 文件：`scenes/battle/BattleScene.gd`
-- 路径：`res://scenes/battle/BattleScene.gd`
-- 作用：并行 BattleScene 的总控制器
-- 当前主链路是否使用：否，当前不是 main_scene
-- 主要负责：
-  - 绑定 `BattleScene.tscn` 的所有节点
-  - 刷新状态、BossPanel、BossDeckView、ClashArea、AddonPanel
-  - 响应出牌、窥牌、加注、结果弹窗
-  - 运行时布局 `_apply_stage_layout()`
-- 影响范围：
-  - 影响整个并行战斗界面
-- 注意事项：
-  - 这是并行链路里最复杂的 UI 文件
-  - 它仍然包含主舞台运行时几何控制
+## 当前 UI 刷新方式
+### 优点
+- 入口清晰：几乎所有刷新都收敛到 `MvpMainController._refresh_ui()`
+- 每个子视图职责相对单一
+- Reveal、已使用灰掉、剩余手牌数这些效果都能从单点状态推导出来
 
-### 文件：`scenes/battle/BossPanel.gd`
-- 作用：Boss 摘要、状态、查看牌池按钮
-- 当前主链路是否使用：否
-- 影响范围：
-  - 只影响并行 BattleScene 的 Boss 信息面板
+### 隐患
+- `_refresh_ui()` 集中刷新过多内容，未来容易继续膨胀
+- 一些视图采用“全清空重建”的方式，简单但不够细粒度
+- `ScreenEffects` 仍会直接改 `ContentRoot.position`
+- `BossBattleDeckView.update_layout()` 仍保留局部几何控制，后续若场景改布局要注意同步
 
-### 文件：`scenes/battle/BossDeckView.gd`
-- 作用：并行 BattleScene 中的 Boss 牌列展示
-- 当前主链路是否使用：否
-- 主要负责：
-  - 根据 `boss_revealed` 和 `boss_used_cards` 动态生成对手牌列
-  - 使用真实 frame/back/overlay 贴图
-- 影响范围：
-  - 并行 BattleScene 的对手牌列
+## 是否存在 UI 层吞业务逻辑过多的问题
+存在，但目前可控。
 
-### 文件：`scenes/battle/ClashAreaView.gd`
-- 作用：并行 BattleScene 的中央结算区
-- 当前主链路是否使用：否
-- 主要负责：
-  - 显示上一回合双方卡牌摘要和伤害结果
+### 已经明显集中在 UI 控制器里的业务
+- 挑战初始化
+- set 重置
+- reveal 状态持有
+- 玩家出牌后 Boss 选牌
+- 结算结果应用到 actor state
+- set / challenge 的结束判定与推进
 
-### 文件：`scenes/battle/StatusPanel.gd`
-- 作用：挑战比分、POS、临时状态摘要
-- 当前主链路是否使用：否
+### 仍然保留在 gameplay 层的逻辑
+- 牌模板定义
+- actor 状态容器
+- Boss 选牌决策
+- 回合结算公式
 
-### 文件：`scenes/battle/AddonPanel.gd`
-- 作用：加注牌区
-- 当前主链路是否使用：否
-- 主要负责：
-  - 运行时重建加注列表行
-
-### 文件：`scenes/battle/ResultPopup.gd`
-- 作用：并行 BattleScene 的回合/局/挑战结果弹窗
-- 当前主链路是否使用：否
-
-## UI 模块的当前职责边界
-## 负责节点绑定
-- 当前主链路：`scripts/ui/Main.gd`
-- 并行链路：`scenes/battle/BattleScene.gd`
-
-## 负责刷新 UI
-- 当前主链路：`scripts/ui/Main.gd`
-- 并行链路：`scenes/battle/BattleScene.gd`
-
-## 负责动态生成卡牌
-- 当前主链路：
-  - `scripts/ui/PlayerHandView.gd`
-  - `scripts/ui/BossDeckView.gd`
-  - `scripts/ui/ClashAreaView.gd`
-- 并行链路：
-  - `scenes/battle/BattleScene.gd`
-  - `scenes/battle/BossDeckView.gd`
-
-## 负责 BossDeck 三态
-- 当前主链路：`scripts/ui/BossDeckView.gd`
-- 并行链路：`scenes/battle/BossDeckView.gd`
-
-## 负责中央对撞区
-- 当前主链路：`scripts/ui/ClashAreaView.gd`
-- 并行链路：`scenes/battle/ClashAreaView.gd`
-
-## 负责日志 / Tooltip / ScreenEffects
-- 当前主链路日志：`scripts/ui/Main.gd` 动态创建的 `RuntimeLogLabel`
-- 并行链路日志：`scenes/battle/BattleScene.gd` 内部 LogPanel / RichTextLabel
-- Tooltip：`scenes/ui/TooltipPanel.gd`
-- ScreenEffects：`scenes/ui/ScreenEffects.gd`
-
-## 风险与注意事项
-- 当前项目里存在两套卡牌 UI：
-  - `scenes/ui/CardView.tscn` 对应 MVP 主链路
-  - `scenes/battle/CardView.tscn` 对应并行 BattleScene 链路
-- 当前项目里存在两套 BossDeckView：
-  - `scripts/ui/BossDeckView.gd`
-  - `scenes/battle/BossDeckView.gd`
-- 当前项目里存在两套 BattleResolver / BossAI：
-  - `scripts/game/*`
-  - `scripts/core/*`
-- 继续开发前，必须先确认要改的是哪套 UI
-
+### 结论
+当前 `scripts/ui/Main.gd` 不是纯 UI 控制器，而是 **MVP 的总调度器**。这对当前阶段是快的，但未来如果继续扩功能，它会成为最先变重的文件。

@@ -1,76 +1,54 @@
 # Code Audit README
 
-## 目的
-这组文档用于给后续继续开发 `Boss Rush Prototype` 的人快速建立项目心智模型。
+## 目录用途
+`docs/code_audit/` 用于记录 **当前代码实际结构**，不是设计稿，也不是未来规划。
+本轮文档已按当前仓库代码重新整理，重点对齐以下事实：
 
-本轮文档只做两件事：
-- 标出当前实际运行的主链路
-- 把 UI、战斗逻辑、动态生成、并行旧链路拆开说明
-
-这些文档不是“文件清单”，而是“接手说明书”。阅读时应优先理解：
-- 当前真正跑起来的是哪一套场景和脚本
-- 哪些节点是编辑器静态壳子
-- 哪些内容是运行时动态生成
-- 哪些路径仍然是并行存在的备用/旧链路
+- 当前真正的启动主链路是 `project.godot -> scenes/main/Main.tscn -> scenes/main/Main.gd -> scripts/ui/Main.gd -> scripts/game/*`
+- 项目里仍并存一套更完整但非当前启动入口的并行战斗链路：`scenes/battle/* + scripts/core/* + scripts/data/* + scripts/systems/*`
+- 主链路里 `BossDeckView` 与 `BossBattleDeckView` 职责不同，不能混写
+- 当前很多 UI 内容是运行时动态生成的，文档会明确哪些是静态壳子，哪些是运行时内容
 
 ## 推荐阅读顺序
-### 第一轮先看
+### 第一轮快速接手
 1. [01_project_overview.md](./01_project_overview.md)
 2. [06_entrypoints_and_call_flow.md](./06_entrypoints_and_call_flow.md)
 3. [02_scene_structure.md](./02_scene_structure.md)
 4. [03_ui_module_audit.md](./03_ui_module_audit.md)
 
-### 继续排查运行时问题时看
+### 排查刷新、重建、显示不一致问题
 5. [05_runtime_generation_and_refresh.md](./05_runtime_generation_and_refresh.md)
 6. [07_risk_points_and_dev_notes.md](./07_risk_points_and_dev_notes.md)
 
-### 需要理解战斗逻辑或并行体系时看
+### 继续看战斗逻辑或辨认并行链路
 7. [04_gameplay_module_audit.md](./04_gameplay_module_audit.md)
 8. [08_parallel_paths_and_usage_status.md](./08_parallel_paths_and_usage_status.md)
 
-## 文档范围
-本目录聚焦以下内容：
-- `project.godot`
-- `scenes/main/`
-- `scripts/ui/`
-- `scripts/game/`
-- `scenes/ui/`
-- `tests/`
-- 与当前 MVP 强相关的 `scenes/battle/`、`scripts/core/`、`scripts/data/`、`scripts/systems/`
+## 文档分工
+### 结构类
+- [01_project_overview.md](./01_project_overview.md)：项目阶段、目录用途、当前主链路
+- [02_scene_structure.md](./02_scene_structure.md)：主场景、关键节点、布局与功能节点
+- [08_parallel_paths_and_usage_status.md](./08_parallel_paths_and_usage_status.md)：主链路与并行链路的实际使用状态
 
-不作为主叙述重点，但会记录：
-- `scenes/shop/`
-- JSON 数据文件
-- 并行存在但当前不是主入口的 BattleScene 路径
+### 调用流类
+- [06_entrypoints_and_call_flow.md](./06_entrypoints_and_call_flow.md)：从启动到出牌、结算、推进回合/局的调用链
+- [05_runtime_generation_and_refresh.md](./05_runtime_generation_and_refresh.md)：初始化、每局重置、每回合刷新、运行时重建
 
-## 当前判断结论
-- 当前主入口是 `project.godot -> scenes/main/Main.tscn`
-- 当前主 UI/战斗链路是 `scenes/main/Main.gd -> scripts/ui/Main.gd -> scripts/ui/* + scripts/game/*`
-- 项目中还并存一套更完整、更数据驱动的链路：`scenes/battle/* + scripts/core/* + scripts/data/* + scripts/systems/*`
-- 这两套链路共存，是当前项目结构最重要的风险点
+### 模块审查类
+- [03_ui_module_audit.md](./03_ui_module_audit.md)：`scripts/ui/`、`scenes/ui/` 与主场景 UI 职责
+- [04_gameplay_module_audit.md](./04_gameplay_module_audit.md)：`scripts/game/` 与战斗状态流
 
-## 本目录文件说明
-### [01_project_overview.md](./01_project_overview.md)
-项目阶段、目录概览、当前主目标、当前主链路的总览。
+### 风险与开发建议
+- [07_risk_points_and_dev_notes.md](./07_risk_points_and_dev_notes.md)：最容易误改、最值得警惕的结构风险和 MVP 阶段建议
 
-### [02_scene_structure.md](./02_scene_structure.md)
-主场景和关键 UI 场景结构，哪些节点由编辑器控制，哪些只是动态内容容器。
+## 当前最关键结论
+- `Main.tscn` 现在是主入口场景，主布局主要由编辑器场景控制，不再由 `scripts/ui/Main.gd` 全面接管几何。
+- `scripts/ui/Main.gd` 是当前 MVP 的实际总控制器，既负责主流程，也负责大部分 UI 刷新调度。
+- `scripts/game/*` 是当前主链路的战斗逻辑来源，使用固定 3 类牌模型与固定模板，不依赖 `DataLoader` 的 JSON 牌库。
+- `BossDeckView` 是表现层，表示 Boss 手里还剩几张；`BossBattleDeckView` 是信息层，表示本局固定 5 张对战牌池、Reveal 状态和已使用灰掉状态。
+- 并行 `BattleScene` 链路仍在仓库中，并且测试脚本会实例化它，不能简单视为废弃代码。
 
-### [03_ui_module_audit.md](./03_ui_module_audit.md)
-审计 `scripts/ui/` 和 `scenes/ui/`，说明谁负责节点绑定、UI 刷新、动态生成卡牌、BossDeck 三态、中央对撞区、日志和特效。
-
-### [04_gameplay_module_audit.md](./04_gameplay_module_audit.md)
-审计 `scripts/game/` 和并行的 `scripts/core/`、`scripts/systems/`，说明职责边界和与 UI 的关系。
-
-### [05_runtime_generation_and_refresh.md](./05_runtime_generation_and_refresh.md)
-专门整理所有运行时 `instantiate / add_child / queue_free / Label.new / RichTextLabel.new` 的地方，方便后续排查“编辑器改了为什么运行不一样”。
-
-### [06_entrypoints_and_call_flow.md](./06_entrypoints_and_call_flow.md)
-用文字步骤还原入口、初始化、出牌、结算、推进回合/局/挑战的调用链。
-
-### [07_risk_points_and_dev_notes.md](./07_risk_points_and_dev_notes.md)
-总结最容易踩坑的点，并给出只作为建议的后续开发方向。
-
-### [08_parallel_paths_and_usage_status.md](./08_parallel_paths_and_usage_status.md)
-专门对比“当前主链路”和“并行 BattleScene 链路”，避免后续接手时误判哪套代码在生效。
-
+## 阅读时的判断原则
+- 先判断问题发生在 **主链路** 还是 **并行链路**。
+- 遇到“编辑器改了、运行时不一样”，优先看 [05_runtime_generation_and_refresh.md](./05_runtime_generation_and_refresh.md)。
+- 遇到“到底谁负责 reveal / 手牌 / clash / 回合推进”，优先看 [03_ui_module_audit.md](./03_ui_module_audit.md) 和 [04_gameplay_module_audit.md](./04_gameplay_module_audit.md)。

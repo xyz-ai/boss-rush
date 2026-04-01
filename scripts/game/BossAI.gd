@@ -25,7 +25,7 @@ func choose_slot(boss_state: MvpCombatActorState, player_card: MvpBattleCard) ->
 		var boss_card := boss_state.get_card_at(slot_index)
 		if boss_card == null:
 			continue
-		var category := _categorize(boss_card.tag, player_card.tag)
+		var category := _categorize(boss_card.type, player_card.type)
 		buckets[category].append(slot_index)
 
 	var weighted_categories: Array[Dictionary] = []

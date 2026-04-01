@@ -58,6 +58,7 @@ var _boss_battle_deck_view
 var _clash_area_view: MvpClashAreaView
 var _boss_ai: MvpBossAI = MvpBossAI.new()
 var _resolver: MvpBattleResolver = MvpBattleResolver.new()
+var _boss_template_rng := RandomNumberGenerator.new()
 
 var _player_state: MvpCombatActorState
 var _boss_state: MvpCombatActorState
@@ -67,6 +68,7 @@ var _current_turn_index: int = 1
 var _player_set_wins: int = 0
 var _boss_set_wins: int = 0
 var _boss_battle_revealed: bool = false
+var _current_boss_template_id: String = ""
 var _challenge_over: bool = false
 var _input_locked: bool = false
 var _logs: Array[String] = []
@@ -94,6 +96,7 @@ func get_state_snapshot() -> Dictionary:
 		"current_turn_index": _current_turn_index,
 		"player_set_wins": _player_set_wins,
 		"boss_set_wins": _boss_set_wins,
+		"current_boss_template_id": _current_boss_template_id,
 		"boss_battle_revealed": _boss_battle_revealed,
 		"challenge_over": _challenge_over,
 		"player": _player_state.snapshot() if _player_state != null else {},
@@ -253,11 +256,13 @@ func _start_new_challenge() -> void:
 	_current_set_index = 1
 	_current_turn_index = 1
 	_boss_battle_revealed = false
+	_current_boss_template_id = ""
 	_challenge_over = false
 	_input_locked = false
+	_boss_template_rng.randomize()
 
 	_player_state = MvpCombatActorState.new("Player", MvpBattleCard.build_player_test_deck())
-	_boss_state = MvpCombatActorState.new("Boss", MvpBattleCard.build_boss_test_deck())
+	_boss_state = MvpCombatActorState.new("Boss", MvpBattleCard.build_boss_template("template_a"))
 	_player_state.set_long_term_values(STARTING_BOD, STARTING_SPR, STARTING_REP)
 	_boss_state.set_long_term_values(STARTING_BOD, STARTING_SPR, STARTING_REP)
 	_reset_for_current_set()
@@ -268,6 +273,10 @@ func _start_new_challenge() -> void:
 	_refresh_ui()
 
 func _reset_for_current_set() -> void:
+	_player_state.set_deck_blueprint(MvpBattleCard.build_player_test_deck())
+	var boss_template: Dictionary = MvpBattleCard.pick_random_boss_template(_boss_template_rng)
+	_current_boss_template_id = str(boss_template.get("id", "template_a"))
+	_boss_state.set_deck_blueprint(boss_template.get("cards", []))
 	_player_state.reset_for_new_set(SET_HP)
 	_boss_state.reset_for_new_set(SET_HP)
 	_boss_battle_revealed = false

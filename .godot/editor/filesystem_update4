@@ -1,1 +1,7 @@
+res://scripts/game/BattleCard.gd
+res://scripts/game/BattleResolver.gd
+res://scripts/game/BossAI.gd
+res://scripts/ui/CardView.gd
+res://scripts/ui/Main.gd
+res://tests/smoke_runner.gd
 res://scenes/main/Main.tscn
