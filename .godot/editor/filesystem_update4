@@ -1,4 +1,2 @@
-res://scripts/game/BattleCard.gd
-res://scripts/ui/BossBattleDeckView.gd
-res://scripts/ui/Main.gd
-res://scripts/game/BossAI.gd
+res://scenes/main/Main.tscn
+res://scenes/main/Main.gd
