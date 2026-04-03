@@ -303,6 +303,10 @@ func _test_main_mvp(failures: Array[String]) -> void:
 	for size in [Vector2i(1366, 768), Vector2i(1440, 900), Vector2i(1920, 1080)]:
 		await _test_main_mvp_layout(size, failures)
 
+	await _test_main_mvp_without_bets(failures)
+	await _test_main_mvp_with_bets(failures)
+
+func _test_main_mvp_without_bets(failures: Array[String]) -> void:
 	DisplayServer.window_set_size(Vector2i(1440, 900))
 	await process_frame
 	await process_frame
@@ -312,6 +316,69 @@ func _test_main_mvp(failures: Array[String]) -> void:
 	await process_frame
 
 	var controller = scene.call("get_mvp_controller")
+	_assert(controller != null, "Main scene should expose its MVP controller for smoke testing.", failures)
+	if controller == null:
+		scene.queue_free()
+		await process_frame
+		return
+
+	controller.set_bet_mode_enabled(false)
+	await process_frame
+	await process_frame
+
+	var snapshot: Dictionary = controller.get_state_snapshot()
+	var hand_anchor: HBoxContainer = scene.get_node_or_null("ContentRoot/TableArea/PlayerArea/HandAnchor")
+	var boss_hand_count_label: Label = scene.get_node_or_null("ContentRoot/TableArea/BossDeckView/BossHandCountLabel")
+	var boss_hand_row: HBoxContainer = scene.get_node_or_null("ContentRoot/TableArea/BossDeckView/DeckRow")
+	var battle_deck_row: HBoxContainer = scene.get_node_or_null("ContentRoot/TableArea/BossBattleDeckView/BattleDeckRow")
+	var turn_label: Label = scene.get_node_or_null("ContentRoot/TableArea/CenterInfo/TurnLabel")
+	var player_slot: Control = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/PlayerCardSlot")
+	var boss_slot: Control = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/BossCardSlot")
+	var player_bet_area: Control = scene.get_node_or_null("ContentRoot/TableArea/PlayerBetArea")
+	var boss_bet_area: Control = scene.get_node_or_null("ContentRoot/TableArea/BossBetArea")
+	var bet_phase_hint: Label = scene.get_node_or_null("ContentRoot/TableArea/BetPhaseHint")
+	var bet_result_hint: Label = scene.get_node_or_null("ContentRoot/TableArea/BetResultHint")
+	var peek_boss_bet_button: Button = scene.get_node_or_null("ContentRoot/TableArea/BossBetArea/PeekBossBetButton")
+
+	_assert(not bool(snapshot.get("bet_mode_enabled", true)), "Smoke should be able to disable bet mode.", failures)
+	_assert(player_bet_area != null and not player_bet_area.visible, "PlayerBetArea should hide when bet mode is disabled.", failures)
+	_assert(boss_bet_area != null and not boss_bet_area.visible, "BossBetArea should hide when bet mode is disabled.", failures)
+	_assert(bet_phase_hint != null and not bet_phase_hint.visible, "BetPhaseHint should hide when bet mode is disabled.", failures)
+	_assert(bet_result_hint != null and not bet_result_hint.visible, "BetResultHint should hide when bet mode is disabled.", failures)
+	_assert(peek_boss_bet_button != null and not peek_boss_bet_button.visible, "PeekBossBetButton should hide when bet mode is disabled.", failures)
+
+	if hand_anchor != null and hand_anchor.get_child_count() > 0:
+		(hand_anchor.get_child(0) as BaseButton).emit_signal("pressed")
+		await process_frame
+		await process_frame
+
+	_assert(hand_anchor != null and hand_anchor.get_child_count() == 4, "Without bet mode, playing one card should resolve immediately and remove a visible card.", failures)
+	_assert(turn_label != null and turn_label.text == "Turn 2 / 5", "Without bet mode, resolving one turn should advance to Turn 2 / 5.", failures)
+	_assert(player_slot != null and player_slot.get_child_count() == 1, "Without bet mode, clash area should show the player's current card.", failures)
+	_assert(boss_slot != null and boss_slot.get_child_count() == 1, "Without bet mode, clash area should show the boss's current card.", failures)
+	_assert(boss_hand_row != null and boss_hand_row.get_child_count() == 4, "Without bet mode, boss hand view should shrink to 4 remaining cards after one play.", failures)
+	_assert(boss_hand_count_label != null and boss_hand_count_label.text == "Boss Hand x4", "Without bet mode, boss hand count should update after one play.", failures)
+	_assert(battle_deck_row != null and battle_deck_row.get_child_count() == 5, "Boss battle deck should keep 5 visible slots after use.", failures)
+
+	scene.queue_free()
+	await process_frame
+
+func _test_main_mvp_with_bets(failures: Array[String]) -> void:
+	DisplayServer.window_set_size(Vector2i(1440, 900))
+	await process_frame
+	await process_frame
+	var scene: Control = load("res://scenes/main/Main.tscn").instantiate()
+	get_root().add_child(scene)
+	await process_frame
+	await process_frame
+
+	var controller = scene.call("get_mvp_controller")
+	_assert(controller != null, "Main scene should expose its MVP controller for bet smoke testing.", failures)
+	if controller == null:
+		scene.queue_free()
+		await process_frame
+		return
+
 	var round_label: Label = scene.get_node_or_null("ContentRoot/TableArea/CenterInfo/RoundLabel")
 	var turn_label: Label = scene.get_node_or_null("ContentRoot/TableArea/CenterInfo/TurnLabel")
 	var hand_anchor: HBoxContainer = scene.get_node_or_null("ContentRoot/TableArea/PlayerArea/HandAnchor")
@@ -319,19 +386,27 @@ func _test_main_mvp(failures: Array[String]) -> void:
 	var boss_hand_row: HBoxContainer = scene.get_node_or_null("ContentRoot/TableArea/BossDeckView/DeckRow")
 	var reveal_button: Button = scene.get_node_or_null("ContentRoot/TableArea/BossBattleDeckView/RevealBattleDeckButton")
 	var battle_deck_row: HBoxContainer = scene.get_node_or_null("ContentRoot/TableArea/BossBattleDeckView/BattleDeckRow")
-	var player_hp: Label = scene.get_node_or_null("ContentRoot/TableArea/PlayerHP")
-	var boss_hp: Label = scene.get_node_or_null("ContentRoot/TableArea/BossHP")
 	var player_slot: Control = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/PlayerCardSlot")
 	var boss_slot: Control = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/BossCardSlot")
 	var clash_result_label: Label = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/ClashResultLabel")
+	var player_bet_area: Control = scene.get_node_or_null("ContentRoot/TableArea/PlayerBetArea")
+	var boss_bet_area: Control = scene.get_node_or_null("ContentRoot/TableArea/BossBetArea")
+	var player_bet_row: HBoxContainer = scene.get_node_or_null("ContentRoot/TableArea/PlayerBetArea/PlayerBetRow")
+	var bet_phase_hint: Label = scene.get_node_or_null("ContentRoot/TableArea/BetPhaseHint")
+	var bet_result_hint: Label = scene.get_node_or_null("ContentRoot/TableArea/BetResultHint")
+	var peek_boss_bet_button: Button = scene.get_node_or_null("ContentRoot/TableArea/BossBetArea/PeekBossBetButton")
 
 	_assert(round_label != null and round_label.text == "Round 1 / 3", "Main MVP should start at Round 1 / 3.", failures)
 	_assert(turn_label != null and turn_label.text == "Turn 1 / 5", "Main MVP should start at Turn 1 / 5.", failures)
+	_assert(player_bet_area != null and player_bet_area.visible, "PlayerBetArea should be visible when bet mode is enabled.", failures)
+	_assert(boss_bet_area != null and boss_bet_area.visible, "BossBetArea should be visible when bet mode is enabled.", failures)
+	_assert(bet_phase_hint != null and bet_phase_hint.text == "Pre-Bet Phase", "Bet mode should start in Pre-Bet phase.", failures)
+	_assert(peek_boss_bet_button != null and peek_boss_bet_button.visible, "PeekBossBetButton should be visible when bet mode is enabled.", failures)
+	_assert(player_bet_row != null and player_bet_row.get_child_count() == 3, "Player should see 3 minimal bet cards in bet mode.", failures)
 	_assert(hand_anchor != null and hand_anchor.get_child_count() == 5, "Main MVP should spawn 5 player cards.", failures)
 	_assert(boss_hand_row != null and boss_hand_row.get_child_count() == 5, "Boss hand view should start with 5 remaining cards.", failures)
 	_assert(battle_deck_row != null and battle_deck_row.get_child_count() == 5, "Boss battle deck should always expose 5 slots.", failures)
 	_assert(boss_hand_count_label != null and boss_hand_count_label.text == "Boss Hand x5", "Boss hand count should start at 5.", failures)
-	_assert(controller != null, "Main scene should expose its MVP controller for smoke testing.", failures)
 
 	if hand_anchor != null:
 		var expected_player_hand := ["Aggression", "Aggression", "Defense", "Pressure", "Pressure"]
@@ -341,15 +416,22 @@ func _test_main_mvp(failures: Array[String]) -> void:
 				actual_player_hand.append(str(child.get_card_data().get("display_name", "")))
 		_assert(actual_player_hand == expected_player_hand, "Player hand should be the fixed 2-1-2 template.", failures)
 
-	if controller != null:
-		var snapshot: Dictionary = controller.get_state_snapshot()
-		var expected_templates := {
-			"template_a": ["Aggression", "Aggression", "Pressure", "Pressure", "Defense"],
-			"template_b": ["Defense", "Defense", "Aggression", "Pressure", "Pressure"],
-			"template_c": ["Aggression", "Defense", "Pressure", "Aggression", "Defense"],
-		}
-		var template_id := str(snapshot.get("current_boss_template_id", ""))
-		_assert(expected_templates.has(template_id), "Boss should choose one of the three fixed templates.", failures)
+	var snapshot: Dictionary = controller.get_state_snapshot()
+	var expected_templates := {
+		"template_a": ["Aggression", "Aggression", "Pressure", "Pressure", "Defense"],
+		"template_b": ["Defense", "Defense", "Aggression", "Pressure", "Pressure"],
+		"template_c": ["Aggression", "Defense", "Pressure", "Aggression", "Defense"],
+	}
+	var template_id := str(snapshot.get("current_boss_template_id", ""))
+	_assert(expected_templates.has(template_id), "Boss should choose one of the three fixed templates.", failures)
+
+	if player_bet_row != null:
+		var pre_cost_labels := _collect_button_texts(player_bet_row)
+		_assert(pre_cost_labels == [
+			"Hold Steady (0 SPR)",
+			"Positive Shift (1 SPR)",
+			"Dirty Move (1 SPR)",
+		], "Pre-Bet labels should show half-cost pricing.", failures)
 
 	if battle_deck_row != null and battle_deck_row.get_child_count() > 0:
 		var first_battle_deck_card = battle_deck_row.get_child(0)
@@ -361,39 +443,80 @@ func _test_main_mvp(failures: Array[String]) -> void:
 		reveal_button.emit_signal("pressed")
 		await process_frame
 
+	if peek_boss_bet_button != null:
+		peek_boss_bet_button.emit_signal("pressed")
+		await process_frame
+		_assert(bet_result_hint != null and bet_result_hint.text == "Boss: No Bet", "Before boss locks a bet, Peek should show a no-bet snapshot.", failures)
+
 	if battle_deck_row != null:
 		var revealed_names: Array[String] = []
 		for child in battle_deck_row.get_children():
 			if child.has_method("get_card_data"):
 				revealed_names.append(str(child.get_card_data().get("display_name", "")))
-		var expected_templates_after_reveal := {
-			"template_a": ["Aggression", "Aggression", "Pressure", "Pressure", "Defense"],
-			"template_b": ["Defense", "Defense", "Aggression", "Pressure", "Pressure"],
-			"template_c": ["Aggression", "Defense", "Pressure", "Aggression", "Defense"],
-		}
-		var reveal_snapshot: Dictionary = controller.get_state_snapshot() if controller != null else {}
+		var reveal_snapshot: Dictionary = controller.get_state_snapshot()
 		var reveal_template_id := str(reveal_snapshot.get("current_boss_template_id", ""))
-		_assert(revealed_names == expected_templates_after_reveal.get(reveal_template_id, []), "Reveal should expose exactly one of the fixed boss templates.", failures)
+		_assert(revealed_names == expected_templates.get(reveal_template_id, []), "Reveal should expose exactly one of the fixed boss templates.", failures)
 		for child in battle_deck_row.get_children():
 			if child.has_method("get_view_state"):
 				_assert(child.get_view_state() == "normal", "Reveal should switch every unused boss deck slot to normal.", failures)
 
 	if hand_anchor != null and hand_anchor.get_child_count() > 0:
-		var first_player_card = hand_anchor.get_child(0)
-		first_player_card.emit_signal("pressed")
+		(hand_anchor.get_child(0) as BaseButton).emit_signal("pressed")
 		await process_frame
 		await process_frame
 
-	_assert(hand_anchor != null and hand_anchor.get_child_count() == 4, "Playing one card should remove it from the visible hand.", failures)
-	_assert(turn_label != null and turn_label.text == "Turn 2 / 5", "Resolving one turn should advance to Turn 2 / 5.", failures)
-	_assert(player_slot != null and player_slot.get_child_count() == 1, "Clash area should show the player's current card.", failures)
-	_assert(boss_slot != null and boss_slot.get_child_count() == 1, "Clash area should show the boss's current card.", failures)
+	snapshot = controller.get_state_snapshot()
+	_assert(str(snapshot.get("bet_phase", "")) == "post", "Playing a card without a pre-bet should open Post-Bet.", failures)
+	_assert(turn_label != null and turn_label.text == "Turn 1 / 5", "Turn should not advance until Post-Bet is resolved.", failures)
+	_assert(hand_anchor != null and hand_anchor.get_child_count() == 5, "The hand should stay visible until the pending Post-Bet resolves.", failures)
+	_assert(player_slot != null and player_slot.get_child_count() == 0, "Clash area should stay empty until Post-Bet resolves.", failures)
+	_assert(boss_slot != null and boss_slot.get_child_count() == 0, "Boss clash slot should stay empty until Post-Bet resolves.", failures)
+	_assert(bet_result_hint != null and bet_result_hint.text == "Boss: No Bet", "Peek snapshot should not auto-update when boss bet state changes; it should stay as the last snapshot.", failures)
+
+	if peek_boss_bet_button != null:
+		peek_boss_bet_button.emit_signal("pressed")
+		await process_frame
+		var post_snapshot: Dictionary = controller.get_state_snapshot()
+		var expected_peek_text := "Boss: No Bet"
+		var boss_bet_id := str(post_snapshot.get("boss_bet_id", ""))
+		match boss_bet_id:
+			"hold_steady":
+				expected_peek_text = "Boss Bet: Hold Steady"
+			"positive_shift":
+				expected_peek_text = "Boss Bet: Positive Shift"
+			"dirty_move":
+				expected_peek_text = "Boss Bet: Dirty Move"
+		_assert(bet_result_hint != null and bet_result_hint.text == expected_peek_text, "Peek should show the current-turn boss bet snapshot.", failures)
+
+	if player_bet_row != null:
+		var post_cost_labels := _collect_button_texts(player_bet_row)
+		_assert(post_cost_labels == [
+			"Hold Steady (0 SPR)",
+			"Positive Shift (2 SPR)",
+			"Dirty Move (2 SPR)",
+		], "Post-Bet labels should show full-cost pricing.", failures)
+		var hold_button := player_bet_row.get_node_or_null("BetButton_hold_steady") as Button
+		_assert(hold_button != null, "Player bet row should include Hold Steady as an explicit pass option.", failures)
+		if hold_button != null:
+			hold_button.emit_signal("pressed")
+			await process_frame
+			await process_frame
+
+	snapshot = controller.get_state_snapshot()
+	_assert(str(snapshot.get("bet_phase", "")) == "pre", "After a resolved turn, bet phase should reset to Pre-Bet for the next turn.", failures)
+	_assert(hand_anchor != null and hand_anchor.get_child_count() == 4, "Resolving the post-bet turn should remove one visible player card.", failures)
+	_assert(turn_label != null and turn_label.text == "Turn 2 / 5", "Resolving the post-bet turn should advance to Turn 2 / 5.", failures)
+	_assert(player_slot != null and player_slot.get_child_count() == 1, "Clash area should show the player's current card after Post-Bet resolution.", failures)
+	_assert(boss_slot != null and boss_slot.get_child_count() == 1, "Clash area should show the boss's current card after Post-Bet resolution.", failures)
 	_assert(clash_result_label != null and not clash_result_label.text.is_empty(), "Clash result label should show a round summary.", failures)
-	_assert(player_hp != null and "Player HP" in player_hp.text, "Player HP label should remain populated after a clash.", failures)
-	_assert(boss_hp != null and "Boss HP" in boss_hp.text, "Boss HP label should remain populated after a clash.", failures)
 	_assert(boss_hand_row != null and boss_hand_row.get_child_count() == 4, "Boss hand view should shrink to 4 remaining cards after one play.", failures)
 	_assert(boss_hand_count_label != null and boss_hand_count_label.text == "Boss Hand x4", "Boss hand count should update after one play.", failures)
 	_assert(battle_deck_row != null and battle_deck_row.get_child_count() == 5, "Boss battle deck should keep 5 visible slots after use.", failures)
+	_assert(
+		bet_result_hint != null and _is_valid_bet_result_text(str(bet_result_hint.text)),
+		"BetResultHint should report a compact turn bet result after resolution.",
+		failures
+	)
 
 	if battle_deck_row != null:
 		var used_found := false
@@ -403,8 +526,43 @@ func _test_main_mvp(failures: Array[String]) -> void:
 				break
 		_assert(used_found, "A boss battle deck slot should turn used after the boss plays a card.", failures)
 
+	controller.call("_reset_for_current_set")
+	await process_frame
+	await process_frame
+	snapshot = controller.get_state_snapshot()
+	_assert(not bool(snapshot.get("boss_battle_revealed", true)), "A new set should reset battle deck reveal state even when bet mode is on.", failures)
+	_assert(str(snapshot.get("bet_phase", "")) == "pre", "A new set should reopen Pre-Bet when bet mode is enabled.", failures)
+	_assert(str(snapshot.get("player_bet_id", "")) == "", "A new set should clear player bet selection.", failures)
+	_assert(str(snapshot.get("boss_bet_id", "")) == "", "A new set should clear boss bet selection.", failures)
+	_assert(str(snapshot.get("boss_bet_peek_snapshot_text", "")) == "", "A new set should clear the last boss bet peek snapshot.", failures)
+
 	scene.queue_free()
 	await process_frame
+
+func _collect_button_texts(row: HBoxContainer) -> Array[String]:
+	var texts: Array[String] = []
+	if row == null:
+		return texts
+	for child in row.get_children():
+		if child is Button:
+			texts.append((child as Button).text)
+	return texts
+
+func _is_valid_bet_result_text(text: String) -> bool:
+	if text == "No Bet":
+		return true
+	var valid_segments := [
+		"+1 Damage (Positive)",
+		"+2 Damage (Dirty)",
+		"Backfired: -1 HP",
+		"Boss +1 Damage (Positive)",
+		"Boss +2 Damage (Dirty)",
+		"Boss Backfired: -1 HP",
+	]
+	for segment in text.split(" | "):
+		if not valid_segments.has(segment):
+			return false
+	return not text.is_empty()
 
 func _test_main_mvp_layout(size: Vector2i, failures: Array[String]) -> void:
 	DisplayServer.window_set_size(size)

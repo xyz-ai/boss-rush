@@ -273,9 +273,9 @@ anchor_left = 0.26
 anchor_top = 0.02
 anchor_right = 0.74
 anchor_bottom = 0.38
-offset_left = 11.22406
-offset_top = -3.4907227
-offset_right = 11.22403
+offset_left = 17.22406
+offset_top = 3.5092773
+offset_right = -8.823883
 offset_bottom = -3.490715
 
 [node name="ClashResultLabel" type="Label" parent="ContentRoot/TableArea/ClashArea" unique_id=2137169467]
@@ -301,10 +301,10 @@ anchor_left = 0.26
 anchor_top = 0.62
 anchor_right = 0.74
 anchor_bottom = 0.98
-offset_left = 13.22406
-offset_top = -0.21228027
-offset_right = 13.22403
-offset_bottom = -0.21228027
+offset_left = 14.22406
+offset_top = -19.21228
+offset_right = -10.823883
+offset_bottom = -19.21228
 
 [node name="BossBetArea" type="Control" parent="ContentRoot/TableArea" unique_id=1766051206]
 layout_mode = 1
@@ -312,10 +312,10 @@ anchor_left = 0.36
 anchor_top = 0.7
 anchor_right = 0.64
 anchor_bottom = 0.8
-offset_left = -17.200012
-offset_top = -226.32
-offset_right = -17.200073
-offset_bottom = -226.32
+offset_left = 77.79999
+offset_top = -443.32
+offset_right = 97.20007
+offset_bottom = -457.88
 
 [node name="BetAreaTitle" type="Label" parent="ContentRoot/TableArea/BossBetArea" unique_id=1816537447]
 layout_mode = 1
@@ -325,6 +325,16 @@ anchor_right = 0.75
 anchor_bottom = 0.34
 text = "Boss Bet Area"
 horizontal_alignment = 1
+
+[node name="PeekBossBetButton" type="Button" parent="ContentRoot/TableArea/BossBetArea" unique_id=1274105543]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.76
+anchor_top = 0.02
+anchor_right = 0.98
+anchor_bottom = 0.34
+mouse_filter = 1
+text = "Peek"
 
 [node name="BetRow" type="HBoxContainer" parent="ContentRoot/TableArea/BossBetArea" unique_id=706949253]
 layout_mode = 1
@@ -384,6 +394,24 @@ text = "SPR 3"
 layout_mode = 2
 text = "REP 3"
 
+[node name="PlayerBetArea" type="Control" parent="ContentRoot/TableArea" unique_id=848001901]
+layout_mode = 1
+anchors_preset = 14
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = 653.0
+offset_top = -147.20001
+offset_right = -618.0
+offset_bottom = 0.5999756
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PlayerBetRow" type="HBoxContainer" parent="ContentRoot/TableArea/PlayerBetArea" unique_id=655813204]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
 [node name="PlayerArea" type="Control" parent="ContentRoot/TableArea" unique_id=1955168324]
 layout_mode = 1
 anchor_left = 0.18
@@ -407,6 +435,28 @@ offset_bottom = -8.0
 grow_horizontal = 2
 grow_vertical = 2
 
+[node name="BetPhaseHint" type="Label" parent="ContentRoot/TableArea" unique_id=1838552436]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -215.0
+offset_top = 129.59999
+offset_right = -125.5
+offset_bottom = 161.59999
+grow_horizontal = 2
+
+[node name="BetResultHint" type="Label" parent="ContentRoot/TableArea" unique_id=393910215]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = 156.0
+offset_top = 127.59999
+offset_right = 248.0
+offset_bottom = 160.59999
+grow_horizontal = 2
+
 [node name="OverlayUI" type="Control" parent="ContentRoot" unique_id=621537902]
 layout_mode = 1
 anchor_left = 0.02
@@ -417,3 +467,7 @@ mouse_filter = 2
 
 [node name="ScreenEffects" parent="." unique_id=1090266405 instance=ExtResource("2")]
 layout_mode = 1
+offset_left = 4.0
+offset_top = 18.0
+offset_right = 4.0
+offset_bottom = 18.0
