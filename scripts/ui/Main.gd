@@ -16,6 +16,7 @@ const STARTING_REP := 3
 const MAX_LOG_LINES := 5
 const BET_PHASE_CLOSED := "closed"
 const BET_MODE_DEFAULT_ENABLED := true
+const TURN_RESULT_POPUP_DURATION := 2.2
 
 var _host: Control
 
@@ -61,6 +62,9 @@ var _player_bet_area: Control
 var _player_bet_row: HBoxContainer
 var _bet_phase_hint: Label
 var _bet_result_hint: Label
+var _turn_result_popup: Control
+var _feedback_label: Label
+var _end_turn_button: Button
 
 var _player_hand_view: MvpPlayerHandView
 var _boss_deck_view: MvpBossDeckView
@@ -96,14 +100,17 @@ var boss_bet_peek_cost_enabled: bool = false
 var boss_bet_peek_snapshot_only: bool = true
 
 var _bet_phase: String = BET_PHASE_CLOSED
-var _player_bet = null
-var _player_bet_timing: String = ""
-var _boss_bet = null
-var _boss_bet_timing: String = ""
+var _player_pre_bet = null
+var _player_post_bet = null
+var _boss_post_bet = null
 var _pending_player_slot: int = -1
 var _pending_boss_slot: int = -1
+var _post_bet_window_open: bool = false
+var _post_bet_effects_applied: bool = false
+var _current_round_result: Dictionary = {}
 var _bet_result_text: String = ""
 var _boss_bet_peek_snapshot_text: String = ""
+var _turn_result_popup_version: int = 0
 
 func _init(host: Control) -> void:
 	_host = host
@@ -111,6 +118,7 @@ func _init(host: Control) -> void:
 
 func ready() -> void:
 	_bind_nodes()
+	_hide_turn_result_popup(true)
 	_configure_mouse_filters()
 	_setup_views()
 	_sync_reveal_battle_deck_layout()
@@ -124,6 +132,7 @@ func handle_notification(what: int) -> void:
 		_sync_reveal_battle_deck_layout()
 
 func get_state_snapshot() -> Dictionary:
+	var snapshot_player_bet = _current_snapshot_player_bet()
 	return {
 		"current_set_index": _current_set_index,
 		"current_turn_index": _current_turn_index,
@@ -134,15 +143,35 @@ func get_state_snapshot() -> Dictionary:
 		"challenge_over": _challenge_over,
 		"bet_mode_enabled": bet_mode_enabled,
 		"bet_phase": _bet_phase,
-		"player_bet_id": _player_bet.id if _player_bet != null else "",
-		"player_bet_timing": _player_bet_timing,
-		"boss_bet_id": _boss_bet.id if _boss_bet != null else "",
-		"boss_bet_timing": _boss_bet_timing,
+		"post_bet_window_open": _post_bet_window_open,
+		"post_bet_effects_applied": _post_bet_effects_applied,
+		"current_round_winner": str(_current_round_result.get("winner", "")),
+		"player_pre_bet_id": _player_pre_bet.id if _player_pre_bet != null else "",
+		"player_post_bet_id": _player_post_bet.id if _player_post_bet != null else "",
+		"boss_post_bet_id": _boss_post_bet.id if _boss_post_bet != null else "",
+		"player_bet_id": snapshot_player_bet.id if snapshot_player_bet != null else "",
+		"player_bet_timing": _current_snapshot_player_bet_timing(),
+		"boss_bet_id": _boss_post_bet.id if _boss_post_bet != null else "",
+		"boss_bet_timing": BET_CARD_SCRIPT.TIMING_POST if _boss_post_bet != null else "",
 		"bet_result_text": _bet_result_text,
 		"boss_bet_peek_snapshot_text": _boss_bet_peek_snapshot_text,
 		"player": _player_state.snapshot() if _player_state != null else {},
 		"boss": _boss_state.snapshot() if _boss_state != null else {},
 	}
+
+func _current_snapshot_player_bet():
+	if _player_post_bet != null:
+		return _player_post_bet
+	if _player_pre_bet != null:
+		return _player_pre_bet
+	return null
+
+func _current_snapshot_player_bet_timing() -> String:
+	if _player_post_bet != null:
+		return BET_CARD_SCRIPT.TIMING_POST
+	if _player_pre_bet != null:
+		return BET_CARD_SCRIPT.TIMING_PRE
+	return ""
 
 func set_bet_mode_enabled(enabled: bool, restart: bool = true) -> void:
 	bet_mode_enabled = enabled
@@ -199,6 +228,9 @@ func _bind_nodes() -> void:
 	_player_bet_row = _host.get_node("ContentRoot/TableArea/PlayerBetArea/PlayerBetRow") as HBoxContainer
 	_bet_phase_hint = _host.get_node("ContentRoot/TableArea/BetPhaseHint") as Label
 	_bet_result_hint = _host.get_node("ContentRoot/TableArea/BetResultHint") as Label
+	_turn_result_popup = _host.get_node("ContentRoot/TableArea/TurnResultPopup") as Control
+	_feedback_label = _host.get_node("ContentRoot/TableArea/TurnResultPopup/FeedbackLabel") as Label
+	_end_turn_button = _host.get_node("ContentRoot/TableArea/EndTurn") as Button
 	_screen_effects = _host.get_node_or_null("ScreenEffects") as Control
 
 	assert(_background != null, "Main.tscn is missing Background.")
@@ -235,6 +267,9 @@ func _bind_nodes() -> void:
 	assert(_player_bet_row != null, "Main.tscn is missing PlayerBetArea/PlayerBetRow.")
 	assert(_bet_phase_hint != null, "Main.tscn is missing BetPhaseHint.")
 	assert(_bet_result_hint != null, "Main.tscn is missing BetResultHint.")
+	assert(_turn_result_popup != null, "Main.tscn is missing TurnResultPopup.")
+	assert(_feedback_label != null, "Main.tscn is missing TurnResultPopup/FeedbackLabel.")
+	assert(_end_turn_button != null, "Main.tscn is missing EndTurn.")
 
 func _configure_mouse_filters() -> void:
 	_background.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -252,8 +287,11 @@ func _configure_mouse_filters() -> void:
 	_battle_deck_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_reveal_battle_deck_button.mouse_filter = Control.MOUSE_FILTER_STOP
 	_peek_boss_bet_button.mouse_filter = Control.MOUSE_FILTER_STOP
+	_end_turn_button.mouse_filter = Control.MOUSE_FILTER_STOP
 	_bet_phase_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_bet_result_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_turn_result_popup.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_feedback_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 func _setup_views() -> void:
 	_player_hand_view = MvpPlayerHandView.new(_hand_anchor, CARD_VIEW_SCENE)
@@ -290,6 +328,10 @@ func _setup_views() -> void:
 	_boss_bet_view = BET_ROW_VIEW_SCRIPT.new(_boss_bet_row)
 	if not _peek_boss_bet_button.pressed.is_connected(_on_peek_boss_bet_pressed):
 		_peek_boss_bet_button.pressed.connect(_on_peek_boss_bet_pressed)
+	_end_turn_button.text = "End Turn"
+	_end_turn_button.hide()
+	if not _end_turn_button.pressed.is_connected(_on_end_turn_pressed):
+		_end_turn_button.pressed.connect(_on_end_turn_pressed)
 
 func _ensure_overlay_log() -> void:
 	if _overlay_ui == null:
@@ -319,7 +361,64 @@ func _refresh_overlay_log() -> void:
 		return
 	_overlay_log_label.text = "\n".join(_logs)
 
+func _hide_turn_result_popup(invalidate_pending: bool = false) -> void:
+	if invalidate_pending:
+		_turn_result_popup_version += 1
+	if is_instance_valid(_feedback_label):
+		_feedback_label.text = ""
+	if is_instance_valid(_turn_result_popup):
+		_turn_result_popup.hide()
+
+func show_turn_result_popup(lines: PackedStringArray) -> void:
+	if not is_instance_valid(_turn_result_popup) or not is_instance_valid(_feedback_label):
+		return
+	_turn_result_popup_version += 1
+	var popup_version := _turn_result_popup_version
+	_feedback_label.text = "\n".join(lines)
+	_turn_result_popup.show()
+	var tree := _host.get_tree()
+	if tree == null:
+		return
+	await tree.create_timer(TURN_RESULT_POPUP_DURATION).timeout
+	if popup_version != _turn_result_popup_version:
+		return
+	_hide_turn_result_popup()
+
+func _show_round_feedback(result: Dictionary) -> void:
+	if _boss_state == null:
+		return
+
+	var player_card: Dictionary = result.get("player_card", {})
+	var boss_card: Dictionary = result.get("boss_card", {})
+	var player_type := str(player_card.get("type", ""))
+	var boss_type := str(boss_card.get("type", ""))
+	var player_display_name := str(player_card.get("display_name", MvpBattleCard.display_name_for_type(player_type)))
+	var boss_display_name := str(boss_card.get("display_name", MvpBattleCard.display_name_for_type(boss_type)))
+	var outcome := "ties"
+	match str(result.get("winner", "tie")):
+		"player":
+			outcome = "wins"
+		"boss":
+			outcome = "loses"
+		_:
+			outcome = "ties"
+
+	var remaining_count := 0
+	for slot_index in range(_boss_state.cards.size()):
+		if _boss_state.used_slots.has(slot_index):
+			continue
+		var remaining_card: MvpBattleCard = _boss_state.get_card_at(slot_index)
+		if remaining_card != null and remaining_card.type == boss_type:
+			remaining_count += 1
+
+	show_turn_result_popup(PackedStringArray([
+		"Boss used %s" % boss_display_name,
+		"Your %s %s" % [player_display_name, outcome],
+		"%s remaining: %d" % [boss_display_name, remaining_count],
+	]))
+
 func _start_new_challenge() -> void:
+	_hide_turn_result_popup(true)
 	_logs.clear()
 	_player_set_wins = 0
 	_boss_set_wins = 0
@@ -361,17 +460,21 @@ func _reset_for_current_set() -> void:
 	_clash_area_view.clear_clash()
 
 func _reset_turn_bet_state(clear_result: bool = false) -> void:
-	_player_bet = null
-	_player_bet_timing = ""
-	_boss_bet = null
-	_boss_bet_timing = ""
+	_player_pre_bet = null
+	_player_post_bet = null
+	_boss_post_bet = null
 	_pending_player_slot = -1
 	_pending_boss_slot = -1
+	_post_bet_window_open = false
+	_post_bet_effects_applied = false
+	_current_round_result.clear()
 	_input_locked = false
 	_boss_bet_peek_snapshot_text = ""
 	if clear_result:
 		_bet_result_text = ""
 	_bet_phase = BET_CARD_SCRIPT.TIMING_PRE if bet_mode_enabled and not _challenge_over else BET_PHASE_CLOSED
+	if is_instance_valid(_end_turn_button):
+		_end_turn_button.hide()
 
 func _refresh_ui() -> void:
 	_round_label.text = "Round %d / %d" % [_current_set_index, MAX_SETS]
@@ -389,7 +492,7 @@ func _refresh_ui() -> void:
 	_player_hand_view.set_hand(
 		_player_state.cards,
 		_player_state.used_slots,
-		not _challenge_over and not _input_locked and _pending_player_slot == -1
+		not _challenge_over and not _input_locked and not _post_bet_window_open
 	)
 	_boss_deck_view.set_hand(_boss_state.cards, _boss_state.used_slots)
 	_boss_battle_deck_view.set_deck(_boss_state.cards, _boss_battle_revealed, _boss_state.used_slots)
@@ -403,6 +506,9 @@ func _refresh_bet_ui() -> void:
 	_boss_bet_area.visible = bet_mode_enabled
 	_bet_phase_hint.visible = bet_mode_enabled
 	_peek_boss_bet_button.visible = bet_mode_enabled and boss_bet_peek_enabled
+	var end_turn_visible := bet_mode_enabled and _post_bet_window_open and not _challenge_over
+	_end_turn_button.visible = end_turn_visible
+	_end_turn_button.disabled = not end_turn_visible
 	if not bet_mode_enabled:
 		_bet_phase_hint.text = ""
 		_bet_result_hint.text = ""
@@ -421,9 +527,10 @@ func _refresh_bet_ui() -> void:
 func _build_player_bet_entries() -> Array[Dictionary]:
 	var entries: Array[Dictionary] = []
 	var timing: String = _current_player_bet_timing()
+	var selected_bet = _selected_player_bet_for_timing(timing)
 	for bet_card in _bet_cards:
 		var cost: int = BET_CARD_SCRIPT.cost_for_timing(bet_card, timing)
-		var selected: bool = _player_bet != null and _player_bet.id == bet_card.id
+		var selected: bool = selected_bet != null and selected_bet.id == bet_card.id
 		var label: String = "%s (%d SPR)" % [bet_card.name, cost]
 		if selected:
 			label = "[Selected] %s" % label
@@ -438,13 +545,18 @@ func _build_player_bet_entries() -> Array[Dictionary]:
 	return entries
 
 func _build_boss_bet_entries() -> Array[Dictionary]:
-	if _boss_bet == null:
+	if _boss_post_bet == null or not _post_bet_window_open:
 		return []
 	return [{
-		"id": _boss_bet.id,
+		"id": _boss_post_bet.id,
 		"label": "Boss Bet Locked",
 		"disabled": true,
 	}]
+
+func _selected_player_bet_for_timing(timing: String):
+	if timing == BET_CARD_SCRIPT.TIMING_POST:
+		return _player_post_bet
+	return _player_pre_bet
 
 func _current_player_bet_timing() -> String:
 	if _bet_phase == BET_CARD_SCRIPT.TIMING_POST:
@@ -461,12 +573,12 @@ func _phase_text() -> String:
 			return "Bet Closed"
 
 func _is_player_bet_interactive() -> bool:
-	if not bet_mode_enabled or _challenge_over or _player_bet != null:
+	if not bet_mode_enabled or _challenge_over:
 		return false
 	if _bet_phase == BET_CARD_SCRIPT.TIMING_PRE:
-		return _pending_player_slot == -1 and not _input_locked
+		return not _input_locked and not _post_bet_window_open and _player_pre_bet == null
 	if _bet_phase == BET_CARD_SCRIPT.TIMING_POST:
-		return _pending_player_slot != -1
+		return _post_bet_window_open and not _post_bet_effects_applied and _player_post_bet == null
 	return false
 
 func _can_actor_use_bet(actor_state: MvpCombatActorState, bet_card, timing: String) -> bool:
@@ -495,9 +607,9 @@ func _on_peek_boss_bet_pressed() -> void:
 	_refresh_ui()
 
 func _build_boss_bet_snapshot_text() -> String:
-	if _boss_bet == null:
+	if _boss_post_bet == null:
 		return "Boss: No Bet"
-	return "Boss Bet: %s" % _boss_bet.name
+	return "Boss Bet: %s" % _boss_post_bet.name
 
 func _on_player_bet_selected(bet_id: String) -> void:
 	if not _is_player_bet_interactive():
@@ -507,18 +619,17 @@ func _on_player_bet_selected(bet_id: String) -> void:
 	if not _can_actor_use_bet(_player_state, bet_card, timing):
 		return
 	_consume_bet(_player_state, bet_card, timing, "Player")
-	_player_bet = bet_card
-	_player_bet_timing = timing
-	if _bet_phase == BET_CARD_SCRIPT.TIMING_POST and _pending_player_slot != -1:
+	if timing == BET_CARD_SCRIPT.TIMING_PRE:
+		_player_pre_bet = bet_card
 		_bet_phase = BET_PHASE_CLOSED
-		_select_boss_bet_for_pending_round()
-		_resolve_pending_round()
+		_refresh_ui()
 		return
-	_bet_phase = BET_PHASE_CLOSED
+	_player_post_bet = bet_card
+	_apply_post_bet_effects_if_needed()
 	_refresh_ui()
 
 func _on_card_play_requested(slot_index: int) -> void:
-	if _challenge_over or _player_state.is_slot_used(slot_index) or _pending_player_slot != -1:
+	if _challenge_over or _input_locked or _post_bet_window_open or _player_state.is_slot_used(slot_index):
 		return
 
 	var player_card: MvpBattleCard = _player_state.get_card_at(slot_index)
@@ -531,38 +642,32 @@ func _on_card_play_requested(slot_index: int) -> void:
 		_player_hand_view.set_interactive(false)
 		var no_bet_result: Dictionary = _resolver.resolve_round(_player_state, _boss_state, slot_index, boss_slot)
 		_apply_round_result(no_bet_result)
+		_finalize_current_turn()
 		return
 
-	_pending_player_slot = slot_index
-	_pending_boss_slot = boss_slot
 	_input_locked = true
 	_player_hand_view.set_interactive(false)
-	if _player_bet == null:
-		_select_boss_bet_for_pending_round()
-		_bet_phase = BET_CARD_SCRIPT.TIMING_POST
-		push_log("Post-Bet phase opened.")
-		_refresh_ui()
-		return
-
-	_bet_phase = BET_PHASE_CLOSED
-	_select_boss_bet_for_pending_round()
-	_resolve_pending_round()
-
-func _resolve_pending_round() -> void:
-	if _pending_player_slot == -1 or _pending_boss_slot == -1:
-		return
-	var result: Dictionary = _resolver.resolve_round(_player_state, _boss_state, _pending_player_slot, _pending_boss_slot)
-	if bet_mode_enabled:
-		_apply_bet_modifiers(result)
-	_pending_player_slot = -1
-	_pending_boss_slot = -1
+	var result: Dictionary = _resolver.resolve_round(_player_state, _boss_state, slot_index, boss_slot)
+	_bet_result_text = _apply_bet_modifiers(result, _player_pre_bet, null)
 	_apply_round_result(result)
-
-func _select_boss_bet_for_pending_round() -> void:
-	if not bet_mode_enabled or _boss_bet != null or _pending_player_slot == -1 or _pending_boss_slot == -1:
+	if _is_round_terminal_state():
+		_finalize_current_turn()
 		return
-	var player_card: MvpBattleCard = _player_state.get_card_at(_pending_player_slot)
-	var boss_card: MvpBattleCard = _boss_state.get_card_at(_pending_boss_slot)
+	_open_post_bet_window(result)
+
+func _open_post_bet_window(result: Dictionary) -> void:
+	_post_bet_window_open = true
+	_post_bet_effects_applied = false
+	_bet_phase = BET_CARD_SCRIPT.TIMING_POST
+	_lock_boss_post_bet(result)
+	push_log("Post-Bet phase opened.")
+	_refresh_ui()
+
+func _lock_boss_post_bet(result: Dictionary) -> void:
+	if not bet_mode_enabled or _boss_post_bet != null:
+		return
+	var player_card: MvpBattleCard = MvpBattleCard.from_dict(result.get("player_card", {}))
+	var boss_card: MvpBattleCard = MvpBattleCard.from_dict(result.get("boss_card", {}))
 	var chosen_bet = _choose_boss_bet(player_card, boss_card)
 	if chosen_bet == null:
 		return
@@ -570,8 +675,7 @@ func _select_boss_bet_for_pending_round() -> void:
 	if not _can_actor_use_bet(_boss_state, chosen_bet, timing):
 		return
 	_consume_bet(_boss_state, chosen_bet, timing, "Boss")
-	_boss_bet = chosen_bet
-	_boss_bet_timing = timing
+	_boss_post_bet = chosen_bet
 
 func _choose_boss_bet(player_card: MvpBattleCard, boss_card: MvpBattleCard):
 	if player_card == null or boss_card == null:
@@ -621,23 +725,19 @@ func _consume_bet(actor_state: MvpCombatActorState, bet_card, timing: String, ac
 		actor_state.modify_status("spr", -cost)
 	push_log("%s bet -> %s (%d SPR)." % [actor_label, bet_card.name, cost])
 
-func _apply_bet_modifiers(result: Dictionary) -> void:
+func _apply_bet_modifiers(result: Dictionary, player_bet = null, boss_bet = null) -> String:
 	var log_lines: Array[String] = []
 	for line in result.get("log_lines", []):
 		log_lines.append(str(line))
 
 	var messages: Array[String] = []
 	var winner: String = str(result.get("winner", "tie"))
-	if _player_bet != null:
-		_apply_single_bet_modifier(_player_bet, "player", winner, result, messages, log_lines)
-	if _boss_bet != null:
-		_apply_single_bet_modifier(_boss_bet, "boss", winner, result, messages, log_lines)
-
-	if messages.is_empty():
-		_bet_result_text = "No Bet"
-	else:
-		_bet_result_text = " | ".join(messages)
+	if player_bet != null:
+		_apply_single_bet_modifier(player_bet, "player", winner, result, messages, log_lines)
+	if boss_bet != null:
+		_apply_single_bet_modifier(boss_bet, "boss", winner, result, messages, log_lines)
 	result["log_lines"] = log_lines
+	return " | ".join(messages)
 
 func _apply_single_bet_modifier(bet_card, owner: String, winner: String, result: Dictionary, messages: Array[String], log_lines: Array[String]) -> void:
 	var owner_label: String = "Player" if owner == "player" else "Boss"
@@ -678,6 +778,7 @@ func _apply_single_bet_modifier(bet_card, owner: String, winner: String, result:
 				log_lines.append("%s used Dirty Move and suffered 1 self damage." % owner_label)
 
 func _apply_round_result(result: Dictionary) -> void:
+	_current_round_result = result.duplicate(true)
 	var player_slot: int = int(result.get("player_slot", -1))
 	var boss_slot: int = int(result.get("boss_slot", -1))
 	_player_state.mark_card_used(player_slot)
@@ -696,9 +797,44 @@ func _apply_round_result(result: Dictionary) -> void:
 		result.get("boss_card", {}),
 		str(result.get("summary_text", ""))
 	)
+	_show_round_feedback(result)
+	_refresh_ui()
+
+func _apply_post_bet_effects_if_needed() -> void:
+	if not _post_bet_window_open or _post_bet_effects_applied or _current_round_result.is_empty():
+		return
+
+	var effect_result := {
+		"winner": str(_current_round_result.get("winner", "tie")),
+		"player_damage": 0,
+		"boss_damage": 0,
+		"log_lines": [],
+	}
+	var effect_text := _apply_bet_modifiers(effect_result, _player_post_bet, _boss_post_bet)
+	_post_bet_effects_applied = true
+	if not effect_text.is_empty():
+		_bet_result_text = effect_text
+	elif (_player_post_bet != null or _boss_post_bet != null) and _bet_result_text.is_empty():
+		_bet_result_text = "No Bet"
+
+	_player_state.modify_hp(-int(effect_result.get("player_damage", 0)))
+	_boss_state.modify_hp(-int(effect_result.get("boss_damage", 0)))
+	for line in effect_result.get("log_lines", []):
+		push_log(str(line))
+	_refresh_ui()
+
+func _on_end_turn_pressed() -> void:
+	if not _post_bet_window_open or _challenge_over:
+		return
+	_apply_post_bet_effects_if_needed()
+	_finalize_current_turn()
+
+func _finalize_current_turn() -> void:
+	_post_bet_window_open = false
+	_bet_phase = BET_PHASE_CLOSED
 	push_log("Current HP -> Player %d / Boss %d." % [_player_state.hp, _boss_state.hp])
 	push_log("Current score -> Player %d / Boss %d." % [_player_set_wins, _boss_set_wins])
-	_print_round_debug(result)
+	_print_round_debug(_current_round_result)
 
 	if _player_state.is_collapsed():
 		_finish_challenge("boss", "Player long-term state collapsed.")
@@ -715,6 +851,9 @@ func _apply_round_result(result: Dictionary) -> void:
 	_reset_turn_bet_state(false)
 	push_log("Turn %d begins." % _current_turn_index)
 	_refresh_ui()
+
+func _is_round_terminal_state() -> bool:
+	return _player_state.is_collapsed() or _boss_state.is_collapsed() or _is_set_finished()
 
 func _apply_status_change(change: Dictionary) -> void:
 	var target := str(change.get("target", ""))

@@ -1,5 +1,5 @@
 63f7b34db8d8cdea90c76aacccf841ec
-::res://::1775633684
+::res://::1775701752
 ::res://assets/::1774321535
 ::res://assets/audio/::1774235070
 ::res://assets/audio/ambience/::1774235070
@@ -87,9 +87,9 @@ ResultPopup.gd::GDScript::481434830955513887::1774238949::0::1::::ResultPopup<>C
 ResultPopup.tscn::PackedScene::-1::1774238863::0::1::::<><><>0<>0<><>::res://scenes/battle/ResultPopup.gd
 StatusPanel.gd::GDScript::4274126809106853794::1774340241::0::1::::StatusPanel<>PanelContainer<><>0<>0<><>::
 StatusPanel.tscn::PackedScene::-1::1774340202::0::1::::<><><>0<>0<><>::res://scenes/battle/StatusPanel.gd
-::res://scenes/main/::1775633624
+::res://scenes/main/::1775638395
 Main.gd::GDScript::5782229997966544392::1775190595::0::1::::<>Control<><>0<>0<><>::
-Main.tscn::PackedScene::3408875120664805621::1775633624::0::1::::<><><>0<>0<><>::uid://com7qowr7kh81::::res://scenes/main/Main.gd<>uid://b3mcvllc0heso::::res://scenes/ui/ScreenEffects.tscn<>res://themes/default_theme.tres<>uid://3jv760jkrpcm::::res://assets/battle/background/bg_office_dark.png<>uid://d1ytde133eqh8::::res://assets/battle/boss/team_lead/boss_team_lead_silhouette.png<>uid://du5bbqqm1wqq0::::res://assets/battle/table/table_main.png
+Main.tscn::PackedScene::3408875120664805621::1775638395::0::1::::<><><>0<>0<><>::uid://com7qowr7kh81::::res://scenes/main/Main.gd<>uid://b3mcvllc0heso::::res://scenes/ui/ScreenEffects.tscn<>res://themes/default_theme.tres<>uid://3jv760jkrpcm::::res://assets/battle/background/bg_office_dark.png<>uid://d1ytde133eqh8::::res://assets/battle/boss/team_lead/boss_team_lead_silhouette.png<>uid://du5bbqqm1wqq0::::res://assets/battle/table/table_main.png
 ::res://scenes/shop/::1774246483
 ShopItemView.gd::GDScript::3917685805737287924::1774246483::0::1::::ShopItemView<>Button<><>0<>0<><>::
 ShopItemView.tscn::PackedScene::-1::1774236116::0::1::::<><><>0<>0<><>::res://scenes/shop/ShopItemView.gd

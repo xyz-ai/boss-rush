@@ -304,6 +304,9 @@ func _test_main_mvp(failures: Array[String]) -> void:
 		await _test_main_mvp_layout(size, failures)
 
 	await _test_main_mvp_without_bets(failures)
+	await _test_main_mvp_pre_bet_selection_still_allows_battle_card(failures)
+	await _test_main_mvp_post_bet_end_turn(failures)
+	await _test_main_mvp_post_bet_card_then_end_turn(failures)
 	await _test_main_mvp_with_bets(failures)
 
 func _test_main_mvp_without_bets(failures: Array[String]) -> void:
@@ -363,6 +366,190 @@ func _test_main_mvp_without_bets(failures: Array[String]) -> void:
 	scene.queue_free()
 	await process_frame
 
+func _test_main_mvp_pre_bet_selection_still_allows_battle_card(failures: Array[String]) -> void:
+	DisplayServer.window_set_size(Vector2i(1440, 900))
+	await process_frame
+	await process_frame
+	var scene: Control = load("res://scenes/main/Main.tscn").instantiate()
+	get_root().add_child(scene)
+	await process_frame
+	await process_frame
+
+	var controller = scene.call("get_mvp_controller")
+	_assert(controller != null, "Main scene should expose its MVP controller for Pre-Bet optionality smoke testing.", failures)
+	if controller == null:
+		scene.queue_free()
+		await process_frame
+		return
+
+	var hand_anchor: HBoxContainer = scene.get_node_or_null("ContentRoot/TableArea/PlayerArea/HandAnchor")
+	var player_bet_row: HBoxContainer = scene.get_node_or_null("ContentRoot/TableArea/PlayerBetArea/PlayerBetRow")
+	var turn_label: Label = scene.get_node_or_null("ContentRoot/TableArea/CenterInfo/TurnLabel")
+	var player_slot: Control = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/PlayerCardSlot")
+	var boss_slot: Control = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/BossCardSlot")
+	var clash_result_label: Label = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/ClashResultLabel")
+	var turn_result_popup: Control = scene.get_node_or_null("ContentRoot/TableArea/TurnResultPopup")
+	var end_turn_button: Button = scene.get_node_or_null("ContentRoot/TableArea/EndTurn")
+
+	var snapshot: Dictionary = controller.get_state_snapshot()
+	var player_snapshot: Dictionary = snapshot.get("player", {})
+	var starting_spr := int(player_snapshot.get("spr", 0))
+	var positive_shift_button := player_bet_row.get_node_or_null("BetButton_positive_shift") as Button
+	_assert(positive_shift_button != null, "Pre-Bet row should expose Positive Shift before the player picks a battle card.", failures)
+	if positive_shift_button != null:
+		positive_shift_button.emit_signal("pressed")
+		await process_frame
+		await process_frame
+
+	snapshot = controller.get_state_snapshot()
+	player_snapshot = snapshot.get("player", {})
+	_assert(str(snapshot.get("player_bet_id", "")) == "positive_shift", "Selecting a Pre-Bet card should record that choice before battle card play.", failures)
+	_assert(str(snapshot.get("player_bet_timing", "")) == "pre", "A pre-turn bet selection should stay tagged as a Pre-Bet.", failures)
+	_assert(int(player_snapshot.get("spr", 0)) == starting_spr - 1, "Positive Shift should cost half-price during Pre-Bet.", failures)
+
+	if hand_anchor != null and hand_anchor.get_child_count() > 0:
+		(hand_anchor.get_child(0) as BaseButton).emit_signal("pressed")
+		await process_frame
+		await process_frame
+
+	snapshot = controller.get_state_snapshot()
+	_assert(hand_anchor != null and hand_anchor.get_child_count() == 4, "After selecting a Pre-Bet card, the player should still be able to play a battle card immediately.", failures)
+	_assert(str(snapshot.get("bet_phase", "")) == "post", "After a Pre-Bet-assisted battle card play, the controller should enter Post-Bet.", failures)
+	_assert(bool(snapshot.get("post_bet_window_open", false)), "A resolved main action should still open the Post-Bet window.", failures)
+	_assert(turn_label != null and turn_label.text == "Turn 1 / 5", "A battle card picked after a Pre-Bet card should resolve immediately but stay on the same turn until EndTurn.", failures)
+	_assert(player_slot != null and player_slot.get_child_count() == 1, "The clash area should show the played player card after a Pre-Bet-assisted turn.", failures)
+	_assert(boss_slot != null and boss_slot.get_child_count() == 1, "The clash area should show the boss card after a Pre-Bet-assisted turn.", failures)
+	_assert(clash_result_label != null and not clash_result_label.text.is_empty(), "A turn with a Pre-Bet card should still produce a clash result.", failures)
+	_assert(turn_result_popup != null and turn_result_popup.visible, "The main action popup should appear immediately after a Pre-Bet-assisted battle card play.", failures)
+	_assert(end_turn_button != null and end_turn_button.visible, "EndTurn should appear once the Pre-Bet-assisted main action enters Post-Bet.", failures)
+	_assert(str(snapshot.get("player_pre_bet_id", "")) == "positive_shift", "The chosen Pre-Bet card should stay recorded until the turn is actually ended.", failures)
+
+	scene.queue_free()
+	await process_frame
+
+func _test_main_mvp_post_bet_end_turn(failures: Array[String]) -> void:
+	DisplayServer.window_set_size(Vector2i(1440, 900))
+	await process_frame
+	await process_frame
+	var scene: Control = load("res://scenes/main/Main.tscn").instantiate()
+	get_root().add_child(scene)
+	await process_frame
+	await process_frame
+
+	var controller = scene.call("get_mvp_controller")
+	_assert(controller != null, "Main scene should expose its MVP controller for EndTurn smoke testing.", failures)
+	if controller == null:
+		scene.queue_free()
+		await process_frame
+		return
+
+	var hand_anchor: HBoxContainer = scene.get_node_or_null("ContentRoot/TableArea/PlayerArea/HandAnchor")
+	var turn_label: Label = scene.get_node_or_null("ContentRoot/TableArea/CenterInfo/TurnLabel")
+	var player_slot: Control = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/PlayerCardSlot")
+	var boss_slot: Control = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/BossCardSlot")
+	var turn_result_popup: Control = scene.get_node_or_null("ContentRoot/TableArea/TurnResultPopup")
+	var end_turn_button: Button = scene.get_node_or_null("ContentRoot/TableArea/EndTurn")
+
+	if hand_anchor != null and hand_anchor.get_child_count() > 0:
+		(hand_anchor.get_child(0) as BaseButton).emit_signal("pressed")
+		await process_frame
+		await process_frame
+
+	var snapshot: Dictionary = controller.get_state_snapshot()
+	_assert(str(snapshot.get("bet_phase", "")) == "post", "Clicking a battle card should immediately resolve the main action and enter Post-Bet.", failures)
+	_assert(bool(snapshot.get("post_bet_window_open", false)), "Post-Bet should open immediately after the main action resolves.", failures)
+	_assert(hand_anchor != null and hand_anchor.get_child_count() == 4, "The player hand should shrink immediately after a battle card is committed.", failures)
+	_assert(turn_label != null and turn_label.text == "Turn 1 / 5", "EndTurn should be required to advance beyond the current turn.", failures)
+	_assert(player_slot != null and player_slot.get_child_count() == 1, "The clash area should already show the player's committed card before EndTurn.", failures)
+	_assert(boss_slot != null and boss_slot.get_child_count() == 1, "The clash area should already show the boss card before EndTurn.", failures)
+	_assert(turn_result_popup != null and turn_result_popup.visible, "TurnResultPopup should appear as soon as the main action resolves.", failures)
+	_assert(end_turn_button != null and end_turn_button.visible, "EndTurn should become visible during Post-Bet.", failures)
+
+	if end_turn_button != null:
+		end_turn_button.emit_signal("pressed")
+		await process_frame
+		await process_frame
+
+	snapshot = controller.get_state_snapshot()
+	_assert(str(snapshot.get("bet_phase", "")) == "pre", "Clicking EndTurn should reopen Pre-Bet for the next turn.", failures)
+	_assert(not bool(snapshot.get("post_bet_window_open", true)), "Clicking EndTurn should close the Post-Bet window.", failures)
+	_assert(turn_label != null and turn_label.text == "Turn 2 / 5", "Clicking EndTurn should advance to the next turn.", failures)
+	_assert(end_turn_button != null and not end_turn_button.visible, "EndTurn should hide again after advancing the turn.", failures)
+
+	scene.queue_free()
+	await process_frame
+
+func _test_main_mvp_post_bet_card_then_end_turn(failures: Array[String]) -> void:
+	DisplayServer.window_set_size(Vector2i(1440, 900))
+	await process_frame
+	await process_frame
+	var scene: Control = load("res://scenes/main/Main.tscn").instantiate()
+	get_root().add_child(scene)
+	await process_frame
+	await process_frame
+
+	var controller = scene.call("get_mvp_controller")
+	_assert(controller != null, "Main scene should expose its MVP controller for Post-Bet effect smoke testing.", failures)
+	if controller == null:
+		scene.queue_free()
+		await process_frame
+		return
+
+	var hand_anchor: HBoxContainer = scene.get_node_or_null("ContentRoot/TableArea/PlayerArea/HandAnchor")
+	var player_bet_row: HBoxContainer = scene.get_node_or_null("ContentRoot/TableArea/PlayerBetArea/PlayerBetRow")
+	var turn_label: Label = scene.get_node_or_null("ContentRoot/TableArea/CenterInfo/TurnLabel")
+	var bet_result_hint: Label = scene.get_node_or_null("ContentRoot/TableArea/BetResultHint")
+	var end_turn_button: Button = scene.get_node_or_null("ContentRoot/TableArea/EndTurn")
+
+	if hand_anchor != null and hand_anchor.get_child_count() > 0:
+		(hand_anchor.get_child(0) as BaseButton).emit_signal("pressed")
+		await process_frame
+		await process_frame
+
+	var snapshot: Dictionary = controller.get_state_snapshot()
+	var winner := str(snapshot.get("current_round_winner", ""))
+	var player_before: Dictionary = snapshot.get("player", {})
+	var boss_before: Dictionary = snapshot.get("boss", {})
+	var chosen_post_bet_id := "positive_shift"
+	if winner == "boss":
+		chosen_post_bet_id = "dirty_move"
+
+	var post_bet_button := player_bet_row.get_node_or_null("BetButton_%s" % chosen_post_bet_id) as Button
+	_assert(post_bet_button != null, "The requested Post-Bet button should be available during the Post-Bet window.", failures)
+	if post_bet_button != null:
+		post_bet_button.emit_signal("pressed")
+		await process_frame
+		await process_frame
+
+	snapshot = controller.get_state_snapshot()
+	var player_after_post: Dictionary = snapshot.get("player", {})
+	var boss_after_post: Dictionary = snapshot.get("boss", {})
+	_assert(bool(snapshot.get("post_bet_effects_applied", false)), "Selecting a Post-Bet card should apply Post-Bet effects immediately.", failures)
+	_assert(str(snapshot.get("player_post_bet_id", "")) == chosen_post_bet_id, "The selected Post-Bet card should be recorded separately from Pre-Bet.", failures)
+	_assert(str(snapshot.get("bet_phase", "")) == "post", "Selecting a Post-Bet card should not close the Post-Bet window by itself.", failures)
+	_assert(turn_label != null and turn_label.text == "Turn 1 / 5", "Selecting a Post-Bet card should not advance the turn before EndTurn.", failures)
+	_assert(end_turn_button != null and end_turn_button.visible, "EndTurn should remain visible after a Post-Bet card is used.", failures)
+	_assert(int(player_after_post.get("spr", 0)) == int(player_before.get("spr", 0)) - 2, "A non-free Post-Bet card should use full cost immediately.", failures)
+	if winner == "player":
+		_assert(int(boss_after_post.get("hp", 0)) < int(boss_before.get("hp", 0)), "A winning Positive Shift Post-Bet should immediately reduce boss HP further.", failures)
+	elif winner == "boss":
+		_assert(int(player_after_post.get("hp", 0)) < int(player_before.get("hp", 0)), "A losing Dirty Move Post-Bet should immediately backfire on the player.", failures)
+	if bet_result_hint != null and not str(bet_result_hint.text).is_empty():
+		_assert(_is_valid_bet_result_text(str(bet_result_hint.text)), "Post-Bet effect text should stay in the expected compact format.", failures)
+
+	if end_turn_button != null:
+		end_turn_button.emit_signal("pressed")
+		await process_frame
+		await process_frame
+
+	snapshot = controller.get_state_snapshot()
+	_assert(str(snapshot.get("bet_phase", "")) == "pre", "After a Post-Bet card is applied, EndTurn should still be the action that advances the turn.", failures)
+	_assert(turn_label != null and turn_label.text == "Turn 2 / 5", "EndTurn should advance the turn after Post-Bet effects have already been applied.", failures)
+	_assert(end_turn_button != null and not end_turn_button.visible, "EndTurn should hide once the next turn begins.", failures)
+
+	scene.queue_free()
+	await process_frame
+
 func _test_main_mvp_with_bets(failures: Array[String]) -> void:
 	DisplayServer.window_set_size(Vector2i(1440, 900))
 	await process_frame
@@ -395,6 +582,8 @@ func _test_main_mvp_with_bets(failures: Array[String]) -> void:
 	var bet_phase_hint: Label = scene.get_node_or_null("ContentRoot/TableArea/BetPhaseHint")
 	var bet_result_hint: Label = scene.get_node_or_null("ContentRoot/TableArea/BetResultHint")
 	var peek_boss_bet_button: Button = scene.get_node_or_null("ContentRoot/TableArea/BossBetArea/PeekBossBetButton")
+	var turn_result_popup: Control = scene.get_node_or_null("ContentRoot/TableArea/TurnResultPopup")
+	var end_turn_button: Button = scene.get_node_or_null("ContentRoot/TableArea/EndTurn")
 
 	_assert(round_label != null and round_label.text == "Round 1 / 3", "Main MVP should start at Round 1 / 3.", failures)
 	_assert(turn_label != null and turn_label.text == "Turn 1 / 5", "Main MVP should start at Turn 1 / 5.", failures)
@@ -467,10 +656,13 @@ func _test_main_mvp_with_bets(failures: Array[String]) -> void:
 
 	snapshot = controller.get_state_snapshot()
 	_assert(str(snapshot.get("bet_phase", "")) == "post", "Playing a card without a pre-bet should open Post-Bet.", failures)
-	_assert(turn_label != null and turn_label.text == "Turn 1 / 5", "Turn should not advance until Post-Bet is resolved.", failures)
-	_assert(hand_anchor != null and hand_anchor.get_child_count() == 5, "The hand should stay visible until the pending Post-Bet resolves.", failures)
-	_assert(player_slot != null and player_slot.get_child_count() == 0, "Clash area should stay empty until Post-Bet resolves.", failures)
-	_assert(boss_slot != null and boss_slot.get_child_count() == 0, "Boss clash slot should stay empty until Post-Bet resolves.", failures)
+	_assert(bool(snapshot.get("post_bet_window_open", false)), "The main action should immediately resolve into an open Post-Bet window.", failures)
+	_assert(turn_label != null and turn_label.text == "Turn 1 / 5", "Turn should not advance until EndTurn resolves the Post-Bet window.", failures)
+	_assert(hand_anchor != null and hand_anchor.get_child_count() == 4, "The hand should shrink immediately after the battle card is committed.", failures)
+	_assert(player_slot != null and player_slot.get_child_count() == 1, "Clash area should show the player's card immediately after the main action resolves.", failures)
+	_assert(boss_slot != null and boss_slot.get_child_count() == 1, "Boss clash slot should show the boss card immediately after the main action resolves.", failures)
+	_assert(turn_result_popup != null and turn_result_popup.visible, "TurnResultPopup should appear immediately after the main action resolves.", failures)
+	_assert(end_turn_button != null and end_turn_button.visible, "EndTurn should appear during the Post-Bet window.", failures)
 	_assert(bet_result_hint != null and bet_result_hint.text == "Boss: No Bet", "Peek snapshot should not auto-update when boss bet state changes; it should stay as the last snapshot.", failures)
 
 	if peek_boss_bet_button != null:
@@ -496,25 +688,38 @@ func _test_main_mvp_with_bets(failures: Array[String]) -> void:
 			"Dirty Move (2 SPR)",
 		], "Post-Bet labels should show full-cost pricing.", failures)
 		var hold_button := player_bet_row.get_node_or_null("BetButton_hold_steady") as Button
-		_assert(hold_button != null, "Player bet row should include Hold Steady as an explicit pass option.", failures)
+		_assert(hold_button != null, "Player bet row should still include Hold Steady as a normal Post-Bet card.", failures)
 		if hold_button != null:
 			hold_button.emit_signal("pressed")
 			await process_frame
 			await process_frame
 
 	snapshot = controller.get_state_snapshot()
-	_assert(str(snapshot.get("bet_phase", "")) == "pre", "After a resolved turn, bet phase should reset to Pre-Bet for the next turn.", failures)
-	_assert(hand_anchor != null and hand_anchor.get_child_count() == 4, "Resolving the post-bet turn should remove one visible player card.", failures)
-	_assert(turn_label != null and turn_label.text == "Turn 2 / 5", "Resolving the post-bet turn should advance to Turn 2 / 5.", failures)
-	_assert(player_slot != null and player_slot.get_child_count() == 1, "Clash area should show the player's current card after Post-Bet resolution.", failures)
-	_assert(boss_slot != null and boss_slot.get_child_count() == 1, "Clash area should show the boss's current card after Post-Bet resolution.", failures)
+	_assert(bool(snapshot.get("post_bet_effects_applied", false)), "Selecting a Post-Bet card should immediately apply the Post-Bet effects.", failures)
+	_assert(str(snapshot.get("player_post_bet_id", "")) == "hold_steady", "Hold Steady should be tracked as a normal Post-Bet card selection.", failures)
+	_assert(str(snapshot.get("bet_phase", "")) == "post", "Hold Steady should no longer end the turn by itself.", failures)
+	_assert(turn_label != null and turn_label.text == "Turn 1 / 5", "Hold Steady should no longer advance the turn by itself.", failures)
+	_assert(end_turn_button != null and end_turn_button.visible, "EndTurn should remain visible after Hold Steady because Hold Steady is not the turn-end control.", failures)
+
+	if end_turn_button != null:
+		end_turn_button.emit_signal("pressed")
+		await process_frame
+		await process_frame
+
+	snapshot = controller.get_state_snapshot()
+	_assert(str(snapshot.get("bet_phase", "")) == "pre", "After EndTurn, bet phase should reset to Pre-Bet for the next turn.", failures)
+	_assert(hand_anchor != null and hand_anchor.get_child_count() == 4, "Ending the turn after Post-Bet should keep the already-consumed battle card removed.", failures)
+	_assert(turn_label != null and turn_label.text == "Turn 2 / 5", "EndTurn should advance the turn once Post-Bet is done.", failures)
+	_assert(player_slot != null and player_slot.get_child_count() == 1, "Clash area should still show the latest resolved player card after EndTurn.", failures)
+	_assert(boss_slot != null and boss_slot.get_child_count() == 1, "Clash area should still show the latest resolved boss card after EndTurn.", failures)
 	_assert(clash_result_label != null and not clash_result_label.text.is_empty(), "Clash result label should show a round summary.", failures)
 	_assert(boss_hand_row != null and boss_hand_row.get_child_count() == 4, "Boss hand view should shrink to 4 remaining cards after one play.", failures)
 	_assert(boss_hand_count_label != null and boss_hand_count_label.text == "Boss Hand x4", "Boss hand count should update after one play.", failures)
 	_assert(battle_deck_row != null and battle_deck_row.get_child_count() == 5, "Boss battle deck should keep 5 visible slots after use.", failures)
+	_assert(end_turn_button != null and not end_turn_button.visible, "EndTurn should hide again once the next turn begins.", failures)
 	_assert(
 		bet_result_hint != null and _is_valid_bet_result_text(str(bet_result_hint.text)),
-		"BetResultHint should report a compact turn bet result after resolution.",
+		"BetResultHint should report a compact turn bet result after Hold Steady no longer ends the turn.",
 		failures
 	)
 
