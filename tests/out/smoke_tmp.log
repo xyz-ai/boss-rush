@@ -1,0 +1,106 @@
+Godot Engine v4.6.1.stable.official.14d19694e - https://godotengine.org
+
+ERROR: Failed to read the root certificate store.
+   at: get_system_ca_certificates (platform/windows/os_windows.cpp:2570)
+[MainMVP] Challenge started. First to 2 set wins takes the match.
+[MainMVP] Set 1 begins.
+[MainMVP] Turn 1 begins.
+[Battle] Player -> G-Steady
+[Battle] Boss   -> 截止追逼
+[Battle] HP     -> Player 4 / Boss 6
+[Battle] Set/Turn -> 1 / 1
+[Battle] Set finished=false Challenge finished=false
+[Battle] Score -> 0:0
+[MainMVP] Challenge started. First to 2 set wins takes the match.
+[MainMVP] Set 1 begins.
+[MainMVP] Turn 1 begins.
+[MainMVP] Boss battle deck revealed for the current set.
+[MainMVP] Challenge started. First to 2 set wins takes the match.
+[MainMVP] Set 1 begins.
+[MainMVP] Turn 1 begins.
+[MainMVP] Boss battle deck revealed for the current set.
+[MainMVP] Challenge started. First to 2 set wins takes the match.
+[MainMVP] Set 1 begins.
+[MainMVP] Turn 1 begins.
+[MainMVP] Boss battle deck revealed for the current set.
+[MainMVP] Challenge started. First to 2 set wins takes the match.
+[MainMVP] Set 1 begins.
+[MainMVP] Turn 1 begins.
+[MainMVP] Challenge started. First to 2 set wins takes the match.
+[MainMVP] Set 1 begins.
+[MainMVP] Turn 1 begins.
+[MainMVP] Player played Aggression.
+[MainMVP] Boss played Defense.
+[MainMVP] Effective power -> Player 0 / Boss 2.
+[MainMVP] Player REP -1.
+[MainMVP] Current HP -> Player 4 / Boss 6.
+[MainMVP] Current score -> Player 0 / Boss 0.
+[Battle] Player played -> Aggression
+[Battle] Boss played   -> Defense
+[Battle] HP            -> Player 4 / Boss 6
+[Battle] Round/Turn    -> 1 / 1
+[MainMVP] Turn 2 begins.
+[MainMVP] Challenge started. First to 2 set wins takes the match.
+[MainMVP] Set 1 begins.
+[MainMVP] Turn 1 begins.
+[MainMVP] Player bet -> Positive Shift (1 SPR).
+[MainMVP] Player played Aggression.
+[MainMVP] Boss played Defense.
+[MainMVP] Effective power -> Player 0 / Boss 2.
+[MainMVP] Player REP -1.
+[MainMVP] Post-Bet phase opened.
+[MainMVP] Challenge started. First to 2 set wins takes the match.
+[MainMVP] Set 1 begins.
+[MainMVP] Turn 1 begins.
+[MainMVP] Player played Aggression.
+[MainMVP] Boss played Defense.
+[MainMVP] Effective power -> Player 0 / Boss 2.
+[MainMVP] Player REP -1.
+[MainMVP] Boss bet -> Positive Shift (2 SPR).
+[MainMVP] Post-Bet phase opened.
+[MainMVP] Boss used Positive Shift for +1 damage.
+[MainMVP] Current HP -> Player 3 / Boss 6.
+[MainMVP] Current score -> Player 0 / Boss 0.
+[Battle] Player played -> Aggression
+[Battle] Boss played   -> Defense
+[Battle] HP            -> Player 3 / Boss 6
+[Battle] Round/Turn    -> 1 / 1
+[MainMVP] Turn 2 begins.
+[MainMVP] Challenge started. First to 2 set wins takes the match.
+[MainMVP] Set 1 begins.
+[MainMVP] Turn 1 begins.
+[MainMVP] Player played Aggression.
+[MainMVP] Boss played Aggression.
+[MainMVP] Effective power -> Player 1 / Boss 1.
+[MainMVP] The clash is tied, so no HP or status changes are applied.
+[MainMVP] Post-Bet phase opened.
+[MainMVP] Player bet -> Positive Shift (2 SPR).
+[MainMVP] Current HP -> Player 6 / Boss 6.
+[MainMVP] Current score -> Player 0 / Boss 0.
+[Battle] Player played -> Aggression
+[Battle] Boss played   -> Aggression
+[Battle] HP            -> Player 6 / Boss 6
+[Battle] Round/Turn    -> 1 / 1
+[MainMVP] Turn 2 begins.
+[MainMVP] Challenge started. First to 2 set wins takes the match.
+[MainMVP] Set 1 begins.
+[MainMVP] Turn 1 begins.
+[MainMVP] Boss battle deck revealed for the current set.
+[MainMVP] Player played Aggression.
+[MainMVP] Boss played Defense.
+[MainMVP] Effective power -> Player 0 / Boss 2.
+[MainMVP] Player REP -1.
+[MainMVP] Boss bet -> Dirty Move (2 SPR).
+[MainMVP] Post-Bet phase opened.
+[MainMVP] Player bet -> Hold Steady (0 SPR).
+[MainMVP] Boss used Dirty Move for +2 damage.
+[MainMVP] Current HP -> Player 2 / Boss 6.
+[MainMVP] Current score -> Player 0 / Boss 0.
+[Battle] Player played -> Aggression
+[Battle] Boss played   -> Defense
+[Battle] HP            -> Player 2 / Boss 6
+[Battle] Round/Turn    -> 1 / 1
+[MainMVP] Turn 2 begins.
+SMOKE OK
+WARNING: ObjectDB instances leaked at exit (run with --verbose for details).
+   at: cleanup (core/object/object.cpp:2641)
