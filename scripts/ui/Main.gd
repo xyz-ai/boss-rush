@@ -17,6 +17,8 @@ const MAX_LOG_LINES := 5
 const BET_PHASE_CLOSED := "closed"
 const BET_MODE_DEFAULT_ENABLED := true
 const TURN_RESULT_POPUP_DURATION := 2.2
+const VIEW_MODE_BATTLE := "battle"
+const VIEW_MODE_BET := "bet"
 
 var _host: Control
 
@@ -35,14 +37,27 @@ var _overlay_ui: Control
 var _overlay_log_label: RichTextLabel
 
 var _hand_anchor: HBoxContainer
+var _player_battle_panel: Control
+var _player_mode_bar: HBoxContainer
+var _player_battle_tab_button: Button
+var _player_bet_tab_button: Button
+var _player_mode_title_label: Label
+var _player_card_viewport: Control
+var _player_optional_summary_button: Button
 var _boss_deck_root: Control
 var _boss_hand_count_label: Label
 var _boss_hand_animation_anchor: Control
 var _deck_row: HBoxContainer
 var _boss_battle_deck_root: Control
+var _boss_battle_panel: Control
+var _boss_card_viewport: Control
 var _battle_deck_title: Label
 var _reveal_battle_deck_button: Button
 var _battle_deck_row: HBoxContainer
+var _boss_mode_bar: HBoxContainer
+var _boss_bet_tab_button: Button
+var _boss_reveal_status_label: Label
+var _boss_summary_toggle_button: Button
 var _clash_root: Control
 var _player_card_slot: Control
 var _boss_card_slot: Control
@@ -111,6 +126,8 @@ var _current_round_result: Dictionary = {}
 var _bet_result_text: String = ""
 var _boss_bet_peek_snapshot_text: String = ""
 var _turn_result_popup_version: int = 0
+var _player_view_mode: String = VIEW_MODE_BATTLE
+var _boss_view_mode: String = VIEW_MODE_BATTLE
 
 func _init(host: Control) -> void:
 	_host = host
@@ -188,122 +205,251 @@ func push_log(message: String) -> void:
 	print("[MainMVP] %s" % message)
 	_refresh_overlay_log()
 
+func _find_node(paths: Array[String]) -> Node:
+	for path in paths:
+		var node := _host.get_node_or_null(path)
+		if node != null:
+			return node
+	return null
+
+func _find_control(paths: Array[String]) -> Control:
+	return _find_node(paths) as Control
+
+func _find_label(paths: Array[String]) -> Label:
+	return _find_node(paths) as Label
+
+func _find_button(paths: Array[String]) -> Button:
+	return _find_node(paths) as Button
+
+func _find_row(paths: Array[String]) -> HBoxContainer:
+	return _find_node(paths) as HBoxContainer
+
+func _assert_required(node: Node, message: String) -> void:
+	assert(node != null, message)
+
 func _bind_nodes() -> void:
-	_background = _host.get_node("Background") as TextureRect
-	_content_root = _host.get_node("ContentRoot") as Control
-	_boss_area = _host.get_node("ContentRoot/BossArea") as Control
-	_boss_portrait = _host.get_node("ContentRoot/BossArea/BossPortrait") as TextureRect
-	_table_area = _host.get_node("ContentRoot/TableArea") as Control
-	_table_board = _host.get_node("ContentRoot/TableArea/TableBoard") as TextureRect
-	_center_info = _host.get_node("ContentRoot/TableArea/CenterInfo") as Control
-	_round_label = _host.get_node("ContentRoot/TableArea/CenterInfo/RoundLabel") as Label
-	_turn_label = _host.get_node("ContentRoot/TableArea/CenterInfo/TurnLabel") as Label
-	_player_hp_label = _host.get_node("ContentRoot/TableArea/PlayerHP") as Label
-	_boss_hp_label = _host.get_node("ContentRoot/TableArea/BossHP") as Label
-	_overlay_ui = _host.get_node("ContentRoot/OverlayUI") as Control
-	_hand_anchor = _host.get_node("ContentRoot/TableArea/PlayerArea/HandAnchor") as HBoxContainer
-	_boss_deck_root = _host.get_node("ContentRoot/TableArea/BossDeckView") as Control
-	_boss_hand_count_label = _host.get_node("ContentRoot/TableArea/BossDeckView/BossHandCountLabel") as Label
-	_boss_hand_animation_anchor = _host.get_node("ContentRoot/TableArea/BossDeckView/BossHandAnimationAnchor") as Control
-	_deck_row = _host.get_node("ContentRoot/TableArea/BossDeckView/DeckRow") as HBoxContainer
-	_boss_battle_deck_root = _host.get_node("ContentRoot/TableArea/BossBattleDeckView") as Control
-	_battle_deck_title = _host.get_node("ContentRoot/TableArea/BossBattleDeckView/BattleDeckTitle") as Label
-	_reveal_battle_deck_button = _host.get_node("ContentRoot/TableArea/BossBattleDeckView/RevealBattleDeckButton") as Button
-	_battle_deck_row = _host.get_node("ContentRoot/TableArea/BossBattleDeckView/BattleDeckRow") as HBoxContainer
-	_clash_root = _host.get_node("ContentRoot/TableArea/ClashArea") as Control
-	_player_card_slot = _host.get_node("ContentRoot/TableArea/ClashArea/PlayerCardSlot") as Control
-	_boss_card_slot = _host.get_node("ContentRoot/TableArea/ClashArea/BossCardSlot") as Control
-	_clash_result_label = _host.get_node("ContentRoot/TableArea/ClashArea/ClashResultLabel") as Label
-	_player_area = _host.get_node("ContentRoot/TableArea/PlayerArea") as Control
-	_player_bod_label = _host.get_node("ContentRoot/TableArea/PlayerStatusPanel/MarginContainer/VBoxContainer/PlayerBOD") as Label
-	_player_spr_label = _host.get_node("ContentRoot/TableArea/PlayerStatusPanel/MarginContainer/VBoxContainer/PlayerSPR") as Label
-	_player_rep_label = _host.get_node("ContentRoot/TableArea/PlayerStatusPanel/MarginContainer/VBoxContainer/PlayerREP") as Label
-	_boss_bod_label = _host.get_node("ContentRoot/TableArea/BossStatusPanel/MarginContainer/VBoxContainer/BossBOD") as Label
-	_boss_spr_label = _host.get_node("ContentRoot/TableArea/BossStatusPanel/MarginContainer/VBoxContainer/BossSPR") as Label
-	_boss_rep_label = _host.get_node("ContentRoot/TableArea/BossStatusPanel/MarginContainer/VBoxContainer/BossREP") as Label
-	_boss_bet_area = _host.get_node("ContentRoot/TableArea/BossBetArea") as Control
-	_boss_bet_row = _host.get_node("ContentRoot/TableArea/BossBetArea/BetRow") as HBoxContainer
-	_peek_boss_bet_button = _host.get_node("ContentRoot/TableArea/BossBetArea/PeekBossBetButton") as Button
-	_player_bet_area = _host.get_node("ContentRoot/TableArea/PlayerBetArea") as Control
-	_player_bet_row = _host.get_node("ContentRoot/TableArea/PlayerBetArea/PlayerBetRow") as HBoxContainer
-	_bet_phase_hint = _host.get_node("ContentRoot/TableArea/BetPhaseHint") as Label
-	_bet_result_hint = _host.get_node("ContentRoot/TableArea/BetResultHint") as Label
-	_turn_result_popup = _host.get_node("ContentRoot/TableArea/TurnResultPopup") as Control
-	_feedback_label = _host.get_node("ContentRoot/TableArea/TurnResultPopup/FeedbackLabel") as Label
-	_end_turn_button = _host.get_node("ContentRoot/TableArea/EndTurn") as Button
+	_background = _find_control(["Background"]) as TextureRect
+	_content_root = _find_control(["ContentRoot"])
+	_table_area = _find_control(["ContentRoot/TableArea"])
+	_boss_area = _find_control([
+		"ContentRoot/TableArea/BossArea",
+		"ContentRoot/BossArea",
+	])
+	_boss_portrait = _find_control([
+		"ContentRoot/TableArea/BossArea/BossPortrait",
+		"ContentRoot/BossArea/BossPortrait",
+	]) as TextureRect
+	_table_board = _find_control(["ContentRoot/TableArea/TableBoard"]) as TextureRect
+	_center_info = _find_control(["ContentRoot/TableArea/CenterInfo"])
+	_round_label = _find_label(["ContentRoot/TableArea/CenterInfo/RoundLabel"])
+	_turn_label = _find_label(["ContentRoot/TableArea/CenterInfo/TurnLabel"])
+	_player_hp_label = _find_label(["ContentRoot/TableArea/PlayerHP"])
+	_boss_hp_label = _find_label(["ContentRoot/TableArea/BossHP"])
+	_overlay_ui = _find_control(["ContentRoot/OverlayUI"])
+
+	_player_area = _find_control(["ContentRoot/TableArea/PlayerArea"])
+	_player_mode_bar = _find_row(["ContentRoot/TableArea/PlayerArea/ModeBar"])
+	_player_battle_tab_button = _find_button(["ContentRoot/TableArea/PlayerArea/ModeBar/BattleTabButton"])
+	_player_bet_tab_button = _find_button(["ContentRoot/TableArea/PlayerArea/ModeBar/BetTabButton"])
+	_player_mode_title_label = _find_label(["ContentRoot/TableArea/PlayerArea/ModeTitleLabel"])
+	_player_card_viewport = _find_control(["ContentRoot/TableArea/PlayerArea/CardViewport"])
+	_player_battle_panel = _find_control([
+		"ContentRoot/TableArea/PlayerArea/CardViewport/BattleHandPanel",
+		"ContentRoot/TableArea/PlayerArea/HandAnchor",
+	])
+	_hand_anchor = _find_row([
+		"ContentRoot/TableArea/PlayerArea/CardViewport/BattleHandPanel/BattleCardRow",
+		"ContentRoot/TableArea/PlayerArea/HandAnchor",
+	])
+	_player_bet_area = _find_control([
+		"ContentRoot/TableArea/PlayerArea/CardViewport/BetHandPanel",
+		"ContentRoot/TableArea/PlayerBetArea",
+	])
+	_player_bet_row = _find_row([
+		"ContentRoot/TableArea/PlayerArea/CardViewport/BetHandPanel/BetCardRow",
+		"ContentRoot/TableArea/PlayerBetArea/PlayerBetRow",
+	])
+	_player_optional_summary_button = _find_button([
+		"ContentRoot/TableArea/PlayerArea/OptionalSummaryButton",
+		"ContentRoot/TableArea/PlayerArea/OptionalSummary",
+	])
+
+	_boss_card_viewport = _find_control(["ContentRoot/TableArea/BossArea/BossCardViewport"])
+	_boss_battle_panel = _find_control([
+		"ContentRoot/TableArea/BossArea/BossCardViewport/BossBattleDeckPanel",
+		"ContentRoot/TableArea/BossBattleDeckView",
+	])
+	_boss_battle_deck_root = _boss_battle_panel
+	_battle_deck_title = _find_label([
+		"ContentRoot/TableArea/BossArea/BossModeTitleLabel",
+		"ContentRoot/TableArea/BossBattleDeckView/BattleDeckTitle",
+	])
+	_reveal_battle_deck_button = _find_button([
+		"ContentRoot/TableArea/BossArea/BossModeBar/BossBattleTabButton",
+		"ContentRoot/TableArea/BossBattleDeckView/RevealBattleDeckButton",
+	])
+	_battle_deck_row = _find_row([
+		"ContentRoot/TableArea/BossArea/BossCardViewport/BossBattleDeckPanel/BossBattleCardRow",
+		"ContentRoot/TableArea/BossBattleDeckView/BattleDeckRow",
+	])
+	_boss_bet_area = _find_control([
+		"ContentRoot/TableArea/BossArea/BossCardViewport/BossBetDeckPanel",
+		"ContentRoot/TableArea/BossBetArea",
+	])
+	_boss_bet_row = _find_row([
+		"ContentRoot/TableArea/BossArea/BossCardViewport/BossBetDeckPanel/BossBetCard",
+		"ContentRoot/TableArea/BossBetArea/BetRow",
+	])
+	_peek_boss_bet_button = _find_button([
+		"ContentRoot/TableArea/BossArea/BossModeBar/BossBetTabButton",
+		"ContentRoot/TableArea/BossBetArea/PeekBossBetButton",
+	])
+	_boss_mode_bar = _find_row(["ContentRoot/TableArea/BossArea/BossModeBar"])
+	_boss_bet_tab_button = _peek_boss_bet_button
+	_boss_reveal_status_label = _find_label(["ContentRoot/TableArea/BossArea/BossModeBar/RevealStatusLabel"])
+	_boss_summary_toggle_button = _find_button([
+		"ContentRoot/TableArea/BossArea/BossSummaryToggleButton",
+		"ContentRoot/TableArea/BossArea/BossSummaryToggle",
+	])
+
+	_boss_deck_root = _find_control(["ContentRoot/TableArea/BossDeckView"])
+	_boss_hand_count_label = _find_label(["ContentRoot/TableArea/BossDeckView/BossHandCountLabel"])
+	_boss_hand_animation_anchor = _find_control(["ContentRoot/TableArea/BossDeckView/BossHandAnimationAnchor"])
+	_deck_row = _find_row(["ContentRoot/TableArea/BossDeckView/DeckRow"])
+
+	_clash_root = _find_control(["ContentRoot/TableArea/ClashArea"])
+	_player_card_slot = _find_control(["ContentRoot/TableArea/ClashArea/PlayerCardSlot"])
+	_boss_card_slot = _find_control(["ContentRoot/TableArea/ClashArea/BossCardSlot"])
+	_clash_result_label = _find_label(["ContentRoot/TableArea/ClashArea/ClashResultLabel"])
+	_player_bod_label = _find_label(["ContentRoot/TableArea/PlayerStatusPanel/MarginContainer/VBoxContainer/PlayerBOD"])
+	_player_spr_label = _find_label(["ContentRoot/TableArea/PlayerStatusPanel/MarginContainer/VBoxContainer/PlayerSPR"])
+	_player_rep_label = _find_label(["ContentRoot/TableArea/PlayerStatusPanel/MarginContainer/VBoxContainer/PlayerREP"])
+	_boss_bod_label = _find_label(["ContentRoot/TableArea/BossStatusPanel/MarginContainer/VBoxContainer/BossBOD"])
+	_boss_spr_label = _find_label(["ContentRoot/TableArea/BossStatusPanel/MarginContainer/VBoxContainer/BossSPR"])
+	_boss_rep_label = _find_label(["ContentRoot/TableArea/BossStatusPanel/MarginContainer/VBoxContainer/BossREP"])
+	_bet_phase_hint = _find_label(["ContentRoot/TableArea/BetPhaseHint"])
+	_bet_result_hint = _find_label(["ContentRoot/TableArea/BetResultHint"])
+	_turn_result_popup = _find_control(["ContentRoot/TableArea/TurnResultPopup"])
+	_feedback_label = _find_label(["ContentRoot/TableArea/TurnResultPopup/FeedbackLabel"])
+	_end_turn_button = _find_button(["ContentRoot/TableArea/EndTurn"])
 	_screen_effects = _host.get_node_or_null("ScreenEffects") as Control
 
-	assert(_background != null, "Main.tscn is missing Background.")
-	assert(_content_root != null, "Main.tscn is missing ContentRoot.")
-	assert(_boss_area != null, "Main.tscn is missing BossArea.")
-	assert(_boss_portrait != null, "Main.tscn is missing BossPortrait.")
-	assert(_table_area != null, "Main.tscn is missing TableArea.")
-	assert(_table_board != null, "Main.tscn is missing TableBoard.")
-	assert(_center_info != null, "Main.tscn is missing CenterInfo.")
-	assert(_round_label != null, "Main.tscn is missing RoundLabel.")
-	assert(_turn_label != null, "Main.tscn is missing TurnLabel.")
-	assert(_player_hp_label != null, "Main.tscn is missing PlayerHP.")
-	assert(_boss_hp_label != null, "Main.tscn is missing BossHP.")
-	assert(_hand_anchor != null, "Main.tscn is missing HandAnchor.")
-	assert(_boss_deck_root != null, "Main.tscn is missing BossDeckView.")
-	assert(_boss_hand_count_label != null, "Main.tscn is missing BossHandCountLabel.")
-	assert(_boss_hand_animation_anchor != null, "Main.tscn is missing BossHandAnimationAnchor.")
-	assert(_deck_row != null, "Main.tscn is missing DeckRow.")
-	assert(_boss_battle_deck_root != null, "Main.tscn is missing BossBattleDeckView.")
-	assert(_battle_deck_title != null, "Main.tscn is missing BattleDeckTitle.")
-	assert(_reveal_battle_deck_button != null, "Main.tscn is missing RevealBattleDeckButton.")
-	assert(_battle_deck_row != null, "Main.tscn is missing BattleDeckRow.")
-	assert(_clash_root != null, "Main.tscn is missing ClashArea.")
-	assert(_player_card_slot != null, "Main.tscn is missing PlayerCardSlot.")
-	assert(_boss_card_slot != null, "Main.tscn is missing BossCardSlot.")
-	assert(_clash_result_label != null, "Main.tscn is missing ClashResultLabel.")
-	assert(_player_area != null, "Main.tscn is missing PlayerArea.")
+	_assert_required(_background, "Main.tscn is missing Background.")
+	_assert_required(_content_root, "Main.tscn is missing ContentRoot.")
+	_assert_required(_table_area, "Main.tscn is missing TableArea.")
+	_assert_required(_boss_area, "Main.tscn is missing BossArea.")
+	_assert_required(_boss_portrait, "Main.tscn is missing BossPortrait.")
+	_assert_required(_table_board, "Main.tscn is missing TableBoard.")
+	_assert_required(_center_info, "Main.tscn is missing CenterInfo.")
+	_assert_required(_round_label, "Main.tscn is missing RoundLabel.")
+	_assert_required(_turn_label, "Main.tscn is missing TurnLabel.")
+	_assert_required(_player_hp_label, "Main.tscn is missing PlayerHP.")
+	_assert_required(_boss_hp_label, "Main.tscn is missing BossHP.")
+	_assert_required(_player_area, "Main.tscn is missing PlayerArea.")
+	_assert_required(_hand_anchor, "Main.tscn is missing a player battle card row.")
+	_assert_required(_player_bet_area, "Main.tscn is missing a player bet panel.")
+	_assert_required(_player_bet_row, "Main.tscn is missing a player bet row.")
+	_assert_required(_boss_battle_deck_root, "Main.tscn is missing a boss battle deck panel.")
+	_assert_required(_battle_deck_title, "Main.tscn is missing BossModeTitleLabel/BattleDeckTitle.")
+	_assert_required(_reveal_battle_deck_button, "Main.tscn is missing a boss reveal trigger.")
+	_assert_required(_battle_deck_row, "Main.tscn is missing a boss battle deck row.")
+	_assert_required(_boss_bet_area, "Main.tscn is missing a boss bet panel.")
+	_assert_required(_boss_bet_row, "Main.tscn is missing a boss bet row.")
+	_assert_required(_peek_boss_bet_button, "Main.tscn is missing a boss peek trigger.")
+	_assert_required(_clash_root, "Main.tscn is missing ClashArea.")
+	_assert_required(_player_card_slot, "Main.tscn is missing PlayerCardSlot.")
+	_assert_required(_boss_card_slot, "Main.tscn is missing BossCardSlot.")
+	_assert_required(_clash_result_label, "Main.tscn is missing ClashResultLabel.")
 	assert(_player_bod_label != null and _player_spr_label != null and _player_rep_label != null, "Main.tscn is missing PlayerStatusPanel labels.")
 	assert(_boss_bod_label != null and _boss_spr_label != null and _boss_rep_label != null, "Main.tscn is missing BossStatusPanel labels.")
-	assert(_boss_bet_area != null, "Main.tscn is missing BossBetArea.")
-	assert(_boss_bet_row != null, "Main.tscn is missing BossBetArea/BetRow.")
-	assert(_peek_boss_bet_button != null, "Main.tscn is missing BossBetArea/PeekBossBetButton.")
-	assert(_player_bet_area != null, "Main.tscn is missing PlayerBetArea.")
-	assert(_player_bet_row != null, "Main.tscn is missing PlayerBetArea/PlayerBetRow.")
-	assert(_bet_phase_hint != null, "Main.tscn is missing BetPhaseHint.")
-	assert(_bet_result_hint != null, "Main.tscn is missing BetResultHint.")
-	assert(_turn_result_popup != null, "Main.tscn is missing TurnResultPopup.")
-	assert(_feedback_label != null, "Main.tscn is missing TurnResultPopup/FeedbackLabel.")
-	assert(_end_turn_button != null, "Main.tscn is missing EndTurn.")
+	_assert_required(_bet_phase_hint, "Main.tscn is missing BetPhaseHint.")
+	_assert_required(_bet_result_hint, "Main.tscn is missing BetResultHint.")
+	_assert_required(_turn_result_popup, "Main.tscn is missing TurnResultPopup.")
+	_assert_required(_feedback_label, "Main.tscn is missing TurnResultPopup/FeedbackLabel.")
+	_assert_required(_end_turn_button, "Main.tscn is missing EndTurn.")
+
+func _set_mouse_filter(control: Control, filter_value: int) -> void:
+	if control != null:
+		control.mouse_filter = filter_value
+
+func _normalize_view_mode(mode: String) -> String:
+	if mode == VIEW_MODE_BET:
+		return VIEW_MODE_BET
+	return VIEW_MODE_BATTLE
+
+func _set_player_view_mode(mode: String) -> void:
+	_player_view_mode = _normalize_view_mode(mode)
+
+func _set_boss_view_mode(mode: String) -> void:
+	_boss_view_mode = _normalize_view_mode(mode)
+
+func _refresh_viewport_modes() -> void:
+	var player_battle_visible := true
+	var player_bet_visible := false
+	if bet_mode_enabled:
+		player_battle_visible = _player_view_mode == VIEW_MODE_BATTLE
+		player_bet_visible = _player_view_mode == VIEW_MODE_BET
+	if _player_battle_panel != null:
+		_player_battle_panel.visible = player_battle_visible
+	if _player_bet_area != null:
+		_player_bet_area.visible = bet_mode_enabled and player_bet_visible
+	if _player_mode_bar != null:
+		_player_mode_bar.visible = bet_mode_enabled
+	if _player_mode_title_label != null:
+		_player_mode_title_label.text = "Battle Cards" if player_battle_visible else "Bet Cards"
+
+	var boss_battle_visible := true
+	var boss_bet_visible := false
+	if bet_mode_enabled:
+		boss_battle_visible = _boss_view_mode == VIEW_MODE_BATTLE
+		boss_bet_visible = _boss_view_mode == VIEW_MODE_BET
+	if _boss_battle_panel != null:
+		_boss_battle_panel.visible = boss_battle_visible
+	if _boss_bet_area != null:
+		_boss_bet_area.visible = bet_mode_enabled and boss_bet_visible
+	if _boss_mode_bar != null:
+		_boss_mode_bar.visible = true
+	if _battle_deck_title != null:
+		_battle_deck_title.text = "Boss Battle Deck" if boss_battle_visible else "Boss Bet"
+	if _boss_reveal_status_label != null:
+		_boss_reveal_status_label.text = "Revealed" if _boss_battle_revealed else "Hidden"
 
 func _configure_mouse_filters() -> void:
-	_background.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_table_board.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_center_info.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_round_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_turn_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_overlay_ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_boss_battle_deck_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_boss_deck_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_boss_hand_count_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_boss_hand_animation_anchor.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_deck_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_battle_deck_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_battle_deck_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_reveal_battle_deck_button.mouse_filter = Control.MOUSE_FILTER_STOP
-	_peek_boss_bet_button.mouse_filter = Control.MOUSE_FILTER_STOP
-	_end_turn_button.mouse_filter = Control.MOUSE_FILTER_STOP
-	_bet_phase_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_bet_result_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_turn_result_popup.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_feedback_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_set_mouse_filter(_background, Control.MOUSE_FILTER_IGNORE)
+	_set_mouse_filter(_table_board, Control.MOUSE_FILTER_IGNORE)
+	_set_mouse_filter(_center_info, Control.MOUSE_FILTER_IGNORE)
+	_set_mouse_filter(_round_label, Control.MOUSE_FILTER_IGNORE)
+	_set_mouse_filter(_turn_label, Control.MOUSE_FILTER_IGNORE)
+	_set_mouse_filter(_overlay_ui, Control.MOUSE_FILTER_IGNORE)
+	_set_mouse_filter(_boss_battle_deck_root, Control.MOUSE_FILTER_IGNORE)
+	_set_mouse_filter(_boss_deck_root, Control.MOUSE_FILTER_IGNORE)
+	_set_mouse_filter(_boss_hand_count_label, Control.MOUSE_FILTER_IGNORE)
+	_set_mouse_filter(_boss_hand_animation_anchor, Control.MOUSE_FILTER_IGNORE)
+	_set_mouse_filter(_deck_row, Control.MOUSE_FILTER_IGNORE)
+	_set_mouse_filter(_battle_deck_title, Control.MOUSE_FILTER_IGNORE)
+	_set_mouse_filter(_battle_deck_row, Control.MOUSE_FILTER_IGNORE)
+	_set_mouse_filter(_reveal_battle_deck_button, Control.MOUSE_FILTER_STOP)
+	_set_mouse_filter(_peek_boss_bet_button, Control.MOUSE_FILTER_STOP)
+	_set_mouse_filter(_end_turn_button, Control.MOUSE_FILTER_STOP)
+	_set_mouse_filter(_bet_phase_hint, Control.MOUSE_FILTER_IGNORE)
+	_set_mouse_filter(_bet_result_hint, Control.MOUSE_FILTER_IGNORE)
+	_set_mouse_filter(_turn_result_popup, Control.MOUSE_FILTER_IGNORE)
+	_set_mouse_filter(_feedback_label, Control.MOUSE_FILTER_IGNORE)
 
 func _setup_views() -> void:
 	_player_hand_view = MvpPlayerHandView.new(_hand_anchor, CARD_VIEW_SCENE)
 	_player_hand_view.card_play_requested.connect(_on_card_play_requested)
 
-	_boss_deck_view = MvpBossDeckView.new(
-		_boss_deck_root,
-		_boss_hand_count_label,
-		_boss_hand_animation_anchor,
-		_deck_row,
-		CARD_VIEW_SCENE
-	)
+	if _boss_deck_root != null and _boss_hand_count_label != null and _deck_row != null:
+		_boss_deck_view = MvpBossDeckView.new(
+			_boss_deck_root,
+			_boss_hand_count_label,
+			_boss_hand_animation_anchor,
+			_deck_row,
+			CARD_VIEW_SCENE
+		)
+	else:
+		_boss_deck_view = null
 
 	_boss_battle_deck_view = BOSS_BATTLE_DECK_VIEW_SCRIPT.new(
 		_boss_battle_deck_root,
@@ -326,8 +472,16 @@ func _setup_views() -> void:
 	if not _player_bet_view.bet_selected.is_connected(_on_player_bet_selected):
 		_player_bet_view.bet_selected.connect(_on_player_bet_selected)
 	_boss_bet_view = BET_ROW_VIEW_SCRIPT.new(_boss_bet_row)
+	if _player_battle_tab_button != null and not _player_battle_tab_button.pressed.is_connected(_on_player_battle_tab_pressed):
+		_player_battle_tab_button.pressed.connect(_on_player_battle_tab_pressed)
+	if _player_bet_tab_button != null and not _player_bet_tab_button.pressed.is_connected(_on_player_bet_tab_pressed):
+		_player_bet_tab_button.pressed.connect(_on_player_bet_tab_pressed)
+	if _reveal_battle_deck_button != null and not _reveal_battle_deck_button.pressed.is_connected(_on_boss_battle_tab_pressed):
+		_reveal_battle_deck_button.pressed.connect(_on_boss_battle_tab_pressed)
 	if not _peek_boss_bet_button.pressed.is_connected(_on_peek_boss_bet_pressed):
 		_peek_boss_bet_button.pressed.connect(_on_peek_boss_bet_pressed)
+	if _peek_boss_bet_button != null and not _peek_boss_bet_button.pressed.is_connected(_on_boss_bet_tab_pressed):
+		_peek_boss_bet_button.pressed.connect(_on_boss_bet_tab_pressed)
 	_end_turn_button.text = "End Turn"
 	_end_turn_button.hide()
 	if not _end_turn_button.pressed.is_connected(_on_end_turn_pressed):
@@ -473,6 +627,8 @@ func _reset_turn_bet_state(clear_result: bool = false) -> void:
 	if clear_result:
 		_bet_result_text = ""
 	_bet_phase = BET_CARD_SCRIPT.TIMING_PRE if bet_mode_enabled and not _challenge_over else BET_PHASE_CLOSED
+	_set_player_view_mode(VIEW_MODE_BET if bet_mode_enabled and not _challenge_over else VIEW_MODE_BATTLE)
+	_set_boss_view_mode(VIEW_MODE_BATTLE)
 	if is_instance_valid(_end_turn_button):
 		_end_turn_button.hide()
 
@@ -494,16 +650,16 @@ func _refresh_ui() -> void:
 		_player_state.used_slots,
 		not _challenge_over and not _input_locked and not _post_bet_window_open
 	)
-	_boss_deck_view.set_hand(_boss_state.cards, _boss_state.used_slots)
+	if _boss_deck_view != null:
+		_boss_deck_view.set_hand(_boss_state.cards, _boss_state.used_slots)
 	_boss_battle_deck_view.set_deck(_boss_state.cards, _boss_battle_revealed, _boss_state.used_slots)
 	_boss_battle_deck_view.set_reveal_enabled(not _challenge_over)
 	_refresh_bet_ui()
+	_refresh_viewport_modes()
 	_sync_reveal_battle_deck_layout()
 	_refresh_overlay_log()
 
 func _refresh_bet_ui() -> void:
-	_player_bet_area.visible = bet_mode_enabled
-	_boss_bet_area.visible = bet_mode_enabled
 	_bet_phase_hint.visible = bet_mode_enabled
 	_peek_boss_bet_button.visible = bet_mode_enabled and boss_bet_peek_enabled
 	var end_turn_visible := bet_mode_enabled and _post_bet_window_open and not _challenge_over
@@ -523,6 +679,26 @@ func _refresh_bet_ui() -> void:
 	_bet_result_hint.visible = not bet_result_display.is_empty()
 	_player_bet_view.set_entries(_build_player_bet_entries(), _is_player_bet_interactive())
 	_boss_bet_view.set_entries(_build_boss_bet_entries(), false)
+
+func _on_player_battle_tab_pressed() -> void:
+	_set_player_view_mode(VIEW_MODE_BATTLE)
+	_refresh_ui()
+
+func _on_player_bet_tab_pressed() -> void:
+	if not bet_mode_enabled:
+		return
+	_set_player_view_mode(VIEW_MODE_BET)
+	_refresh_ui()
+
+func _on_boss_battle_tab_pressed() -> void:
+	_set_boss_view_mode(VIEW_MODE_BATTLE)
+	_refresh_ui()
+
+func _on_boss_bet_tab_pressed() -> void:
+	if not bet_mode_enabled:
+		return
+	_set_boss_view_mode(VIEW_MODE_BET)
+	_refresh_ui()
 
 func _build_player_bet_entries() -> Array[Dictionary]:
 	var entries: Array[Dictionary] = []
@@ -597,12 +773,14 @@ func _on_reveal_requested() -> void:
 	if _challenge_over or _boss_battle_revealed:
 		return
 	_boss_battle_revealed = true
+	_set_boss_view_mode(VIEW_MODE_BATTLE)
 	push_log("Boss battle deck revealed for the current set.")
 	_refresh_ui()
 
 func _on_peek_boss_bet_pressed() -> void:
 	if not bet_mode_enabled or not boss_bet_peek_enabled:
 		return
+	_set_boss_view_mode(VIEW_MODE_BET)
 	_boss_bet_peek_snapshot_text = _build_boss_bet_snapshot_text()
 	_refresh_ui()
 
@@ -622,9 +800,11 @@ func _on_player_bet_selected(bet_id: String) -> void:
 	if timing == BET_CARD_SCRIPT.TIMING_PRE:
 		_player_pre_bet = bet_card
 		_bet_phase = BET_PHASE_CLOSED
+		_set_player_view_mode(VIEW_MODE_BATTLE)
 		_refresh_ui()
 		return
 	_player_post_bet = bet_card
+	_set_player_view_mode(VIEW_MODE_BET)
 	_apply_post_bet_effects_if_needed()
 	_refresh_ui()
 
@@ -659,6 +839,8 @@ func _open_post_bet_window(result: Dictionary) -> void:
 	_post_bet_window_open = true
 	_post_bet_effects_applied = false
 	_bet_phase = BET_CARD_SCRIPT.TIMING_POST
+	_set_player_view_mode(VIEW_MODE_BET)
+	_set_boss_view_mode(VIEW_MODE_BET)
 	_lock_boss_post_bet(result)
 	push_log("Post-Bet phase opened.")
 	_refresh_ui()
