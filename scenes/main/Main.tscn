@@ -36,33 +36,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="BossArea" type="Control" parent="ContentRoot" unique_id=1347558770]
-layout_mode = 1
-anchor_left = 0.2
-anchor_right = 0.8
-anchor_bottom = 0.24
-offset_left = 19.0
-offset_top = 31.0
-offset_right = 189.0
-offset_bottom = 323.80002
-grow_horizontal = 2
-
-[node name="BossPortrait" type="TextureRect" parent="ContentRoot/BossArea" unique_id=1403377710]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 239.0
-offset_top = -12.999998
-offset_right = -181.0
-offset_bottom = -23.0
-grow_horizontal = 2
-grow_vertical = 2
-scale = Vector2(0.7, 0.7)
-texture = ExtResource("5")
-expand_mode = 1
-stretch_mode = 6
-
 [node name="TableArea" type="Control" parent="ContentRoot" unique_id=690953592]
 layout_mode = 1
 anchor_top = 0.18
@@ -117,93 +90,6 @@ layout_mode = 2
 size_flags_horizontal = 8
 text = "Turn 1 / 5"
 horizontal_alignment = 1
-
-[node name="BossBattleDeckView" type="Control" parent="ContentRoot/TableArea" unique_id=1826051153]
-layout_mode = 1
-anchor_left = 0.24
-anchor_top = 0.18
-anchor_right = 0.76
-anchor_bottom = 0.35
-offset_left = 41.200012
-offset_top = -185.80801
-offset_right = 41.19995
-offset_bottom = -185.80801
-grow_horizontal = 2
-mouse_filter = 2
-
-[node name="BattleDeckTitle" type="Label" parent="ContentRoot/TableArea/BossBattleDeckView" unique_id=472129304]
-layout_mode = 1
-anchors_preset = -1
-anchor_left = 0.34
-anchor_right = 0.66
-anchor_bottom = 0.18
-text = "Boss Battle Deck"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="RevealBattleDeckButton" type="Button" parent="ContentRoot/TableArea/BossBattleDeckView" unique_id=1662857374]
-layout_mode = 1
-offset_left = 353.2
-offset_top = 27.191986
-offset_right = 633.2
-offset_bottom = 81.191986
-mouse_filter = 1
-theme_override_colors/font_color = Color(0.88, 0.061599992, 0.061599992, 1)
-theme_override_colors/font_pressed_color = Color(0.34065956, 0.6118352, 0.39859468, 1)
-theme_override_colors/icon_normal_color = Color(1, 0.65999997, 0.65999997, 1)
-action_mode = 0
-text = "Reveal Battle Deck"
-vertical_icon_alignment = 0
-
-[node name="BattleDeckRow" type="HBoxContainer" parent="ContentRoot/TableArea/BossBattleDeckView" unique_id=2067511316]
-layout_mode = 1
-anchors_preset = -1
-anchor_top = 0.48
-anchor_right = 1.0
-anchor_bottom = 1.0
-mouse_filter = 2
-theme_override_constants/separation = 10
-alignment = 1
-
-[node name="BossDeckView" type="Control" parent="ContentRoot/TableArea" unique_id=1482533900]
-visible = false
-layout_mode = 1
-anchor_left = 0.72
-anchor_top = 0.18
-anchor_right = 0.92
-anchor_bottom = 0.33
-offset_left = -827.4
-offset_top = -203.80801
-offset_right = -311.40002
-offset_bottom = -203.80801
-mouse_filter = 2
-
-[node name="BossHandCountLabel" type="Label" parent="ContentRoot/TableArea/BossDeckView" unique_id=972500608]
-layout_mode = 1
-anchors_preset = -1
-anchor_right = 1.0
-anchor_bottom = 0.24
-text = "Boss Hand x5"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="BossHandAnimationAnchor" type="Control" parent="ContentRoot/TableArea/BossDeckView" unique_id=799697685]
-layout_mode = 1
-anchor_left = 0.3
-anchor_top = 0.26
-anchor_right = 0.7
-anchor_bottom = 0.56
-mouse_filter = 2
-
-[node name="DeckRow" type="HBoxContainer" parent="ContentRoot/TableArea/BossDeckView" unique_id=576405210]
-layout_mode = 1
-anchors_preset = -1
-anchor_top = 0.42
-anchor_right = 1.0
-anchor_bottom = 1.0
-mouse_filter = 2
-theme_override_constants/separation = 8
-alignment = 1
 
 [node name="BossHP" type="Label" parent="ContentRoot/TableArea" unique_id=1413539908]
 layout_mode = 1
@@ -306,44 +192,6 @@ offset_top = -19.21228
 offset_right = -44.823883
 offset_bottom = -30.045212
 
-[node name="BossBetArea" type="Control" parent="ContentRoot/TableArea" unique_id=1766051206]
-layout_mode = 1
-anchor_left = 0.36
-anchor_top = 0.7
-anchor_right = 0.64
-anchor_bottom = 0.8
-offset_left = 9.799988
-offset_top = -492.32
-offset_right = 29.200073
-offset_bottom = -510.88
-
-[node name="BetAreaTitle" type="Label" parent="ContentRoot/TableArea/BossBetArea" unique_id=1816537447]
-layout_mode = 1
-anchors_preset = -1
-anchor_left = 0.25
-anchor_right = 0.75
-anchor_bottom = 0.34
-text = "Boss Bet Area"
-horizontal_alignment = 1
-
-[node name="PeekBossBetButton" type="Button" parent="ContentRoot/TableArea/BossBetArea" unique_id=1274105543]
-layout_mode = 1
-anchors_preset = -1
-anchor_left = 0.76
-anchor_top = 0.02
-anchor_right = 0.98
-anchor_bottom = 0.34
-mouse_filter = 1
-text = "Peek"
-
-[node name="BetRow" type="HBoxContainer" parent="ContentRoot/TableArea/BossBetArea" unique_id=706949253]
-layout_mode = 1
-anchors_preset = -1
-anchor_top = 0.4
-anchor_right = 1.0
-anchor_bottom = 1.0
-alignment = 1
-
 [node name="PlayerHP" type="Label" parent="ContentRoot/TableArea" unique_id=284083619]
 layout_mode = 1
 anchors_preset = -1
@@ -394,24 +242,6 @@ text = "SPR 3"
 layout_mode = 2
 text = "REP 3"
 
-[node name="PlayerBetArea" type="Control" parent="ContentRoot/TableArea" unique_id=848001901]
-layout_mode = 1
-anchors_preset = 14
-anchor_top = 0.5
-anchor_right = 1.0
-anchor_bottom = 0.5
-offset_left = 678.0
-offset_top = -95.20001
-offset_right = -623.0
-offset_bottom = 24.599976
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="PlayerBetRow" type="HBoxContainer" parent="ContentRoot/TableArea/PlayerBetArea" unique_id=655813204]
-layout_mode = 0
-offset_right = 40.0
-offset_bottom = 40.0
-
 [node name="PlayerArea" type="Control" parent="ContentRoot/TableArea" unique_id=1955168324]
 layout_mode = 1
 anchor_left = 0.18
@@ -423,16 +253,86 @@ offset_top = -9.455994
 offset_right = 5.4000244
 offset_bottom = -9.455994
 
-[node name="HandAnchor" type="HBoxContainer" parent="ContentRoot/TableArea/PlayerArea" unique_id=1442963273]
+[node name="ModeBar" type="HBoxContainer" parent="ContentRoot/TableArea/PlayerArea" unique_id=1442963273]
+layout_mode = 1
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = -309.0
+offset_top = -67.843994
+offset_right = -111.0
+offset_bottom = 45.0
+grow_vertical = 2
+
+[node name="BattleTabButton" type="Button" parent="ContentRoot/TableArea/PlayerArea/ModeBar" unique_id=1603787514]
+layout_mode = 2
+
+[node name="BetTabButton" type="Button" parent="ContentRoot/TableArea/PlayerArea/ModeBar" unique_id=1520461636]
+layout_mode = 2
+
+[node name="ModeTitleLabel" type="Label" parent="ContentRoot/TableArea/PlayerArea" unique_id=2109146118]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -103.400024
+offset_top = -113.0
+offset_right = 95.0
+offset_bottom = -54.0
+grow_horizontal = 2
+
+[node name="CardViewport" type="Control" parent="ContentRoot/TableArea/PlayerArea" unique_id=1271337525]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 8.0
-offset_top = 8.0
-offset_right = -8.0
-offset_bottom = -8.0
 grow_horizontal = 2
+grow_vertical = 2
+
+[node name="BattleHandPanel" type="Control" parent="ContentRoot/TableArea/PlayerArea/CardViewport" unique_id=439635504]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="BattleCardRow" type="HBoxContainer" parent="ContentRoot/TableArea/PlayerArea/CardViewport/BattleHandPanel" unique_id=262919195]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="BetHandPanel" type="Control" parent="ContentRoot/TableArea/PlayerArea/CardViewport" unique_id=848001901]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="BetCardRow" type="HBoxContainer" parent="ContentRoot/TableArea/PlayerArea/CardViewport/BetHandPanel" unique_id=655813204]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="OptionalSummaryButton" type="Button" parent="ContentRoot/TableArea/PlayerArea" unique_id=310966554]
+layout_mode = 1
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = 71.19995
+offset_top = -33.843994
+offset_right = 178.0
+offset_bottom = 30.0
+grow_horizontal = 0
 grow_vertical = 2
 
 [node name="BetPhaseHint" type="Label" parent="ContentRoot/TableArea" unique_id=1838552436]
@@ -496,6 +396,137 @@ offset_top = -244.20001
 offset_right = -176.0
 offset_bottom = -156.20001
 grow_horizontal = 0
+grow_vertical = 2
+
+[node name="BossArea" type="Control" parent="ContentRoot/TableArea" unique_id=1347558770]
+layout_mode = 1
+anchor_right = 1.0
+offset_left = 198.0
+offset_top = -194.40001
+offset_right = -180.0
+offset_bottom = 73.59999
+grow_horizontal = 2
+
+[node name="BossPortrait" type="TextureRect" parent="ContentRoot/TableArea/BossArea" unique_id=1403377710]
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 474.99994
+offset_top = 15.999998
+offset_right = -262.71448
+offset_bottom = 256.5713
+grow_horizontal = 2
+grow_vertical = 2
+scale = Vector2(0.7, 0.7)
+texture = ExtResource("5")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="BossCardViewport" type="Control" parent="ContentRoot/TableArea/BossArea" unique_id=1826051153]
+layout_mode = 1
+anchors_preset = 14
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = 382.0
+offset_top = -17.0
+offset_right = -388.0
+offset_bottom = 146.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="BossBattleDeckPanel" type="Control" parent="ContentRoot/TableArea/BossArea/BossCardViewport" unique_id=474174841]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="BossBattleCardRow" type="HBoxContainer" parent="ContentRoot/TableArea/BossArea/BossCardViewport/BossBattleDeckPanel" unique_id=2067511316]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="BossBetDeckPanel" type="Control" parent="ContentRoot/TableArea/BossArea/BossCardViewport" unique_id=1766051206]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="BossBetCard" type="HBoxContainer" parent="ContentRoot/TableArea/BossArea/BossCardViewport/BossBetDeckPanel" unique_id=706949253]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+alignment = 1
+
+[node name="BossModeBar" type="HBoxContainer" parent="ContentRoot/TableArea/BossArea" unique_id=1543961954]
+layout_mode = 1
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -224.0
+offset_top = 3.0
+offset_right = -17.0
+offset_bottom = 57.0
+grow_horizontal = 0
+grow_vertical = 2
+
+[node name="BossBetTabButton" type="Button" parent="ContentRoot/TableArea/BossArea/BossModeBar" unique_id=1274105543]
+layout_mode = 2
+mouse_filter = 1
+text = "Peek"
+
+[node name="BossBattleTabButton" type="Button" parent="ContentRoot/TableArea/BossArea/BossModeBar" unique_id=1662857374]
+layout_mode = 2
+mouse_filter = 1
+theme_override_colors/font_color = Color(0.88, 0.061599992, 0.061599992, 1)
+theme_override_colors/font_pressed_color = Color(0.34065956, 0.6118352, 0.39859468, 1)
+theme_override_colors/icon_normal_color = Color(1, 0.65999997, 0.65999997, 1)
+action_mode = 0
+text = "Reveal Battle Deck"
+vertical_icon_alignment = 0
+
+[node name="RevealStatusLabel" type="Label" parent="ContentRoot/TableArea/BossArea/BossModeBar" unique_id=1438866393]
+layout_mode = 2
+
+[node name="BossModeTitleLabel" type="Label" parent="ContentRoot/TableArea/BossArea" unique_id=1819549999]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -74.0
+offset_top = 50.0
+offset_right = 41.0
+offset_bottom = 99.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="BossSummaryToggleButton" type="Button" parent="ContentRoot/TableArea/BossArea" unique_id=495679431]
+layout_mode = 1
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_top = -4.0
+offset_right = 137.0
+offset_bottom = 73.0
 grow_vertical = 2
 
 [node name="OverlayUI" type="Control" parent="ContentRoot" unique_id=621537902]

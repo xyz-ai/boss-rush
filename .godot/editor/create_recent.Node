@@ -1,6 +1,6 @@
 Button
-Label
 Control
+Label
 HBoxContainer
 AnimationPlayer
 AnimationTree
