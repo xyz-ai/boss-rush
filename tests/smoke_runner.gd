@@ -304,6 +304,9 @@ func _test_main_mvp(failures: Array[String]) -> void:
 		await _test_main_mvp_layout(size, failures)
 
 	await _test_main_mvp_without_bets(failures)
+	await _test_main_mvp_player_summary_toggle(failures)
+	await _test_main_mvp_boss_summary_toggle(failures)
+	await _test_main_mvp_boss_bet_reveal_placeholder_interface(failures)
 	await _test_main_mvp_pre_bet_selection_still_allows_battle_card(failures)
 	await _test_main_mvp_post_bet_end_turn(failures)
 	await _test_main_mvp_post_bet_card_then_end_turn(failures)
@@ -351,17 +354,15 @@ func _test_main_mvp_without_bets(failures: Array[String]) -> void:
 	]) as Control
 	var bet_phase_hint: Label = scene.get_node_or_null("ContentRoot/TableArea/BetPhaseHint")
 	var bet_result_hint: Label = scene.get_node_or_null("ContentRoot/TableArea/BetResultHint")
-	var peek_boss_bet_button: Button = _find_scene_node(scene, [
-		"ContentRoot/TableArea/BossArea/BossModeBar/BossBetTabButton",
-		"ContentRoot/TableArea/BossBetArea/PeekBossBetButton",
-	]) as Button
+	var peek_boss_bet_button: Button = scene.get_node_or_null("ContentRoot/TableArea/BossBetArea/PeekBossBetButton")
 
 	_assert(not bool(snapshot.get("bet_mode_enabled", true)), "Smoke should be able to disable bet mode.", failures)
 	_assert(player_bet_area != null and not player_bet_area.visible, "PlayerBetArea should hide when bet mode is disabled.", failures)
 	_assert(boss_bet_area != null and not boss_bet_area.visible, "BossBetArea should hide when bet mode is disabled.", failures)
 	_assert(bet_phase_hint != null and not bet_phase_hint.visible, "BetPhaseHint should hide when bet mode is disabled.", failures)
 	_assert(bet_result_hint != null and not bet_result_hint.visible, "BetResultHint should hide when bet mode is disabled.", failures)
-	_assert(peek_boss_bet_button != null and not peek_boss_bet_button.visible, "PeekBossBetButton should hide when bet mode is disabled.", failures)
+	if peek_boss_bet_button != null:
+		_assert(not peek_boss_bet_button.visible, "PeekBossBetButton should hide when bet mode is disabled.", failures)
 
 	if battle_row != null and battle_row.get_child_count() > 0:
 		(battle_row.get_child(0) as BaseButton).emit_signal("pressed")
@@ -373,6 +374,192 @@ func _test_main_mvp_without_bets(failures: Array[String]) -> void:
 	_assert(player_slot != null and player_slot.get_child_count() == 1, "Without bet mode, clash area should show the player's current card.", failures)
 	_assert(boss_slot != null and boss_slot.get_child_count() == 1, "Without bet mode, clash area should show the boss's current card.", failures)
 	_assert(battle_deck_row != null and battle_deck_row.get_child_count() == 5, "Boss battle deck should keep 5 visible slots after use.", failures)
+
+	scene.queue_free()
+	await process_frame
+
+func _test_main_mvp_player_summary_toggle(failures: Array[String]) -> void:
+	DisplayServer.window_set_size(Vector2i(1440, 900))
+	await process_frame
+	await process_frame
+	var scene: Control = load("res://scenes/main/Main.tscn").instantiate()
+	get_root().add_child(scene)
+	await process_frame
+	await process_frame
+
+	var controller = scene.call("get_mvp_controller")
+	_assert(controller != null, "Main scene should expose its MVP controller for player summary smoke testing.", failures)
+	if controller == null:
+		scene.queue_free()
+		await process_frame
+		return
+
+	var summary_button: Button = scene.get_node_or_null("ContentRoot/TableArea/PlayerArea/OptionalSummaryButton")
+	var battle_tab_button: Button = scene.get_node_or_null("ContentRoot/TableArea/PlayerArea/ModeBar/BattleTabButton")
+	var battle_panel: Control = scene.get_node_or_null("ContentRoot/TableArea/PlayerArea/CardViewport/BattleHandPanel")
+	var bet_panel: Control = scene.get_node_or_null("ContentRoot/TableArea/PlayerArea/CardViewport/BetHandPanel")
+	var summary_label: Label = scene.get_node_or_null("ContentRoot/TableArea/PlayerArea/CardViewport/RuntimePlayerSummaryLabel")
+
+	var snapshot: Dictionary = controller.get_state_snapshot()
+	_assert(summary_button != null, "OptionalSummaryButton should exist for player summary smoke testing.", failures)
+	_assert(not bool(snapshot.get("player_summary_visible", true)), "Player summary should start collapsed.", failures)
+	_assert(str(snapshot.get("player_view_mode", "")) == "bet", "Player should still start in Bet mode when bet mode is enabled.", failures)
+	_assert(bet_panel != null and bet_panel.visible, "Player bet panel should start visible before summary toggling.", failures)
+
+	if summary_button != null:
+		summary_button.emit_signal("pressed")
+		await process_frame
+		await process_frame
+
+	snapshot = controller.get_state_snapshot()
+	summary_label = scene.get_node_or_null("ContentRoot/TableArea/PlayerArea/CardViewport/RuntimePlayerSummaryLabel")
+	_assert(bool(snapshot.get("player_summary_visible", false)), "OptionalSummaryButton should toggle player summary visibility on.", failures)
+	_assert(str(snapshot.get("player_view_mode", "")) == "bet", "Opening player summary should not change the current player view mode.", failures)
+	_assert(summary_label != null and summary_label.visible, "Player summary toggle should show the runtime summary label.", failures)
+	_assert(summary_label != null and summary_label.text.contains("Player Bet Summary"), "Player summary should reflect the current Bet mode when opened from Bet view.", failures)
+	_assert(bet_panel != null and not bet_panel.visible, "Opening player summary should hide the current player viewport panel.", failures)
+	_assert(summary_button != null and summary_button.text == "Cards", "Player summary button should switch to Cards while summary is open.", failures)
+
+	if battle_tab_button != null:
+		battle_tab_button.emit_signal("pressed")
+		await process_frame
+		await process_frame
+
+	snapshot = controller.get_state_snapshot()
+	summary_label = scene.get_node_or_null("ContentRoot/TableArea/PlayerArea/CardViewport/RuntimePlayerSummaryLabel")
+	_assert(str(snapshot.get("player_view_mode", "")) == "battle", "Switching player tabs should still work while summary is open.", failures)
+	_assert(bool(snapshot.get("player_summary_visible", false)), "Changing player tabs should not close the summary.", failures)
+	_assert(summary_label != null and summary_label.visible, "Player summary label should remain visible while switching tabs.", failures)
+	_assert(summary_label != null and summary_label.text.contains("Player Battle Summary"), "Player summary should refresh to the Battle summary when the view mode changes.", failures)
+	_assert(battle_panel != null and not battle_panel.visible, "Player battle panel should stay hidden while summary is open.", failures)
+
+	if summary_button != null:
+		summary_button.emit_signal("pressed")
+		await process_frame
+		await process_frame
+
+	snapshot = controller.get_state_snapshot()
+	summary_label = scene.get_node_or_null("ContentRoot/TableArea/PlayerArea/CardViewport/RuntimePlayerSummaryLabel")
+	_assert(not bool(snapshot.get("player_summary_visible", true)), "OptionalSummaryButton should toggle player summary visibility off.", failures)
+	_assert(summary_label != null and not summary_label.visible, "Closing player summary should hide the runtime summary label.", failures)
+	_assert(battle_panel != null and battle_panel.visible, "Closing player summary should restore the current player viewport panel.", failures)
+	_assert(summary_button != null and summary_button.text == "Summary", "Player summary button should return to Summary when collapsed.", failures)
+
+	scene.queue_free()
+	await process_frame
+
+func _test_main_mvp_boss_summary_toggle(failures: Array[String]) -> void:
+	DisplayServer.window_set_size(Vector2i(1440, 900))
+	await process_frame
+	await process_frame
+	var scene: Control = load("res://scenes/main/Main.tscn").instantiate()
+	get_root().add_child(scene)
+	await process_frame
+	await process_frame
+
+	var controller = scene.call("get_mvp_controller")
+	_assert(controller != null, "Main scene should expose its MVP controller for boss summary smoke testing.", failures)
+	if controller == null:
+		scene.queue_free()
+		await process_frame
+		return
+
+	var summary_button: Button = scene.get_node_or_null("ContentRoot/TableArea/BossArea/BossSummaryToggleButton")
+	var boss_battle_tab_button: Button = scene.get_node_or_null("ContentRoot/TableArea/BossArea/BossModeBar/BossBattleTabButton")
+	var boss_bet_tab_button: Button = scene.get_node_or_null("ContentRoot/TableArea/BossArea/BossModeBar/BossBetTabButton")
+	var battle_panel: Control = scene.get_node_or_null("ContentRoot/TableArea/BossArea/BossCardViewport/BossBattleDeckPanel")
+	var bet_panel: Control = scene.get_node_or_null("ContentRoot/TableArea/BossArea/BossCardViewport/BossBetDeckPanel")
+	var summary_label: Label = scene.get_node_or_null("ContentRoot/TableArea/BossArea/BossCardViewport/RuntimeBossSummaryLabel")
+
+	var snapshot: Dictionary = controller.get_state_snapshot()
+	_assert(summary_button != null, "BossSummaryToggleButton should exist for boss summary smoke testing.", failures)
+	_assert(str(snapshot.get("boss_view_mode", "")) == "battle", "Boss should still start in Battle mode.", failures)
+	_assert(not bool(snapshot.get("boss_summary_visible", true)), "Boss summary should start collapsed.", failures)
+	_assert(not bool(snapshot.get("boss_battle_revealed", true)), "Boss battle reveal should start hidden before summary toggling.", failures)
+	_assert(battle_panel != null and battle_panel.visible, "Boss battle panel should start visible before summary toggling.", failures)
+
+	if summary_button != null:
+		summary_button.emit_signal("pressed")
+		await process_frame
+		await process_frame
+
+	snapshot = controller.get_state_snapshot()
+	summary_label = scene.get_node_or_null("ContentRoot/TableArea/BossArea/BossCardViewport/RuntimeBossSummaryLabel")
+	_assert(bool(snapshot.get("boss_summary_visible", false)), "Boss summary toggle should open the boss summary.", failures)
+	_assert(str(snapshot.get("boss_view_mode", "")) == "battle", "Opening boss summary should not change the current boss view mode.", failures)
+	_assert(not bool(snapshot.get("boss_battle_revealed", true)), "Opening boss summary should not reveal the boss battle deck.", failures)
+	_assert(summary_label != null and summary_label.visible, "Boss summary toggle should show the runtime boss summary label.", failures)
+	_assert(summary_label != null and summary_label.text.contains("Boss Battle Summary"), "Boss summary should show the battle summary while in Battle mode.", failures)
+	_assert(summary_label != null and summary_label.text.contains("Battle deck hidden"), "Boss battle summary should stay hidden before reveal.", failures)
+	_assert(battle_panel != null and not battle_panel.visible, "Opening boss summary should hide the current boss viewport panel.", failures)
+	_assert(summary_button != null and summary_button.text == "Cards", "Boss summary button should switch to Cards while summary is open.", failures)
+
+	if boss_bet_tab_button != null:
+		boss_bet_tab_button.emit_signal("pressed")
+		await process_frame
+		await process_frame
+
+	snapshot = controller.get_state_snapshot()
+	summary_label = scene.get_node_or_null("ContentRoot/TableArea/BossArea/BossCardViewport/RuntimeBossSummaryLabel")
+	_assert(str(snapshot.get("boss_view_mode", "")) == "bet", "BossBetTabButton should still switch the boss view mode while summary is open.", failures)
+	_assert(bool(snapshot.get("boss_summary_visible", false)), "Switching boss tabs should not close the summary.", failures)
+	_assert(summary_label != null and summary_label.visible, "Boss summary label should stay visible while switching tabs.", failures)
+	_assert(summary_label != null and summary_label.text.contains("Boss Bet Summary"), "Boss summary should refresh to the Bet placeholder while in Bet mode.", failures)
+	_assert(bet_panel != null and not bet_panel.visible, "Boss bet panel should stay hidden while summary is open.", failures)
+
+	if boss_battle_tab_button != null:
+		boss_battle_tab_button.emit_signal("pressed")
+		await process_frame
+		await process_frame
+	if summary_button != null:
+		summary_button.emit_signal("pressed")
+		await process_frame
+		await process_frame
+
+	snapshot = controller.get_state_snapshot()
+	summary_label = scene.get_node_or_null("ContentRoot/TableArea/BossArea/BossCardViewport/RuntimeBossSummaryLabel")
+	_assert(str(snapshot.get("boss_view_mode", "")) == "battle", "BossBattleTabButton should still restore Battle mode after summary testing.", failures)
+	_assert(not bool(snapshot.get("boss_summary_visible", true)), "Boss summary toggle should close the summary.", failures)
+	_assert(not bool(snapshot.get("boss_battle_revealed", true)), "Closing boss summary should still not affect reveal state.", failures)
+	_assert(summary_label != null and not summary_label.visible, "Closing boss summary should hide the runtime summary label.", failures)
+	_assert(battle_panel != null and battle_panel.visible, "Closing boss summary should restore the current boss viewport panel.", failures)
+	_assert(summary_button != null and summary_button.text == "Summary", "Boss summary button should return to Summary when collapsed.", failures)
+
+	scene.queue_free()
+	await process_frame
+
+func _test_main_mvp_boss_bet_reveal_placeholder_interface(failures: Array[String]) -> void:
+	DisplayServer.window_set_size(Vector2i(1440, 900))
+	await process_frame
+	await process_frame
+	var scene: Control = load("res://scenes/main/Main.tscn").instantiate()
+	get_root().add_child(scene)
+	await process_frame
+	await process_frame
+
+	var controller = scene.call("get_mvp_controller")
+	_assert(controller != null, "Main scene should expose its MVP controller for boss bet reveal placeholder smoke testing.", failures)
+	if controller == null:
+		scene.queue_free()
+		await process_frame
+		return
+
+	var snapshot: Dictionary = controller.get_state_snapshot()
+	_assert(not bool(snapshot.get("boss_bet_revealed", true)), "Boss bet reveal placeholder state should start hidden.", failures)
+	_assert(controller.has_method("reveal_boss_bet_deck"), "Main MVP controller should expose reveal_boss_bet_deck placeholder interface.", failures)
+	_assert(controller.has_method("refresh_boss_bet_deck"), "Main MVP controller should expose refresh_boss_bet_deck placeholder interface.", failures)
+
+	if controller.has_method("reveal_boss_bet_deck"):
+		controller.call("reveal_boss_bet_deck")
+		await process_frame
+		await process_frame
+	if controller.has_method("refresh_boss_bet_deck"):
+		controller.call("refresh_boss_bet_deck")
+		await process_frame
+		await process_frame
+
+	snapshot = controller.get_state_snapshot()
+	_assert(bool(snapshot.get("boss_bet_revealed", false)), "Boss bet reveal placeholder interface should update the cached reveal state.", failures)
 
 	scene.queue_free()
 	await process_frame
@@ -607,10 +794,9 @@ func _test_main_mvp_with_bets(failures: Array[String]) -> void:
 		"ContentRoot/TableArea/PlayerArea/HandAnchor",
 	]) as HBoxContainer
 	var battle_tab_button: Button = scene.get_node_or_null("ContentRoot/TableArea/PlayerArea/ModeBar/BattleTabButton")
-	var reveal_button: Button = _find_scene_node(scene, [
-		"ContentRoot/TableArea/BossArea/BossModeBar/BossBattleTabButton",
-		"ContentRoot/TableArea/BossBattleDeckView/RevealBattleDeckButton",
-	]) as Button
+	var boss_battle_tab_button: Button = scene.get_node_or_null("ContentRoot/TableArea/BossArea/BossModeBar/BossBattleTabButton")
+	var boss_bet_tab_button: Button = scene.get_node_or_null("ContentRoot/TableArea/BossArea/BossModeBar/BossBetTabButton")
+	var reveal_button: Button = scene.get_node_or_null("ContentRoot/TableArea/BossArea/BossCardViewport/BossBattleDeckPanel/RevealBattleDeckButton")
 	var battle_deck_row: HBoxContainer = _find_scene_node(scene, [
 		"ContentRoot/TableArea/BossArea/BossCardViewport/BossBattleDeckPanel/BossBattleCardRow",
 		"ContentRoot/TableArea/BossBattleDeckView/BattleDeckRow",
@@ -636,10 +822,7 @@ func _test_main_mvp_with_bets(failures: Array[String]) -> void:
 	]) as HBoxContainer
 	var bet_phase_hint: Label = scene.get_node_or_null("ContentRoot/TableArea/BetPhaseHint")
 	var bet_result_hint: Label = scene.get_node_or_null("ContentRoot/TableArea/BetResultHint")
-	var peek_boss_bet_button: Button = _find_scene_node(scene, [
-		"ContentRoot/TableArea/BossArea/BossModeBar/BossBetTabButton",
-		"ContentRoot/TableArea/BossBetArea/PeekBossBetButton",
-	]) as Button
+	var reveal_status_label: Label = scene.get_node_or_null("ContentRoot/TableArea/BossArea/BossModeBar/RevealStatusLabel")
 	var turn_result_popup: Control = scene.get_node_or_null("ContentRoot/TableArea/TurnResultPopup")
 	var end_turn_button: Button = scene.get_node_or_null("ContentRoot/TableArea/EndTurn")
 
@@ -648,7 +831,8 @@ func _test_main_mvp_with_bets(failures: Array[String]) -> void:
 	_assert(player_bet_area != null and player_bet_area.visible, "Player bet panel should be visible when bet mode is enabled.", failures)
 	_assert(boss_bet_area != null and not boss_bet_area.visible, "Boss bet panel should start hidden until the boss switches to bet mode.", failures)
 	_assert(bet_phase_hint != null and bet_phase_hint.text == "Pre-Bet Phase", "Bet mode should start in Pre-Bet phase.", failures)
-	_assert(peek_boss_bet_button != null and peek_boss_bet_button.visible, "PeekBossBetButton should be visible when bet mode is enabled.", failures)
+	_assert(boss_battle_tab_button != null and boss_battle_tab_button.text == "Battle", "BossBattleTabButton should exist as the battle mode switch.", failures)
+	_assert(boss_bet_tab_button != null and boss_bet_tab_button.text == "Bet", "BossBetTabButton should exist as the bet mode switch.", failures)
 	_assert(player_bet_row != null and player_bet_row.get_child_count() == 3, "Player should see 3 minimal bet cards in bet mode.", failures)
 	_assert(battle_row != null and battle_row.get_child_count() == 5, "Main MVP should spawn 5 player cards in the battle row.", failures)
 	_assert(battle_deck_row != null and battle_deck_row.get_child_count() == 5, "Boss battle deck should always expose 5 slots.", failures)
@@ -685,14 +869,31 @@ func _test_main_mvp_with_bets(failures: Array[String]) -> void:
 		if first_battle_deck_card.has_method("get_view_state"):
 			_assert(first_battle_deck_card.get_view_state() == "hidden", "Boss battle deck should start hidden.", failures)
 
+	if boss_bet_tab_button != null:
+		boss_bet_tab_button.emit_signal("pressed")
+		await process_frame
+		await process_frame
+
+	snapshot = controller.get_state_snapshot()
+	_assert(str(snapshot.get("boss_view_mode", "")) == "bet", "BossBetTabButton should only switch the boss view mode to Bet.", failures)
+	_assert(not bool(snapshot.get("boss_battle_revealed", true)), "Switching to Boss Bet view should not reveal the battle deck.", failures)
+	_assert(boss_bet_area != null and boss_bet_area.visible, "Boss bet panel should become visible after switching to Bet mode.", failures)
+	_assert(battle_deck_row != null and battle_deck_row.get_child_count() == 5, "Switching boss tabs should not disturb the battle deck row structure.", failures)
+
+	if boss_battle_tab_button != null:
+		boss_battle_tab_button.emit_signal("pressed")
+		await process_frame
+		await process_frame
+
+	snapshot = controller.get_state_snapshot()
+	_assert(str(snapshot.get("boss_view_mode", "")) == "battle", "BossBattleTabButton should only switch the boss view mode to Battle.", failures)
+	_assert(not bool(snapshot.get("boss_battle_revealed", true)), "Switching back to Boss Battle view should still not reveal the deck.", failures)
+	_assert(boss_bet_area != null and not boss_bet_area.visible, "Boss bet panel should hide again after returning to Battle mode.", failures)
+
 	if reveal_button != null:
 		reveal_button.emit_signal("pressed")
 		await process_frame
-
-	if peek_boss_bet_button != null:
-		peek_boss_bet_button.emit_signal("pressed")
 		await process_frame
-		_assert(bet_result_hint != null and bet_result_hint.text == "Boss: No Bet", "Before boss locks a bet, Peek should show a no-bet snapshot.", failures)
 
 	if battle_deck_row != null:
 		var revealed_names: Array[String] = []
@@ -701,6 +902,9 @@ func _test_main_mvp_with_bets(failures: Array[String]) -> void:
 				revealed_names.append(str(child.get_card_data().get("display_name", "")))
 		var reveal_snapshot: Dictionary = controller.get_state_snapshot()
 		var reveal_template_id := str(reveal_snapshot.get("current_boss_template_id", ""))
+		_assert(bool(reveal_snapshot.get("boss_battle_revealed", false)), "RevealBattleDeckButton should only flip the boss battle reveal state.", failures)
+		_assert(str(reveal_snapshot.get("boss_view_mode", "")) == "battle", "RevealBattleDeckButton should not switch away from battle mode.", failures)
+		_assert(reveal_status_label != null and reveal_status_label.text == "Revealed", "RevealStatusLabel should track the battle deck reveal state.", failures)
 		_assert(revealed_names == expected_templates.get(reveal_template_id, []), "Reveal should expose exactly one of the fixed boss templates.", failures)
 		for child in battle_deck_row.get_children():
 			if child.has_method("get_view_state"):
@@ -723,26 +927,10 @@ func _test_main_mvp_with_bets(failures: Array[String]) -> void:
 	_assert(boss_slot != null and boss_slot.get_child_count() == 1, "Boss clash slot should show the boss card immediately after the main action resolves.", failures)
 	_assert(turn_result_popup != null and turn_result_popup.visible, "TurnResultPopup should appear immediately after the main action resolves.", failures)
 	_assert(end_turn_button != null and end_turn_button.visible, "EndTurn should appear during the Post-Bet window.", failures)
-	_assert(bet_result_hint != null and bet_result_hint.text == "Boss: No Bet", "Peek snapshot should not auto-update when boss bet state changes; it should stay as the last snapshot.", failures)
 	if boss_bet_row != null and str(snapshot.get("boss_bet_id", "")).is_empty():
 		_assert(boss_bet_row.get_child_count() == 0, "Boss bet row should stay empty when the boss did not lock a Post-Bet card.", failures)
 	elif boss_bet_row != null:
 		_assert(boss_bet_row.get_child_count() == 1, "Boss bet row should show exactly one locked Post-Bet card when the boss commits one.", failures)
-
-	if peek_boss_bet_button != null:
-		peek_boss_bet_button.emit_signal("pressed")
-		await process_frame
-		var post_snapshot: Dictionary = controller.get_state_snapshot()
-		var expected_peek_text := "Boss: No Bet"
-		var boss_bet_id := str(post_snapshot.get("boss_bet_id", ""))
-		match boss_bet_id:
-			"hold_steady":
-				expected_peek_text = "Boss Bet: Hold Steady"
-			"positive_shift":
-				expected_peek_text = "Boss Bet: Positive Shift"
-			"dirty_move":
-				expected_peek_text = "Boss Bet: Dirty Move"
-		_assert(bet_result_hint != null and bet_result_hint.text == expected_peek_text, "Peek should show the current-turn boss bet snapshot.", failures)
 
 	if player_bet_row != null:
 		var post_cost_labels := _collect_button_texts(player_bet_row)
@@ -842,10 +1030,7 @@ func _test_main_mvp_layout(size: Vector2i, failures: Array[String]) -> void:
 	await process_frame
 
 	var viewport_size := scene.get_viewport_rect().size
-	var reveal_button: Control = _find_scene_node(scene, [
-		"ContentRoot/TableArea/BossArea/BossModeBar/BossBattleTabButton",
-		"ContentRoot/TableArea/BossBattleDeckView/RevealBattleDeckButton",
-	])
+	var reveal_button: Control = scene.get_node_or_null("ContentRoot/TableArea/BossArea/BossCardViewport/BossBattleDeckPanel/RevealBattleDeckButton")
 	var battle_deck_row: HBoxContainer = _find_scene_node(scene, [
 		"ContentRoot/TableArea/BossArea/BossCardViewport/BossBattleDeckPanel/BossBattleCardRow",
 		"ContentRoot/TableArea/BossBattleDeckView/BattleDeckRow",

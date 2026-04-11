@@ -266,9 +266,11 @@ grow_vertical = 2
 
 [node name="BattleTabButton" type="Button" parent="ContentRoot/TableArea/PlayerArea/ModeBar" unique_id=1603787514]
 layout_mode = 2
+text = "BattleDeck"
 
 [node name="BetTabButton" type="Button" parent="ContentRoot/TableArea/PlayerArea/ModeBar" unique_id=1520461636]
 layout_mode = 2
+text = "BetDeck"
 
 [node name="ModeTitleLabel" type="Label" parent="ContentRoot/TableArea/PlayerArea" unique_id=2109146118]
 layout_mode = 1
@@ -400,6 +402,7 @@ grow_vertical = 2
 
 [node name="BossArea" type="Control" parent="ContentRoot/TableArea" unique_id=1347558770]
 layout_mode = 1
+anchors_preset = 10
 anchor_right = 1.0
 offset_left = 198.0
 offset_top = -194.40001
@@ -444,6 +447,27 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+
+[node name="RevealBattleDeckButton" type="Button" parent="ContentRoot/TableArea/BossArea/BossCardViewport/BossBattleDeckPanel" unique_id=1662857374]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -84.0
+offset_top = 16.0
+offset_right = 68.0
+offset_bottom = 70.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 1
+theme_override_colors/font_color = Color(0.88, 0.061599992, 0.061599992, 1)
+theme_override_colors/font_pressed_color = Color(0.34065956, 0.6118352, 0.39859468, 1)
+theme_override_colors/icon_normal_color = Color(1, 0.65999997, 0.65999997, 1)
+action_mode = 0
+text = "Reveal Battle Deck"
+vertical_icon_alignment = 0
 
 [node name="BossBattleCardRow" type="HBoxContainer" parent="ContentRoot/TableArea/BossArea/BossCardViewport/BossBattleDeckPanel" unique_id=2067511316]
 layout_mode = 1
@@ -490,17 +514,11 @@ grow_vertical = 2
 [node name="BossBetTabButton" type="Button" parent="ContentRoot/TableArea/BossArea/BossModeBar" unique_id=1274105543]
 layout_mode = 2
 mouse_filter = 1
-text = "Peek"
+text = "BBattleDeck"
 
-[node name="BossBattleTabButton" type="Button" parent="ContentRoot/TableArea/BossArea/BossModeBar" unique_id=1662857374]
+[node name="BossBattleTabButton" type="Button" parent="ContentRoot/TableArea/BossArea/BossModeBar" unique_id=1363704332]
 layout_mode = 2
-mouse_filter = 1
-theme_override_colors/font_color = Color(0.88, 0.061599992, 0.061599992, 1)
-theme_override_colors/font_pressed_color = Color(0.34065956, 0.6118352, 0.39859468, 1)
-theme_override_colors/icon_normal_color = Color(1, 0.65999997, 0.65999997, 1)
-action_mode = 0
-text = "Reveal Battle Deck"
-vertical_icon_alignment = 0
+text = "BBattleDeck"
 
 [node name="RevealStatusLabel" type="Label" parent="ContentRoot/TableArea/BossArea/BossModeBar" unique_id=1438866393]
 layout_mode = 2
