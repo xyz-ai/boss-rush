@@ -5,6 +5,7 @@ const CARD_VIEW_SCENE := preload("res://scenes/ui/CardView.tscn")
 const BOSS_BATTLE_DECK_VIEW_SCRIPT := preload("res://scripts/ui/BossBattleDeckView.gd")
 const BET_ROW_VIEW_SCRIPT := preload("res://scripts/ui/BetRowView.gd")
 const BET_CARD_SCRIPT := preload("res://scripts/game/BetCard.gd")
+const TOOLTIP_PANEL_SCENE := preload("res://scenes/ui/TooltipPanel.tscn")
 
 const MAX_SETS := 3
 const WINS_TO_CLEAR := 2
@@ -16,9 +17,12 @@ const STARTING_REP := 3
 const MAX_LOG_LINES := 5
 const BET_PHASE_CLOSED := "closed"
 const BET_MODE_DEFAULT_ENABLED := true
-const TURN_RESULT_POPUP_DURATION := 2.2
+const TURN_RESULT_DISPLAY_DURATION := 1.6
 const VIEW_MODE_BATTLE := "battle"
 const VIEW_MODE_BET := "bet"
+const ROUND_FOLLOWUP_NONE := ""
+const ROUND_FOLLOWUP_OPEN_POST_BET := "open_post_bet"
+const ROUND_FOLLOWUP_FINALIZE_TURN := "finalize_turn"
 
 var _host: Control
 
@@ -44,6 +48,7 @@ var _player_bet_tab_button: Button
 var _player_mode_title_label: Label
 var _player_card_viewport: Control
 var _player_optional_summary_button: Button
+var _player_summary_panel: PanelContainer
 var _player_summary_label: Label
 var _boss_deck_root: Control
 var _boss_hand_count_label: Label
@@ -60,7 +65,9 @@ var _boss_battle_tab_button: Button
 var _boss_bet_tab_button: Button
 var _boss_reveal_status_label: Label
 var _boss_summary_toggle_button: Button
+var _boss_summary_panel: PanelContainer
 var _boss_summary_label: Label
+var _boss_archetype_label: Label
 var _clash_root: Control
 var _player_card_slot: Control
 var _boss_card_slot: Control
@@ -83,6 +90,7 @@ var _bet_result_hint: Label
 var _turn_result_popup: Control
 var _feedback_label: Label
 var _end_turn_button: Button
+var _tooltip_panel: Control
 
 var _player_hand_view: MvpPlayerHandView
 var _boss_deck_view: MvpBossDeckView
@@ -106,6 +114,7 @@ var _boss_set_wins: int = 0
 var _boss_battle_revealed: bool = false
 var _boss_bet_revealed: bool = false
 var _current_boss_template_id: String = MvpBattleCard.DEFAULT_BOSS_TEMPLATE_ID
+var _current_boss_archetype: String = MvpBattleCard.ARCHETYPE_BALANCED
 var _challenge_over: bool = false
 var _input_locked: bool = false
 var _logs: Array[String] = []
@@ -129,11 +138,14 @@ var _post_bet_effects_applied: bool = false
 var _current_round_result: Dictionary = {}
 var _bet_result_text: String = ""
 var _boss_bet_peek_snapshot_text: String = ""
-var _turn_result_popup_version: int = 0
 var _player_view_mode: String = VIEW_MODE_BATTLE
 var _boss_view_mode: String = VIEW_MODE_BATTLE
 var _player_summary_visible: bool = false
 var _boss_summary_visible: bool = false
+var _round_feedback_active: bool = false
+var _round_feedback_version: int = 0
+var _pending_round_followup: String = ROUND_FOLLOWUP_NONE
+var _pending_round_followup_result: Dictionary = {}
 
 func _init(host: Control) -> void:
 	_host = host
@@ -164,7 +176,9 @@ func get_state_snapshot() -> Dictionary:
 		"current_boss_template_id": _current_boss_template_id,
 		"boss_battle_revealed": _boss_battle_revealed,
 		"boss_bet_revealed": _boss_bet_revealed,
+		"boss_archetype": _current_boss_archetype,
 		"challenge_over": _challenge_over,
+		"round_feedback_active": _round_feedback_active,
 		"bet_mode_enabled": bet_mode_enabled,
 		"bet_phase": _bet_phase,
 		"player_view_mode": _player_view_mode,
@@ -406,32 +420,83 @@ func _toggle_boss_summary() -> void:
 	_refresh_ui()
 
 func _ensure_summary_labels() -> void:
-	if _player_summary_label == null and _player_card_viewport != null:
-		_player_summary_label = _create_summary_label("RuntimePlayerSummaryLabel")
-		_player_card_viewport.add_child(_player_summary_label)
-	if _boss_summary_label == null and _boss_card_viewport != null:
-		_boss_summary_label = _create_summary_label("RuntimeBossSummaryLabel")
-		_boss_card_viewport.add_child(_boss_summary_label)
+	if _player_summary_panel == null and _player_card_viewport != null:
+		_player_summary_panel = _create_summary_panel("RuntimePlayerSummaryPanel", "RuntimePlayerSummaryLabel")
+		_player_card_viewport.add_child(_player_summary_panel)
+		_player_summary_label = _player_summary_panel.get_node("MarginContainer/RuntimePlayerSummaryLabel") as Label
+	elif _player_summary_panel != null and _player_summary_label == null:
+		_player_summary_label = _player_summary_panel.get_node_or_null("MarginContainer/RuntimePlayerSummaryLabel") as Label
+	if _boss_summary_panel == null and _boss_card_viewport != null:
+		_boss_summary_panel = _create_summary_panel("RuntimeBossSummaryPanel", "RuntimeBossSummaryLabel")
+		_boss_card_viewport.add_child(_boss_summary_panel)
+		_boss_summary_label = _boss_summary_panel.get_node("MarginContainer/RuntimeBossSummaryLabel") as Label
+	elif _boss_summary_panel != null and _boss_summary_label == null:
+		_boss_summary_label = _boss_summary_panel.get_node_or_null("MarginContainer/RuntimeBossSummaryLabel") as Label
+	_ensure_boss_archetype_label()
+	_ensure_tooltip_panel()
 
-func _create_summary_label(node_name: String) -> Label:
+func _create_summary_panel(panel_name: String, label_name: String) -> PanelContainer:
+	var panel := PanelContainer.new()
+	panel.name = panel_name
+	panel.layout_mode = 1
+	panel.anchor_left = 0.0
+	panel.anchor_top = 0.0
+	panel.anchor_right = 1.0
+	panel.anchor_bottom = 0.0
+	panel.offset_left = 10.0
+	panel.offset_top = 10.0
+	panel.offset_right = -10.0
+	panel.offset_bottom = 96.0
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.visible = false
+	panel.z_index = 5
+
+	var margin := MarginContainer.new()
+	margin.name = "MarginContainer"
+	margin.anchor_right = 1.0
+	margin.anchor_bottom = 1.0
+	margin.offset_left = 10.0
+	margin.offset_top = 8.0
+	margin.offset_right = -10.0
+	margin.offset_bottom = -8.0
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(margin)
+
 	var label := Label.new()
-	label.name = node_name
-	label.layout_mode = 1
-	label.anchor_left = 0.0
-	label.anchor_top = 0.0
+	label.name = label_name
 	label.anchor_right = 1.0
 	label.anchor_bottom = 1.0
-	label.offset_left = 12.0
-	label.offset_top = 12.0
-	label.offset_right = -12.0
-	label.offset_bottom = -12.0
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.visible = false
-	label.add_theme_color_override("font_color", Color(0.95, 0.96, 0.97, 0.96))
-	return label
+	label.add_theme_color_override("font_color", Color(0.95, 0.96, 0.97, 0.98))
+	margin.add_child(label)
+
+	return panel
+
+func _ensure_boss_archetype_label() -> void:
+	if _boss_archetype_label != null or _boss_mode_bar == null:
+		return
+	_boss_archetype_label = Label.new()
+	_boss_archetype_label.name = "RuntimeBossArchetypeLabel"
+	_boss_archetype_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_boss_archetype_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_boss_archetype_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_boss_archetype_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_boss_archetype_label.add_theme_color_override("font_color", Color(0.88, 0.89, 0.92, 0.95))
+	_boss_mode_bar.add_child(_boss_archetype_label)
+
+func _ensure_tooltip_panel() -> void:
+	if _tooltip_panel != null:
+		return
+	if TOOLTIP_PANEL_SCENE == null:
+		return
+	_tooltip_panel = TOOLTIP_PANEL_SCENE.instantiate() as Control
+	if _tooltip_panel == null:
+		return
+	_tooltip_panel.name = "RuntimeTooltipPanel"
+	_host.add_child(_tooltip_panel)
 
 func _refresh_summary_texts() -> void:
 	_ensure_summary_labels()
@@ -447,6 +512,8 @@ func _refresh_summary_texts() -> void:
 		_player_summary_label.text = _build_player_summary_text()
 	if _boss_summary_label != null:
 		_boss_summary_label.text = _build_boss_summary_text()
+	if _boss_archetype_label != null:
+		_boss_archetype_label.text = "%s Boss" % MvpBattleCard.archetype_display_name(_current_boss_archetype)
 
 func _build_player_summary_text() -> String:
 	if _player_view_mode == VIEW_MODE_BET and bet_mode_enabled:
@@ -457,37 +524,26 @@ func _build_player_summary_text() -> String:
 			"Phase: %s" % _phase_text(),
 			"Selected: %s" % (selected_bet.name if selected_bet != null else "None"),
 		])
-		for bet_card in _bet_cards:
-			lines.append("%s: %d SPR" % [bet_card.name, BET_CARD_SCRIPT.cost_for_timing(bet_card, timing)])
 		return "\n".join(lines)
 
 	var counts: Dictionary = _build_remaining_type_counts(_player_state)
 	return "\n".join(PackedStringArray([
 		"Player Battle Summary",
-		"Aggression: %d" % int(counts.get(MvpBattleCard.TYPE_AGGRESSION, 0)),
-		"Defense: %d" % int(counts.get(MvpBattleCard.TYPE_DEFENSE, 0)),
-		"Pressure: %d" % int(counts.get(MvpBattleCard.TYPE_PRESSURE, 0)),
-		_build_used_remaining_text(_player_state),
+		"Aggression x%d" % int(counts.get(MvpBattleCard.TYPE_AGGRESSION, 0)),
+		"Defense x%d" % int(counts.get(MvpBattleCard.TYPE_DEFENSE, 0)),
+		"Pressure x%d" % int(counts.get(MvpBattleCard.TYPE_PRESSURE, 0)),
 	]))
 
 func _build_boss_summary_text() -> String:
 	if _boss_view_mode == VIEW_MODE_BET and bet_mode_enabled:
-		return "Boss Bet Summary\nUI reveal not connected in this build."
-
-	if not _boss_battle_revealed:
-		return "\n".join(PackedStringArray([
-			"Boss Battle Summary",
-			"Battle deck hidden",
-			_build_used_remaining_text(_boss_state),
-		]))
+		return "Boss Bet Summary\nDetailed reveal not connected in this build."
 
 	var counts: Dictionary = _build_remaining_type_counts(_boss_state)
 	return "\n".join(PackedStringArray([
 		"Boss Battle Summary",
-		"Aggression: %d" % int(counts.get(MvpBattleCard.TYPE_AGGRESSION, 0)),
-		"Defense: %d" % int(counts.get(MvpBattleCard.TYPE_DEFENSE, 0)),
-		"Pressure: %d" % int(counts.get(MvpBattleCard.TYPE_PRESSURE, 0)),
-		_build_used_remaining_text(_boss_state),
+		"Aggression remaining: %d" % int(counts.get(MvpBattleCard.TYPE_AGGRESSION, 0)),
+		"Defense remaining: %d" % int(counts.get(MvpBattleCard.TYPE_DEFENSE, 0)),
+		"Pressure remaining: %d" % int(counts.get(MvpBattleCard.TYPE_PRESSURE, 0)),
 	]))
 
 func _build_remaining_type_counts(actor_state: MvpCombatActorState) -> Dictionary:
@@ -520,18 +576,15 @@ func _refresh_viewport_modes() -> void:
 		player_battle_visible = _player_view_mode == VIEW_MODE_BATTLE
 		player_bet_visible = _player_view_mode == VIEW_MODE_BET
 	if _player_battle_panel != null:
-		_player_battle_panel.visible = player_battle_visible and not _player_summary_visible
+		_player_battle_panel.visible = player_battle_visible
 	if _player_bet_area != null:
-		_player_bet_area.visible = bet_mode_enabled and player_bet_visible and not _player_summary_visible
-	if _player_summary_label != null:
-		_player_summary_label.visible = _player_summary_visible
+		_player_bet_area.visible = bet_mode_enabled and player_bet_visible
+	if _player_summary_panel != null:
+		_player_summary_panel.visible = _player_summary_visible
 	if _player_mode_bar != null:
 		_player_mode_bar.visible = bet_mode_enabled
 	if _player_mode_title_label != null:
-		if _player_summary_visible:
-			_player_mode_title_label.text = "Battle Summary" if player_battle_visible else "Bet Summary"
-		else:
-			_player_mode_title_label.text = "Battle Cards" if player_battle_visible else "Bet Cards"
+		_player_mode_title_label.text = "Battle Cards" if player_battle_visible else "Bet Cards"
 
 	var boss_battle_visible := true
 	var boss_bet_visible := false
@@ -539,18 +592,15 @@ func _refresh_viewport_modes() -> void:
 		boss_battle_visible = _boss_view_mode == VIEW_MODE_BATTLE
 		boss_bet_visible = _boss_view_mode == VIEW_MODE_BET
 	if _boss_battle_panel != null:
-		_boss_battle_panel.visible = boss_battle_visible and not _boss_summary_visible
+		_boss_battle_panel.visible = boss_battle_visible
 	if _boss_bet_area != null:
-		_boss_bet_area.visible = bet_mode_enabled and boss_bet_visible and not _boss_summary_visible
-	if _boss_summary_label != null:
-		_boss_summary_label.visible = _boss_summary_visible
+		_boss_bet_area.visible = bet_mode_enabled and boss_bet_visible
+	if _boss_summary_panel != null:
+		_boss_summary_panel.visible = _boss_summary_visible
 	if _boss_mode_bar != null:
 		_boss_mode_bar.visible = true
 	if _battle_deck_title != null:
-		if _boss_summary_visible:
-			_battle_deck_title.text = "Boss Battle Summary" if boss_battle_visible else "Boss Bet Summary"
-		else:
-			_battle_deck_title.text = "Boss Battle Deck" if boss_battle_visible else "Boss Bet"
+		_battle_deck_title.text = "Boss Battle Deck" if boss_battle_visible else "Boss Bet"
 	if _boss_reveal_status_label != null:
 		_boss_reveal_status_label.text = "Revealed" if _boss_battle_revealed else "Hidden"
 
@@ -674,45 +724,47 @@ func _refresh_overlay_log() -> void:
 
 func _hide_turn_result_popup(invalidate_pending: bool = false) -> void:
 	if invalidate_pending:
-		_turn_result_popup_version += 1
+		_round_feedback_version += 1
+		_round_feedback_active = false
+		_pending_round_followup = ROUND_FOLLOWUP_NONE
+		_pending_round_followup_result.clear()
 	if is_instance_valid(_feedback_label):
 		_feedback_label.text = ""
 	if is_instance_valid(_turn_result_popup):
 		_turn_result_popup.hide()
 
-func show_turn_result_popup(lines: PackedStringArray) -> void:
+func show_turn_result_popup(payload: Dictionary) -> void:
 	if not is_instance_valid(_turn_result_popup) or not is_instance_valid(_feedback_label):
 		return
-	_turn_result_popup_version += 1
-	var popup_version := _turn_result_popup_version
+	var lines := PackedStringArray()
+	for key in ["headline_text", "player_card_text", "boss_card_text", "explanation_text", "power_text", "remaining_text"]:
+		var line := str(payload.get(key, "")).strip_edges()
+		if not line.is_empty():
+			lines.append(line)
 	_feedback_label.text = "\n".join(lines)
 	_turn_result_popup.show()
-	var tree := _host.get_tree()
-	if tree == null:
-		return
-	await tree.create_timer(TURN_RESULT_POPUP_DURATION).timeout
-	if popup_version != _turn_result_popup_version:
-		return
-	_hide_turn_result_popup()
 
-func _show_round_feedback(result: Dictionary) -> void:
-	if _boss_state == null:
-		return
+func _build_round_feedback_payload(result: Dictionary) -> Dictionary:
+	if _boss_state == null or result.is_empty():
+		return {}
 
 	var player_card: Dictionary = result.get("player_card", {})
 	var boss_card: Dictionary = result.get("boss_card", {})
 	var player_type := str(player_card.get("type", ""))
 	var boss_type := str(boss_card.get("type", ""))
-	var player_display_name := str(player_card.get("display_name", MvpBattleCard.display_name_for_type(player_type)))
-	var boss_display_name := str(boss_card.get("display_name", MvpBattleCard.display_name_for_type(boss_type)))
-	var outcome := "ties"
-	match str(result.get("winner", "tie")):
+	var player_name := str(player_card.get("display_name", MvpBattleCard.display_name_for_type(player_type)))
+	var boss_name := str(boss_card.get("display_name", MvpBattleCard.display_name_for_type(boss_type)))
+	var player_total := int(result.get("player_total", 0))
+	var boss_total := int(result.get("boss_total", 0))
+	var winner := str(result.get("winner", "tie"))
+	var headline_text := "DRAW"
+	match winner:
 		"player":
-			outcome = "wins"
+			headline_text = "YOU WIN"
 		"boss":
-			outcome = "loses"
+			headline_text = "YOU LOSE"
 		_:
-			outcome = "ties"
+			headline_text = "DRAW"
 
 	var remaining_count := 0
 	for slot_index in range(_boss_state.cards.size()):
@@ -722,11 +774,67 @@ func _show_round_feedback(result: Dictionary) -> void:
 		if remaining_card != null and remaining_card.type == boss_type:
 			remaining_count += 1
 
-	show_turn_result_popup(PackedStringArray([
-		"Boss used %s" % boss_display_name,
-		"Your %s %s" % [player_display_name, outcome],
-		"%s remaining: %d" % [boss_display_name, remaining_count],
-	]))
+	return {
+		"headline_text": headline_text,
+		"player_card_text": "You played %s" % player_name,
+		"boss_card_text": "Boss played %s" % boss_name,
+		"explanation_text": _build_round_explanation(player_type, boss_type, winner, player_total, boss_total),
+		"power_text": "Power: You %d vs Boss %d" % [player_total, boss_total],
+		"remaining_text": "%s remaining: %d" % [boss_name, remaining_count],
+	}
+
+func _build_round_explanation(player_type: String, boss_type: String, winner: String, _player_total: int, _boss_total: int) -> String:
+	var player_name := MvpBattleCard.display_name_for_type(player_type)
+	var boss_name := MvpBattleCard.display_name_for_type(boss_type)
+	if winner == "tie":
+		if player_type == boss_type:
+			return "Both played %s" % player_name
+		return "Your %s and Boss %s trade evenly" % [player_name, boss_name]
+	if winner == "player":
+		if player_type == MvpBattleCard.TYPE_DEFENSE and boss_type == MvpBattleCard.TYPE_AGGRESSION:
+			return "Your Defense blocks Aggression"
+		return "Your %s beats %s" % [player_name, boss_name]
+	if boss_type == MvpBattleCard.TYPE_DEFENSE and player_type == MvpBattleCard.TYPE_AGGRESSION:
+		return "Boss Defense blocks your Aggression"
+	return "Boss %s beats your %s" % [boss_name, player_name]
+
+func _present_round_feedback(result: Dictionary, followup: String) -> void:
+	if result.is_empty():
+		_complete_round_feedback(result, followup)
+		return
+	_round_feedback_version += 1
+	var feedback_version := _round_feedback_version
+	_round_feedback_active = true
+	_pending_round_followup = followup
+	_pending_round_followup_result = result.duplicate(true)
+	var payload := _build_round_feedback_payload(result)
+	show_turn_result_popup(payload)
+	if _clash_area_view != null:
+		_clash_area_view.set_result_text(str(payload.get("headline_text", "")))
+	_refresh_ui()
+	var tree := _host.get_tree()
+	if tree == null:
+		_complete_round_feedback(result, followup)
+		return
+	await tree.create_timer(TURN_RESULT_DISPLAY_DURATION).timeout
+	if feedback_version != _round_feedback_version:
+		return
+	_complete_round_feedback(result, followup)
+
+func _complete_round_feedback(result: Dictionary, followup: String) -> void:
+	_round_feedback_active = false
+	_pending_round_followup = ROUND_FOLLOWUP_NONE
+	_pending_round_followup_result.clear()
+	_hide_turn_result_popup()
+	if _clash_area_view != null:
+		_clash_area_view.set_result_text(str(result.get("summary_text", "")))
+	match followup:
+		ROUND_FOLLOWUP_OPEN_POST_BET:
+			_open_post_bet_window(result)
+		ROUND_FOLLOWUP_FINALIZE_TURN:
+			_finalize_current_turn()
+		_:
+			_refresh_ui()
 
 func _start_new_challenge() -> void:
 	_hide_turn_result_popup(true)
@@ -757,9 +865,12 @@ func _start_new_challenge() -> void:
 	_refresh_ui()
 
 func _reset_for_current_set() -> void:
+	_hide_turn_result_popup(true)
 	_player_state.set_deck_blueprint(MvpBattleCard.build_player_test_deck())
 	var boss_template: Dictionary = MvpBattleCard.pick_random_boss_template(_boss_template_rng)
 	_current_boss_template_id = str(boss_template.get("id", MvpBattleCard.DEFAULT_BOSS_TEMPLATE_ID))
+	_current_boss_archetype = MvpBattleCard.archetype_for_template(_current_boss_template_id)
+	_boss_ai.set_archetype(_current_boss_archetype)
 	_boss_state.set_deck_blueprint(boss_template.get("cards", []))
 	_player_state.reset_for_new_set(SET_HP)
 	_boss_state.reset_for_new_set(SET_HP)
@@ -781,6 +892,8 @@ func _reset_turn_bet_state(clear_result: bool = false) -> void:
 	_post_bet_window_open = false
 	_post_bet_effects_applied = false
 	_current_round_result.clear()
+	_pending_round_followup = ROUND_FOLLOWUP_NONE
+	_pending_round_followup_result.clear()
 	_input_locked = false
 	_boss_bet_peek_snapshot_text = ""
 	if clear_result:
@@ -794,6 +907,7 @@ func _reset_turn_bet_state(clear_result: bool = false) -> void:
 func _refresh_ui() -> void:
 	_round_label.text = "Round %d / %d" % [_current_set_index, MAX_SETS]
 	_turn_label.text = "Turn %d / %d" % [_current_turn_index, MAX_TURNS]
+	_center_info.visible = not _round_feedback_active
 	_player_hp_label.text = "Player HP %d" % _player_state.hp
 	_boss_hp_label.text = "Boss HP %d" % _boss_state.hp
 	_player_bod_label.text = "BOD %d" % _player_state.bod
@@ -820,10 +934,10 @@ func _refresh_ui() -> void:
 	_refresh_overlay_log()
 
 func _refresh_bet_ui() -> void:
-	_bet_phase_hint.visible = bet_mode_enabled
+	_bet_phase_hint.visible = bet_mode_enabled and not _round_feedback_active
 	if _peek_boss_bet_button != null:
 		_peek_boss_bet_button.visible = bet_mode_enabled and boss_bet_peek_enabled
-	var end_turn_visible := bet_mode_enabled and _post_bet_window_open and not _challenge_over
+	var end_turn_visible := bet_mode_enabled and _post_bet_window_open and not _challenge_over and not _round_feedback_active
 	_end_turn_button.visible = end_turn_visible
 	_end_turn_button.disabled = not end_turn_visible
 	if not bet_mode_enabled:
@@ -837,7 +951,7 @@ func _refresh_bet_ui() -> void:
 	_bet_phase_hint.text = _phase_text()
 	var bet_result_display: String = _bet_result_text if not _bet_result_text.is_empty() else _boss_bet_peek_snapshot_text
 	_bet_result_hint.text = bet_result_display
-	_bet_result_hint.visible = not bet_result_display.is_empty()
+	_bet_result_hint.visible = not _round_feedback_active and not bet_result_display.is_empty()
 	_player_bet_view.set_entries(_build_player_bet_entries(), _is_player_bet_interactive())
 	_boss_bet_view.set_entries(_build_boss_bet_entries(), false)
 
@@ -878,6 +992,8 @@ func _build_player_bet_entries() -> Array[Dictionary]:
 			"id": bet_card.id,
 			"label": label,
 			"disabled": disabled,
+			"tooltip_title": bet_card.name,
+			"tooltip_body": bet_card.tooltip_body_for_timing(timing),
 		})
 	return entries
 
@@ -910,7 +1026,7 @@ func _phase_text() -> String:
 			return "Bet Closed"
 
 func _is_player_bet_interactive() -> bool:
-	if not bet_mode_enabled or _challenge_over:
+	if not bet_mode_enabled or _challenge_over or _round_feedback_active:
 		return false
 	if _bet_phase == BET_CARD_SCRIPT.TIMING_PRE:
 		return not _input_locked and not _post_bet_window_open and _player_pre_bet == null
@@ -993,7 +1109,7 @@ func _on_card_play_requested(slot_index: int) -> void:
 		_player_hand_view.set_interactive(false)
 		var no_bet_result: Dictionary = _resolver.resolve_round(_player_state, _boss_state, slot_index, boss_slot)
 		_apply_round_result(no_bet_result)
-		_finalize_current_turn()
+		await _present_round_feedback(no_bet_result, ROUND_FOLLOWUP_FINALIZE_TURN)
 		return
 
 	_input_locked = true
@@ -1001,10 +1117,10 @@ func _on_card_play_requested(slot_index: int) -> void:
 	var result: Dictionary = _resolver.resolve_round(_player_state, _boss_state, slot_index, boss_slot)
 	_bet_result_text = _apply_bet_modifiers(result, _player_pre_bet, null)
 	_apply_round_result(result)
+	var followup := ROUND_FOLLOWUP_OPEN_POST_BET
 	if _is_round_terminal_state():
-		_finalize_current_turn()
-		return
-	_open_post_bet_window(result)
+		followup = ROUND_FOLLOWUP_FINALIZE_TURN
+	await _present_round_feedback(result, followup)
 
 func _open_post_bet_window(result: Dictionary) -> void:
 	_post_bet_window_open = true
@@ -1150,7 +1266,6 @@ func _apply_round_result(result: Dictionary) -> void:
 		result.get("boss_card", {}),
 		str(result.get("summary_text", ""))
 	)
-	_show_round_feedback(result)
 	_refresh_ui()
 
 func _apply_post_bet_effects_if_needed() -> void:

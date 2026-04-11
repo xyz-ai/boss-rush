@@ -9,6 +9,9 @@ const TEMPLATE_A_ID := "template_a"
 const TEMPLATE_B_ID := "template_b"
 const TEMPLATE_C_ID := "template_c"
 const DEFAULT_BOSS_TEMPLATE_ID := TEMPLATE_A_ID
+const ARCHETYPE_AGGRESSIVE := "aggressive"
+const ARCHETYPE_DEFENSIVE := "defensive"
+const ARCHETYPE_BALANCED := "balanced"
 
 const PLAYER_TEMPLATE := [
 	TYPE_AGGRESSION,
@@ -94,6 +97,28 @@ static func display_name_for_type(card_type: String) -> String:
 			return "Pressure"
 		_:
 			return "Aggression"
+
+static func archetype_for_template(template_id: String) -> String:
+	match template_id:
+		TEMPLATE_A_ID:
+			return ARCHETYPE_AGGRESSIVE
+		TEMPLATE_B_ID:
+			return ARCHETYPE_DEFENSIVE
+		TEMPLATE_C_ID:
+			return ARCHETYPE_BALANCED
+		_:
+			return ARCHETYPE_BALANCED
+
+static func archetype_display_name(archetype: String) -> String:
+	match archetype:
+		ARCHETYPE_AGGRESSIVE:
+			return "Aggressive"
+		ARCHETYPE_DEFENSIVE:
+			return "Defensive"
+		ARCHETYPE_BALANCED:
+			return "Balanced"
+		_:
+			return "Balanced"
 
 static func normalized_type(card_type: String) -> String:
 	return card_type if card_type in VALID_TYPES else TYPE_AGGRESSION

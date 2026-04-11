@@ -159,9 +159,9 @@ anchor_left = 0.26
 anchor_top = 0.02
 anchor_right = 0.74
 anchor_bottom = 0.38
-offset_left = 86.22406
+offset_left = 77.22406
 offset_top = 35.509277
-offset_right = -40.823883
+offset_right = -49.823883
 offset_bottom = 11.509285
 
 [node name="ClashResultLabel" type="Label" parent="ContentRoot/TableArea/ClashArea" unique_id=2137169467]
@@ -455,10 +455,10 @@ anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = -84.0
-offset_top = 16.0
-offset_right = 68.0
-offset_bottom = 70.0
+offset_left = 147.0
+offset_top = 30.0
+offset_right = 299.0
+offset_bottom = 84.0
 grow_horizontal = 2
 grow_vertical = 0
 mouse_filter = 1

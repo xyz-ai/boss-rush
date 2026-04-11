@@ -26,6 +26,9 @@ var branch_enabled: bool = false
 var branch_group_id: String = ""
 var branch_options: Array = []
 var branch_resolution_mode: String = ""
+var role_text: String = ""
+var effect_text: String = ""
+var condition_text: String = ""
 
 func _init(data: Dictionary = {}) -> void:
 	id = str(data.get("id", HOLD_STEADY_ID))
@@ -42,6 +45,9 @@ func _init(data: Dictionary = {}) -> void:
 	branch_group_id = str(data.get("branch_group_id", ""))
 	branch_options = data.get("branch_options", []).duplicate(true)
 	branch_resolution_mode = str(data.get("branch_resolution_mode", ""))
+	role_text = str(data.get("role_text", ""))
+	effect_text = str(data.get("effect_text", ""))
+	condition_text = str(data.get("condition_text", ""))
 
 static func build_default_cards() -> Array:
 	return [
@@ -67,6 +73,15 @@ static func cost_for_timing(card, timing: String) -> int:
 func is_available_in_timing(timing: String) -> bool:
 	return timing_windows.has(timing)
 
+func tooltip_body_for_timing(timing: String) -> String:
+	var cost: int = cost_for_timing(self, timing)
+	return "\n".join(PackedStringArray([
+		"Role: %s" % role_text,
+		"Effect: %s" % effect_text,
+		"Condition: %s" % condition_text,
+		"Cost: %d %s" % [cost, cost_resource.to_upper()],
+	]))
+
 func to_dict() -> Dictionary:
 	return {
 		"id": id,
@@ -81,6 +96,9 @@ func to_dict() -> Dictionary:
 		"branch_group_id": branch_group_id,
 		"branch_options": branch_options.duplicate(true),
 		"branch_resolution_mode": branch_resolution_mode,
+		"role_text": role_text,
+		"effect_text": effect_text,
+		"condition_text": condition_text,
 	}
 
 static func _blueprint_hold_steady() -> Dictionary:
@@ -97,6 +115,9 @@ static func _blueprint_hold_steady() -> Dictionary:
 		"branch_group_id": "",
 		"branch_options": [],
 		"branch_resolution_mode": "",
+		"role_text": "Skip betting safely",
+		"effect_text": "Place no modifier this phase",
+		"condition_text": "Available during Pre-Bet and Post-Bet",
 	}
 
 static func _blueprint_positive_shift() -> Dictionary:
@@ -113,6 +134,9 @@ static func _blueprint_positive_shift() -> Dictionary:
 		"branch_group_id": "",
 		"branch_options": [],
 		"branch_resolution_mode": "",
+		"role_text": "Push advantage when your read is correct",
+		"effect_text": "If you win, deal +1 damage",
+		"condition_text": "Available during Pre-Bet and Post-Bet; only matters on a winning clash",
 	}
 
 static func _blueprint_dirty_move() -> Dictionary:
@@ -129,4 +153,7 @@ static func _blueprint_dirty_move() -> Dictionary:
 		"branch_group_id": "",
 		"branch_options": [],
 		"branch_resolution_mode": "",
+		"role_text": "Trade safety for swing",
+		"effect_text": "If you win, deal +2 damage; if you lose, take 1 self-damage",
+		"condition_text": "Available during Pre-Bet and Post-Bet",
 	}

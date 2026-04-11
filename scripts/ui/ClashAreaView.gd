@@ -27,6 +27,12 @@ func show_clash(player_card: Dictionary, boss_card: Dictionary, summary_text: St
 	_place_card(_boss_card_slot, boss_card, "BossClashCard")
 	_result_label.text = summary_text
 
+func set_result_text(text: String) -> void:
+	_result_label.text = text
+
+func get_result_text() -> String:
+	return _result_label.text
+
 func clear_clash() -> void:
 	_clear_slot(_player_card_slot)
 	_clear_slot(_boss_card_slot)

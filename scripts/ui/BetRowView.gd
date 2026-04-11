@@ -32,6 +32,13 @@ func set_entries(entries: Array[Dictionary], interactive: bool = true) -> void:
 		button.mouse_filter = Control.MOUSE_FILTER_STOP
 		if interactive and not button.disabled:
 			button.pressed.connect(_on_button_pressed.bind(str(entry.get("id", ""))))
+		var tooltip_title := str(entry.get("tooltip_title", ""))
+		var tooltip_body := str(entry.get("tooltip_body", ""))
+		if not tooltip_title.is_empty() or not tooltip_body.is_empty():
+			if not button.mouse_entered.is_connected(_on_button_mouse_entered.bind(button, tooltip_title, tooltip_body)):
+				button.mouse_entered.connect(_on_button_mouse_entered.bind(button, tooltip_title, tooltip_body))
+			if not button.mouse_exited.is_connected(_on_button_mouse_exited):
+				button.mouse_exited.connect(_on_button_mouse_exited)
 		_row.add_child(button)
 		_buttons[button.name] = button
 
@@ -41,7 +48,14 @@ func clear() -> void:
 func _on_button_pressed(bet_id: String) -> void:
 	bet_selected.emit(bet_id)
 
+func _on_button_mouse_entered(button: Button, tooltip_title: String, tooltip_body: String) -> void:
+	SignalBus.emit_signal("tooltip_requested", tooltip_title, tooltip_body, button.global_position)
+
+func _on_button_mouse_exited() -> void:
+	SignalBus.emit_signal("tooltip_hidden")
+
 func _clear() -> void:
+	SignalBus.emit_signal("tooltip_hidden")
 	for child in _row.get_children():
 		_row.remove_child(child)
 		child.queue_free()
