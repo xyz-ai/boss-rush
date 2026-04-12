@@ -22,10 +22,9 @@ func _init(
 	assert(_result_label != null, "ClashAreaView requires an existing ClashResultLabel node.")
 	clear_clash()
 
-func show_clash(player_card: Dictionary, boss_card: Dictionary, summary_text: String) -> void:
+func show_clash(player_card: Dictionary, boss_card: Dictionary) -> void:
 	_place_card(_player_card_slot, player_card, "PlayerClashCard")
 	_place_card(_boss_card_slot, boss_card, "BossClashCard")
-	_result_label.text = summary_text
 
 func set_result_text(text: String) -> void:
 	_result_label.text = text

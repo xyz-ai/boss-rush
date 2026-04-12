@@ -9,6 +9,7 @@ const MATCHUP_RULES_SCRIPT := preload("res://scripts/core/MatchupRules.gd")
 const MVP_BOSS_AI_SCRIPT := preload("res://scripts/game/BossAI.gd")
 const MVP_BATTLE_CARD_SCRIPT := preload("res://scripts/game/BattleCard.gd")
 const MVP_COMBAT_ACTOR_STATE_SCRIPT := preload("res://scripts/game/CombatActorState.gd")
+const ROUND_FEEDBACK_WAIT := 2.15
 
 func _init() -> void:
 	call_deferred("_run")
@@ -400,6 +401,7 @@ func _test_main_mvp_without_bets(failures: Array[String]) -> void:
 		"ContentRoot/TableArea/BossBattleDeckView/BattleDeckRow",
 	]) as HBoxContainer
 	var turn_label: Label = scene.get_node_or_null("ContentRoot/TableArea/CenterInfo/TurnLabel")
+	var clash_result_label: Label = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/ClashResultLabel")
 	var player_slot: Control = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/PlayerCardSlot")
 	var boss_slot: Control = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/BossCardSlot")
 	var player_bet_area: Control = _find_scene_node(scene, [
@@ -434,11 +436,12 @@ func _test_main_mvp_without_bets(failures: Array[String]) -> void:
 	_assert(boss_slot != null and boss_slot.get_child_count() == 1, "Without bet mode, clash area should show the boss's current card.", failures)
 	_assert(battle_deck_row != null and battle_deck_row.get_child_count() == 5, "Boss battle deck should keep 5 visible slots after use.", failures)
 
-	await _wait_seconds(1.7)
+	await _wait_seconds(ROUND_FEEDBACK_WAIT)
 
 	snapshot = controller.get_state_snapshot()
 	_assert(not bool(snapshot.get("round_feedback_active", true)), "Without bet mode, round feedback should clear after the fixed pause.", failures)
 	_assert(turn_label != null and turn_label.text == "Turn 2 / 5", "Without bet mode, resolving one turn should advance to Turn 2 / 5 after feedback ends.", failures)
+	_assert(clash_result_label != null and clash_result_label.text == "Choose a card to start the turn.", "After popup feedback ends without bet mode, the center clash label should return to the default turn prompt.", failures)
 
 	scene.queue_free()
 	await process_frame
@@ -783,12 +786,12 @@ func _test_main_mvp_pre_bet_selection_still_allows_battle_card(failures: Array[S
 	_assert(turn_label != null and turn_label.text == "Turn 1 / 5", "A battle card picked after a Pre-Bet card should resolve immediately but stay on the same turn until EndTurn.", failures)
 	_assert(player_slot != null and player_slot.get_child_count() == 1, "The clash area should show the played player card after a Pre-Bet-assisted turn.", failures)
 	_assert(boss_slot != null and boss_slot.get_child_count() == 1, "The clash area should show the boss card after a Pre-Bet-assisted turn.", failures)
-	_assert(clash_result_label != null and not clash_result_label.text.is_empty(), "A turn with a Pre-Bet card should still produce a clash result.", failures)
+	_assert(clash_result_label != null and clash_result_label.text == "", "The center clash label should stay clear while the popup owns round feedback.", failures)
 	_assert(turn_result_popup != null and turn_result_popup.visible, "The main action popup should appear immediately after a Pre-Bet-assisted battle card play.", failures)
 	_assert(end_turn_button != null and not end_turn_button.visible, "EndTurn should stay hidden during the feedback pause before Post-Bet opens.", failures)
 	_assert(str(snapshot.get("player_pre_bet_id", "")) == "positive_shift", "The chosen Pre-Bet card should stay recorded until the turn is actually ended.", failures)
 
-	await _wait_seconds(1.7)
+	await _wait_seconds(ROUND_FEEDBACK_WAIT)
 
 	snapshot = controller.get_state_snapshot()
 	_assert(str(snapshot.get("bet_phase", "")) == "post", "After the feedback pause, a Pre-Bet-assisted battle card play should enter Post-Bet.", failures)
@@ -822,6 +825,7 @@ func _test_main_mvp_post_bet_end_turn(failures: Array[String]) -> void:
 	var turn_label: Label = scene.get_node_or_null("ContentRoot/TableArea/CenterInfo/TurnLabel")
 	var player_slot: Control = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/PlayerCardSlot")
 	var boss_slot: Control = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/BossCardSlot")
+	var clash_result_label: Label = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/ClashResultLabel")
 	var turn_result_popup: Control = scene.get_node_or_null("ContentRoot/TableArea/TurnResultPopup")
 	var end_turn_button: Button = scene.get_node_or_null("ContentRoot/TableArea/EndTurn")
 
@@ -843,12 +847,13 @@ func _test_main_mvp_post_bet_end_turn(failures: Array[String]) -> void:
 	_assert(turn_result_popup != null and turn_result_popup.visible, "TurnResultPopup should appear as soon as the main action resolves.", failures)
 	_assert(end_turn_button != null and not end_turn_button.visible, "EndTurn should stay hidden until the feedback pause finishes.", failures)
 
-	await _wait_seconds(1.7)
+	await _wait_seconds(ROUND_FEEDBACK_WAIT)
 
 	snapshot = controller.get_state_snapshot()
 	_assert(str(snapshot.get("bet_phase", "")) == "post", "Clicking a battle card should enter Post-Bet after the feedback pause.", failures)
 	_assert(bool(snapshot.get("post_bet_window_open", false)), "Post-Bet should open after the feedback pause ends.", failures)
 	_assert(end_turn_button != null and end_turn_button.visible, "EndTurn should become visible during Post-Bet.", failures)
+	_assert(clash_result_label != null and clash_result_label.text == "Post-Bet: play one bet card or choose End Turn.", "After the popup clears, the center clash label should switch to a short Post-Bet guidance prompt.", failures)
 
 	if end_turn_button != null:
 		end_turn_button.emit_signal("pressed")
@@ -902,7 +907,7 @@ func _test_main_mvp_post_bet_card_then_end_turn(failures: Array[String]) -> void
 		await process_frame
 
 	_assert_round_feedback_active(scene, controller, failures, "A Post-Bet test turn")
-	await _wait_seconds(1.7)
+	await _wait_seconds(ROUND_FEEDBACK_WAIT)
 
 	var snapshot: Dictionary = controller.get_state_snapshot()
 	_assert(str(snapshot.get("bet_phase", "")) == "post", "Post-Bet card testing should begin after the round feedback pause opens Post-Bet.", failures)
@@ -1118,7 +1123,7 @@ func _test_main_mvp_with_bets(failures: Array[String]) -> void:
 	_assert(turn_result_popup != null and turn_result_popup.visible, "TurnResultPopup should appear immediately after the main action resolves.", failures)
 	_assert(end_turn_button != null and not end_turn_button.visible, "EndTurn should stay hidden until the round feedback pause ends.", failures)
 
-	await _wait_seconds(1.7)
+	await _wait_seconds(ROUND_FEEDBACK_WAIT)
 
 	snapshot = controller.get_state_snapshot()
 	_assert(str(snapshot.get("bet_phase", "")) == "post", "Playing a card without a pre-bet should open Post-Bet after the feedback pause.", failures)
@@ -1148,6 +1153,7 @@ func _test_main_mvp_with_bets(failures: Array[String]) -> void:
 	_assert(str(snapshot.get("player_post_bet_id", "")) == "hold_steady", "Hold Steady should be tracked as a normal Post-Bet card selection.", failures)
 	_assert(str(snapshot.get("bet_phase", "")) == "post", "Hold Steady should no longer end the turn by itself.", failures)
 	_assert(turn_label != null and turn_label.text == "Turn 1 / 5", "Hold Steady should no longer advance the turn by itself.", failures)
+	_assert(clash_result_label != null and clash_result_label.text == "Choose End Turn to continue.", "After a Post-Bet choice is locked, the center clash label should switch to a short EndTurn prompt.", failures)
 	_assert(end_turn_button != null and end_turn_button.visible, "EndTurn should remain visible after Hold Steady because Hold Steady is not the turn-end control.", failures)
 
 	if end_turn_button != null:
@@ -1161,7 +1167,7 @@ func _test_main_mvp_with_bets(failures: Array[String]) -> void:
 	_assert(turn_label != null and turn_label.text == "Turn 2 / 5", "EndTurn should advance the turn once Post-Bet is done.", failures)
 	_assert(player_slot != null and player_slot.get_child_count() == 1, "Clash area should still show the latest resolved player card after EndTurn.", failures)
 	_assert(boss_slot != null and boss_slot.get_child_count() == 1, "Clash area should still show the latest resolved boss card after EndTurn.", failures)
-	_assert(clash_result_label != null and not clash_result_label.text.is_empty(), "Clash result label should show a round summary.", failures)
+	_assert(clash_result_label != null and clash_result_label.text == "Optional: place a bet first.", "After EndTurn starts the next turn, the center clash label should return to the new-turn guidance prompt.", failures)
 	_assert(battle_deck_row != null and battle_deck_row.get_child_count() == 5, "Boss battle deck should keep 5 visible slots after use.", failures)
 	_assert(end_turn_button != null and not end_turn_button.visible, "EndTurn should hide again once the next turn begins.", failures)
 	_assert(
@@ -1226,6 +1232,7 @@ func _assert_round_feedback_active(scene: Control, controller, failures: Array[S
 	var popup: Control = scene.get_node_or_null("ContentRoot/TableArea/TurnResultPopup")
 	var feedback_label: Label = scene.get_node_or_null("ContentRoot/TableArea/TurnResultPopup/FeedbackLabel")
 	var center_info: Control = scene.get_node_or_null("ContentRoot/TableArea/CenterInfo")
+	var clash_result_label: Label = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/ClashResultLabel")
 	var end_turn_button: Button = scene.get_node_or_null("ContentRoot/TableArea/EndTurn")
 	_assert(bool(snapshot.get("round_feedback_active", false)), "%s should enter round feedback mode immediately after the clash resolves." % context, failures)
 	_assert(popup != null and popup.visible, "%s should show TurnResultPopup during round feedback." % context, failures)
@@ -1234,11 +1241,24 @@ func _assert_round_feedback_active(scene: Control, controller, failures: Array[S
 	_assert(feedback_label != null and feedback_label.text.contains("Power:"), "%s should report effective power during round feedback." % context, failures)
 	_assert(feedback_label != null and feedback_label.text.contains("remaining:"), "%s should report the boss remaining count during round feedback." % context, failures)
 	_assert(feedback_label != null and _feedback_has_headline(str(feedback_label.text)), "%s should include a clear win/lose/draw headline." % context, failures)
+	_assert(clash_result_label != null and clash_result_label.text == "", "%s should keep the center clash label empty while the popup is active." % context, failures)
+	_assert(clash_result_label != null and not _label_contains_round_report(str(clash_result_label.text)), "%s should keep detailed round-report text out of the center clash label." % context, failures)
 	_assert(center_info != null and not center_info.visible, "%s should hide CenterInfo during round feedback." % context, failures)
 	_assert(end_turn_button != null and not end_turn_button.visible, "%s should keep EndTurn hidden during the feedback pause." % context, failures)
 
 func _feedback_has_headline(text: String) -> bool:
 	return text.contains("YOU WIN") or text.contains("YOU LOSE") or text.contains("DRAW")
+
+func _label_contains_round_report(text: String) -> bool:
+	return (
+		text.contains("YOU WIN")
+		or text.contains("YOU LOSE")
+		or text.contains("DRAW")
+		or text.contains("You played")
+		or text.contains("Boss played")
+		or text.contains("Power:")
+		or text.contains("remaining:")
+	)
 
 func _test_main_mvp_layout(size: Vector2i, failures: Array[String]) -> void:
 	DisplayServer.window_set_size(size)

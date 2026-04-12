@@ -17,7 +17,7 @@ const STARTING_REP := 3
 const MAX_LOG_LINES := 5
 const BET_PHASE_CLOSED := "closed"
 const BET_MODE_DEFAULT_ENABLED := true
-const TURN_RESULT_DISPLAY_DURATION := 1.6
+const TURN_RESULT_DISPLAY_DURATION := 2.0
 const VIEW_MODE_BATTLE := "battle"
 const VIEW_MODE_BET := "bet"
 const ROUND_FOLLOWUP_NONE := ""
@@ -733,6 +733,28 @@ func _hide_turn_result_popup(invalidate_pending: bool = false) -> void:
 	if is_instance_valid(_turn_result_popup):
 		_turn_result_popup.hide()
 
+func _current_center_guidance_text() -> String:
+	if _challenge_over:
+		return "Challenge complete."
+	if _round_feedback_active:
+		return ""
+	if _post_bet_window_open:
+		if _post_bet_effects_applied or _player_post_bet != null:
+			return "Choose End Turn to continue."
+		return "Post-Bet: play one bet card or choose End Turn."
+	if not bet_mode_enabled:
+		return "Choose a card to start the turn."
+	if _bet_phase == BET_CARD_SCRIPT.TIMING_PRE:
+		if _player_pre_bet == null:
+			return "Optional: place a bet first."
+		return "Choose a battle card to start the turn."
+	return "Choose a card to start the turn."
+
+func _refresh_center_guidance() -> void:
+	if _clash_area_view == null:
+		return
+	_clash_area_view.set_result_text(_current_center_guidance_text())
+
 func show_turn_result_popup(payload: Dictionary) -> void:
 	if not is_instance_valid(_turn_result_popup) or not is_instance_valid(_feedback_label):
 		return
@@ -809,8 +831,6 @@ func _present_round_feedback(result: Dictionary, followup: String) -> void:
 	_pending_round_followup_result = result.duplicate(true)
 	var payload := _build_round_feedback_payload(result)
 	show_turn_result_popup(payload)
-	if _clash_area_view != null:
-		_clash_area_view.set_result_text(str(payload.get("headline_text", "")))
 	_refresh_ui()
 	var tree := _host.get_tree()
 	if tree == null:
@@ -826,8 +846,6 @@ func _complete_round_feedback(result: Dictionary, followup: String) -> void:
 	_pending_round_followup = ROUND_FOLLOWUP_NONE
 	_pending_round_followup_result.clear()
 	_hide_turn_result_popup()
-	if _clash_area_view != null:
-		_clash_area_view.set_result_text(str(result.get("summary_text", "")))
 	match followup:
 		ROUND_FOLLOWUP_OPEN_POST_BET:
 			_open_post_bet_window(result)
@@ -927,6 +945,7 @@ func _refresh_ui() -> void:
 		_boss_deck_view.set_hand(_boss_state.cards, _boss_state.used_slots)
 	_boss_battle_deck_view.set_deck(_boss_state.cards, _boss_battle_revealed, _boss_state.used_slots)
 	_boss_battle_deck_view.set_reveal_enabled(not _challenge_over)
+	_refresh_center_guidance()
 	_refresh_bet_ui()
 	_refresh_summary_texts()
 	_refresh_viewport_modes()
@@ -1263,8 +1282,7 @@ func _apply_round_result(result: Dictionary) -> void:
 
 	_clash_area_view.show_clash(
 		result.get("player_card", {}),
-		result.get("boss_card", {}),
-		str(result.get("summary_text", ""))
+		result.get("boss_card", {})
 	)
 	_refresh_ui()
 
