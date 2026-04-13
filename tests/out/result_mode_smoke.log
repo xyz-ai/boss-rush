@@ -1,0 +1,121 @@
+Godot Engine v4.6.1.stable.official.14d19694e - https://godotengine.org
+
+[MainMVP] Challenge started. First to 2 set wins takes the match.
+[MainMVP] Set 1 begins.
+[MainMVP] Turn 1 begins.
+[Battle] Player -> G-Steady
+[Battle] Boss   -> 制度卡点
+[Battle] HP     -> Player 6 / Boss 4
+[Battle] Set/Turn -> 1 / 1
+[Battle] Set finished=false Challenge finished=false
+[Battle] Score -> 0:0
+[MainMVP] Challenge started. First to 2 set wins takes the match.
+[MainMVP] Set 1 begins.
+[MainMVP] Turn 1 begins.
+[MainMVP] Boss battle deck revealed for the current set.
+[MainMVP] Challenge started. First to 2 set wins takes the match.
+[MainMVP] Set 1 begins.
+[MainMVP] Turn 1 begins.
+[MainMVP] Boss battle deck revealed for the current set.
+[MainMVP] Challenge started. First to 2 set wins takes the match.
+[MainMVP] Set 1 begins.
+[MainMVP] Turn 1 begins.
+[MainMVP] Boss battle deck revealed for the current set.
+[MainMVP] Challenge started. First to 2 set wins takes the match.
+[MainMVP] Set 1 begins.
+[MainMVP] Turn 1 begins.
+[MainMVP] Challenge started. First to 2 set wins takes the match.
+[MainMVP] Set 1 begins.
+[MainMVP] Turn 1 begins.
+[MainMVP] Player played Aggression.
+[MainMVP] Boss played Defense.
+[MainMVP] Effective power -> Player 0 / Boss 2.
+[MainMVP] Player REP -1.
+[MainMVP] Current HP -> Player 4 / Boss 6.
+[MainMVP] Current score -> Player 0 / Boss 0.
+[Battle] Player played -> Aggression
+[Battle] Boss played   -> Defense
+[Battle] HP            -> Player 4 / Boss 6
+[Battle] Round/Turn    -> 1 / 1
+[MainMVP] Turn 2 begins.
+[MainMVP] Challenge started. First to 2 set wins takes the match.
+[MainMVP] Set 1 begins.
+[MainMVP] Turn 1 begins.
+[MainMVP] Challenge started. First to 2 set wins takes the match.
+[MainMVP] Set 1 begins.
+[MainMVP] Turn 1 begins.
+[MainMVP] Challenge started. First to 2 set wins takes the match.
+[MainMVP] Set 1 begins.
+[MainMVP] Turn 1 begins.
+[MainMVP] Challenge started. First to 2 set wins takes the match.
+[MainMVP] Set 1 begins.
+[MainMVP] Turn 1 begins.
+[MainMVP] Challenge started. First to 2 set wins takes the match.
+[MainMVP] Set 1 begins.
+[MainMVP] Turn 1 begins.
+[MainMVP] Challenge started. First to 2 set wins takes the match.
+[MainMVP] Set 1 begins.
+[MainMVP] Turn 1 begins.
+[MainMVP] Player bet -> Positive Shift (1 SPR).
+[MainMVP] Player played Aggression.
+[MainMVP] Boss played Pressure.
+[MainMVP] Effective power -> Player 2 / Boss 0.
+[MainMVP] Player used Positive Shift for +1 damage.
+[MainMVP] Boss BOD -1.
+[MainMVP] Post-Bet phase opened.
+[MainMVP] Challenge started. First to 2 set wins takes the match.
+[MainMVP] Set 1 begins.
+[MainMVP] Turn 1 begins.
+[MainMVP] Player played Aggression.
+[MainMVP] Boss played Defense.
+[MainMVP] Effective power -> Player 0 / Boss 2.
+[MainMVP] Player REP -1.
+[MainMVP] Boss bet -> Positive Shift (2 SPR).
+[MainMVP] Post-Bet phase opened.
+[MainMVP] Boss used Positive Shift for +1 damage.
+[MainMVP] Current HP -> Player 3 / Boss 6.
+[MainMVP] Current score -> Player 0 / Boss 0.
+[Battle] Player played -> Aggression
+[Battle] Boss played   -> Defense
+[Battle] HP            -> Player 3 / Boss 6
+[Battle] Round/Turn    -> 1 / 1
+[MainMVP] Turn 2 begins.
+[MainMVP] Challenge started. First to 2 set wins takes the match.
+[MainMVP] Set 1 begins.
+[MainMVP] Turn 1 begins.
+[MainMVP] Player played Aggression.
+[MainMVP] Boss played Defense.
+[MainMVP] Effective power -> Player 0 / Boss 2.
+[MainMVP] Player REP -1.
+[MainMVP] Boss bet -> Positive Shift (2 SPR).
+[MainMVP] Post-Bet phase opened.
+[MainMVP] Player bet -> Dirty Move (2 SPR).
+[MainMVP] Player used Dirty Move and suffered 1 self damage.
+[MainMVP] Boss used Positive Shift for +1 damage.
+[MainMVP] Current HP -> Player 2 / Boss 6.
+[MainMVP] Current score -> Player 0 / Boss 0.
+[Battle] Player played -> Aggression
+[Battle] Boss played   -> Defense
+[Battle] HP            -> Player 2 / Boss 6
+[Battle] Round/Turn    -> 1 / 1
+[MainMVP] Turn 2 begins.
+[MainMVP] Challenge started. First to 2 set wins takes the match.
+[MainMVP] Set 1 begins.
+[MainMVP] Turn 1 begins.
+[MainMVP] Boss battle deck revealed for the current set.
+[MainMVP] Player played Aggression.
+[MainMVP] Boss played Defense.
+[MainMVP] Effective power -> Player 0 / Boss 2.
+[MainMVP] Player REP -1.
+[MainMVP] Boss bet -> Positive Shift (2 SPR).
+[MainMVP] Post-Bet phase opened.
+[MainMVP] Player bet -> Hold Steady (0 SPR).
+[MainMVP] Boss used Positive Shift for +1 damage.
+[MainMVP] Current HP -> Player 3 / Boss 6.
+[MainMVP] Current score -> Player 0 / Boss 0.
+[Battle] Player played -> Aggression
+[Battle] Boss played   -> Defense
+[Battle] HP            -> Player 3 / Boss 6
+[Battle] Round/Turn    -> 1 / 1
+[MainMVP] Turn 2 begins.
+SMOKE OK

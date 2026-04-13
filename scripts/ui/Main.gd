@@ -18,6 +18,10 @@ const MAX_LOG_LINES := 5
 const BET_PHASE_CLOSED := "closed"
 const BET_MODE_DEFAULT_ENABLED := true
 const TURN_RESULT_DISPLAY_DURATION := 2.0
+const RESULT_MODE_CLASH_ALPHA := 0.42
+const RESULT_MODE_DECK_TEXT_ALPHA := 0.35
+const RESULT_POPUP_WIDTH := 480.0
+const RESULT_POPUP_HEIGHT := 188.0
 const VIEW_MODE_BATTLE := "battle"
 const VIEW_MODE_BET := "bet"
 const ROUND_FOLLOWUP_NONE := ""
@@ -88,6 +92,8 @@ var _player_bet_row: HBoxContainer
 var _bet_phase_hint: Label
 var _bet_result_hint: Label
 var _turn_result_popup: Control
+var _turn_result_backdrop: ColorRect
+var _turn_result_headline_label: Label
 var _feedback_label: Label
 var _end_turn_button: Button
 var _tooltip_panel: Control
@@ -498,6 +504,105 @@ func _ensure_tooltip_panel() -> void:
 	_tooltip_panel.name = "RuntimeTooltipPanel"
 	_host.add_child(_tooltip_panel)
 
+func _ensure_turn_result_popup_nodes() -> void:
+	if _turn_result_popup == null or _feedback_label == null:
+		return
+
+	_turn_result_popup.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_turn_result_popup.z_index = 30
+	_turn_result_popup.anchor_left = 0.5
+	_turn_result_popup.anchor_top = 0.5
+	_turn_result_popup.anchor_right = 0.5
+	_turn_result_popup.anchor_bottom = 0.5
+	_turn_result_popup.offset_left = -RESULT_POPUP_WIDTH * 0.5
+	_turn_result_popup.offset_top = -RESULT_POPUP_HEIGHT * 0.5
+	_turn_result_popup.offset_right = RESULT_POPUP_WIDTH * 0.5
+	_turn_result_popup.offset_bottom = RESULT_POPUP_HEIGHT * 0.5
+
+	_turn_result_backdrop = _turn_result_popup.get_node_or_null("RuntimeResultBackdrop") as ColorRect
+	if _turn_result_backdrop == null:
+		_turn_result_backdrop = ColorRect.new()
+		_turn_result_backdrop.name = "RuntimeResultBackdrop"
+		_turn_result_popup.add_child(_turn_result_backdrop)
+		_turn_result_popup.move_child(_turn_result_backdrop, 0)
+	_turn_result_backdrop.layout_mode = 1
+	_turn_result_backdrop.anchor_right = 1.0
+	_turn_result_backdrop.anchor_bottom = 1.0
+	_turn_result_backdrop.offset_left = 0.0
+	_turn_result_backdrop.offset_top = 0.0
+	_turn_result_backdrop.offset_right = 0.0
+	_turn_result_backdrop.offset_bottom = 0.0
+	_turn_result_backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_turn_result_backdrop.color = Color(0.04, 0.05, 0.07, 0.64)
+
+	_turn_result_headline_label = _turn_result_popup.get_node_or_null("RuntimeResultHeadlineLabel") as Label
+	if _turn_result_headline_label == null:
+		_turn_result_headline_label = Label.new()
+		_turn_result_headline_label.name = "RuntimeResultHeadlineLabel"
+		_turn_result_popup.add_child(_turn_result_headline_label)
+	_turn_result_headline_label.layout_mode = 1
+	_turn_result_headline_label.anchor_left = 0.0
+	_turn_result_headline_label.anchor_top = 0.0
+	_turn_result_headline_label.anchor_right = 1.0
+	_turn_result_headline_label.anchor_bottom = 0.0
+	_turn_result_headline_label.offset_left = 18.0
+	_turn_result_headline_label.offset_top = 14.0
+	_turn_result_headline_label.offset_right = -18.0
+	_turn_result_headline_label.offset_bottom = 52.0
+	_turn_result_headline_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_turn_result_headline_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_turn_result_headline_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_turn_result_headline_label.add_theme_color_override("font_color", Color(0.98, 0.99, 1.0, 1.0))
+	_turn_result_headline_label.add_theme_font_size_override("font_size", 28)
+
+	_feedback_label.layout_mode = 1
+	_feedback_label.anchor_left = 0.0
+	_feedback_label.anchor_top = 0.0
+	_feedback_label.anchor_right = 1.0
+	_feedback_label.anchor_bottom = 1.0
+	_feedback_label.offset_left = 22.0
+	_feedback_label.offset_top = 60.0
+	_feedback_label.offset_right = -22.0
+	_feedback_label.offset_bottom = -18.0
+	_feedback_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_feedback_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_feedback_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_feedback_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_feedback_label.add_theme_color_override("font_color", Color(0.87, 0.90, 0.94, 0.96))
+	_feedback_label.add_theme_font_size_override("font_size", 16)
+
+func _set_clash_cards_dimmed(dimmed: bool) -> void:
+	var alpha := RESULT_MODE_CLASH_ALPHA if dimmed else 1.0
+	for slot in [_boss_card_slot, _player_card_slot]:
+		if is_instance_valid(slot):
+			slot.modulate = Color(1.0, 1.0, 1.0, alpha)
+
+func _set_center_hint_hidden(hidden: bool) -> void:
+	if is_instance_valid(_center_info):
+		_center_info.visible = not hidden
+	if is_instance_valid(_clash_result_label):
+		_clash_result_label.visible = not hidden
+	if is_instance_valid(_bet_phase_hint):
+		_bet_phase_hint.visible = not hidden
+	if is_instance_valid(_bet_result_hint):
+		_bet_result_hint.visible = not hidden
+
+func _set_boss_result_mode_text_dimmed(dimmed: bool) -> void:
+	var alpha := RESULT_MODE_DECK_TEXT_ALPHA if dimmed else 1.0
+	for node in [_battle_deck_title, _boss_reveal_status_label]:
+		if is_instance_valid(node):
+			node.modulate = Color(1.0, 1.0, 1.0, alpha)
+
+func _enter_result_mode() -> void:
+	_set_clash_cards_dimmed(true)
+	_set_center_hint_hidden(true)
+	_set_boss_result_mode_text_dimmed(true)
+
+func _exit_result_mode() -> void:
+	_set_clash_cards_dimmed(false)
+	_set_center_hint_hidden(false)
+	_set_boss_result_mode_text_dimmed(false)
+
 func _refresh_summary_texts() -> void:
 	_ensure_summary_labels()
 	if _player_optional_summary_button != null:
@@ -691,6 +796,7 @@ func _setup_views() -> void:
 		_boss_summary_toggle_button.text = "Summary"
 	_end_turn_button.text = "End Turn"
 	_end_turn_button.hide()
+	_ensure_turn_result_popup_nodes()
 	if not _end_turn_button.pressed.is_connected(_on_end_turn_pressed):
 		_end_turn_button.pressed.connect(_on_end_turn_pressed)
 
@@ -728,6 +834,9 @@ func _hide_turn_result_popup(invalidate_pending: bool = false) -> void:
 		_round_feedback_active = false
 		_pending_round_followup = ROUND_FOLLOWUP_NONE
 		_pending_round_followup_result.clear()
+	_exit_result_mode()
+	if is_instance_valid(_turn_result_headline_label):
+		_turn_result_headline_label.text = ""
 	if is_instance_valid(_feedback_label):
 		_feedback_label.text = ""
 	if is_instance_valid(_turn_result_popup):
@@ -756,10 +865,14 @@ func _refresh_center_guidance() -> void:
 	_clash_area_view.set_result_text(_current_center_guidance_text())
 
 func show_turn_result_popup(payload: Dictionary) -> void:
+	_ensure_turn_result_popup_nodes()
 	if not is_instance_valid(_turn_result_popup) or not is_instance_valid(_feedback_label):
 		return
+	var headline_text := str(payload.get("headline_text", "")).strip_edges()
+	if is_instance_valid(_turn_result_headline_label):
+		_turn_result_headline_label.text = headline_text
 	var lines := PackedStringArray()
-	for key in ["headline_text", "player_card_text", "boss_card_text", "explanation_text", "power_text", "remaining_text"]:
+	for key in ["matchup_text", "explanation_text", "detail_text"]:
 		var line := str(payload.get(key, "")).strip_edges()
 		if not line.is_empty():
 			lines.append(line)
@@ -795,14 +908,15 @@ func _build_round_feedback_payload(result: Dictionary) -> Dictionary:
 		var remaining_card: MvpBattleCard = _boss_state.get_card_at(slot_index)
 		if remaining_card != null and remaining_card.type == boss_type:
 			remaining_count += 1
+	var detail_text := "Power: %d - %d" % [player_total, boss_total]
+	if not boss_name.is_empty():
+		detail_text = "%s remaining: %d" % [boss_name, remaining_count]
 
 	return {
 		"headline_text": headline_text,
-		"player_card_text": "You played %s" % player_name,
-		"boss_card_text": "Boss played %s" % boss_name,
+		"matchup_text": "You: %s | Boss: %s" % [player_name, boss_name],
 		"explanation_text": _build_round_explanation(player_type, boss_type, winner, player_total, boss_total),
-		"power_text": "Power: You %d vs Boss %d" % [player_total, boss_total],
-		"remaining_text": "%s remaining: %d" % [boss_name, remaining_count],
+		"detail_text": detail_text,
 	}
 
 func _build_round_explanation(player_type: String, boss_type: String, winner: String, _player_total: int, _boss_total: int) -> String:
@@ -830,6 +944,7 @@ func _present_round_feedback(result: Dictionary, followup: String) -> void:
 	_pending_round_followup = followup
 	_pending_round_followup_result = result.duplicate(true)
 	var payload := _build_round_feedback_payload(result)
+	_enter_result_mode()
 	show_turn_result_popup(payload)
 	_refresh_ui()
 	var tree := _host.get_tree()

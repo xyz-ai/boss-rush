@@ -404,6 +404,12 @@ func _test_main_mvp_without_bets(failures: Array[String]) -> void:
 	var clash_result_label: Label = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/ClashResultLabel")
 	var player_slot: Control = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/PlayerCardSlot")
 	var boss_slot: Control = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/BossCardSlot")
+	var turn_result_popup: Control = scene.get_node_or_null("ContentRoot/TableArea/TurnResultPopup")
+	var battle_deck_title: Label = _find_scene_node(scene, [
+		"ContentRoot/TableArea/BossArea/BossModeTitleLabel",
+		"ContentRoot/TableArea/BossBattleDeckView/BattleDeckTitle",
+	]) as Label
+	var reveal_status_label: Label = scene.get_node_or_null("ContentRoot/TableArea/BossArea/BossModeBar/RevealStatusLabel")
 	var player_bet_area: Control = _find_scene_node(scene, [
 		"ContentRoot/TableArea/PlayerArea/CardViewport/BetHandPanel",
 		"ContentRoot/TableArea/PlayerBetArea",
@@ -441,6 +447,12 @@ func _test_main_mvp_without_bets(failures: Array[String]) -> void:
 	snapshot = controller.get_state_snapshot()
 	_assert(not bool(snapshot.get("round_feedback_active", true)), "Without bet mode, round feedback should clear after the fixed pause.", failures)
 	_assert(turn_label != null and turn_label.text == "Turn 2 / 5", "Without bet mode, resolving one turn should advance to Turn 2 / 5 after feedback ends.", failures)
+	_assert(turn_result_popup != null and not turn_result_popup.visible, "Without bet mode, the result popup should hide again after the feedback window.", failures)
+	_assert(player_slot != null and player_slot.modulate.a >= 0.98, "Without bet mode, the player clash slot should return to full opacity after result mode.", failures)
+	_assert(boss_slot != null and boss_slot.modulate.a >= 0.98, "Without bet mode, the boss clash slot should return to full opacity after result mode.", failures)
+	_assert(battle_deck_title != null and battle_deck_title.modulate.a >= 0.98, "Without bet mode, the boss deck title should return to full opacity after result mode.", failures)
+	if reveal_status_label != null:
+		_assert(reveal_status_label.modulate.a >= 0.98, "Without bet mode, the reveal status label should return to full opacity after result mode.", failures)
 	_assert(clash_result_label != null and clash_result_label.text == "Choose a card to start the turn.", "After popup feedback ends without bet mode, the center clash label should return to the default turn prompt.", failures)
 
 	scene.queue_free()
@@ -825,6 +837,11 @@ func _test_main_mvp_post_bet_end_turn(failures: Array[String]) -> void:
 	var turn_label: Label = scene.get_node_or_null("ContentRoot/TableArea/CenterInfo/TurnLabel")
 	var player_slot: Control = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/PlayerCardSlot")
 	var boss_slot: Control = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/BossCardSlot")
+	var battle_deck_title: Label = _find_scene_node(scene, [
+		"ContentRoot/TableArea/BossArea/BossModeTitleLabel",
+		"ContentRoot/TableArea/BossBattleDeckView/BattleDeckTitle",
+	]) as Label
+	var reveal_status_label: Label = scene.get_node_or_null("ContentRoot/TableArea/BossArea/BossModeBar/RevealStatusLabel")
 	var clash_result_label: Label = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/ClashResultLabel")
 	var turn_result_popup: Control = scene.get_node_or_null("ContentRoot/TableArea/TurnResultPopup")
 	var end_turn_button: Button = scene.get_node_or_null("ContentRoot/TableArea/EndTurn")
@@ -852,6 +869,12 @@ func _test_main_mvp_post_bet_end_turn(failures: Array[String]) -> void:
 	snapshot = controller.get_state_snapshot()
 	_assert(str(snapshot.get("bet_phase", "")) == "post", "Clicking a battle card should enter Post-Bet after the feedback pause.", failures)
 	_assert(bool(snapshot.get("post_bet_window_open", false)), "Post-Bet should open after the feedback pause ends.", failures)
+	_assert(turn_result_popup != null and not turn_result_popup.visible, "Once result mode ends, the popup should hide before Post-Bet interaction resumes.", failures)
+	_assert(player_slot != null and player_slot.modulate.a >= 0.98, "Once result mode ends, the player clash slot should return to full opacity.", failures)
+	_assert(boss_slot != null and boss_slot.modulate.a >= 0.98, "Once result mode ends, the boss clash slot should return to full opacity.", failures)
+	_assert(battle_deck_title != null and battle_deck_title.modulate.a >= 0.98, "Once result mode ends, the boss deck title should return to full opacity.", failures)
+	if reveal_status_label != null:
+		_assert(reveal_status_label.modulate.a >= 0.98, "Once result mode ends, the boss reveal status label should return to full opacity.", failures)
 	_assert(end_turn_button != null and end_turn_button.visible, "EndTurn should become visible during Post-Bet.", failures)
 	_assert(clash_result_label != null and clash_result_label.text == "Post-Bet: play one bet card or choose End Turn.", "After the popup clears, the center clash label should switch to a short Post-Bet guidance prompt.", failures)
 
@@ -1230,20 +1253,40 @@ func _wait_seconds(seconds: float) -> void:
 func _assert_round_feedback_active(scene: Control, controller, failures: Array[String], context: String) -> void:
 	var snapshot: Dictionary = controller.get_state_snapshot()
 	var popup: Control = scene.get_node_or_null("ContentRoot/TableArea/TurnResultPopup")
+	var popup_backdrop: ColorRect = scene.get_node_or_null("ContentRoot/TableArea/TurnResultPopup/RuntimeResultBackdrop")
+	var headline_label: Label = scene.get_node_or_null("ContentRoot/TableArea/TurnResultPopup/RuntimeResultHeadlineLabel")
 	var feedback_label: Label = scene.get_node_or_null("ContentRoot/TableArea/TurnResultPopup/FeedbackLabel")
 	var center_info: Control = scene.get_node_or_null("ContentRoot/TableArea/CenterInfo")
 	var clash_result_label: Label = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/ClashResultLabel")
+	var player_slot: Control = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/PlayerCardSlot")
+	var boss_slot: Control = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/BossCardSlot")
+	var bet_phase_hint: Label = scene.get_node_or_null("ContentRoot/TableArea/BetPhaseHint")
+	var bet_result_hint: Label = scene.get_node_or_null("ContentRoot/TableArea/BetResultHint")
+	var battle_deck_title: Label = _find_scene_node(scene, [
+		"ContentRoot/TableArea/BossArea/BossModeTitleLabel",
+		"ContentRoot/TableArea/BossBattleDeckView/BattleDeckTitle",
+	]) as Label
+	var reveal_status_label: Label = scene.get_node_or_null("ContentRoot/TableArea/BossArea/BossModeBar/RevealStatusLabel")
 	var end_turn_button: Button = scene.get_node_or_null("ContentRoot/TableArea/EndTurn")
 	_assert(bool(snapshot.get("round_feedback_active", false)), "%s should enter round feedback mode immediately after the clash resolves." % context, failures)
 	_assert(popup != null and popup.visible, "%s should show TurnResultPopup during round feedback." % context, failures)
-	_assert(feedback_label != null and feedback_label.text.contains("You played"), "%s should report the player card during round feedback." % context, failures)
-	_assert(feedback_label != null and feedback_label.text.contains("Boss played"), "%s should report the boss card during round feedback." % context, failures)
-	_assert(feedback_label != null and feedback_label.text.contains("Power:"), "%s should report effective power during round feedback." % context, failures)
-	_assert(feedback_label != null and feedback_label.text.contains("remaining:"), "%s should report the boss remaining count during round feedback." % context, failures)
-	_assert(feedback_label != null and _feedback_has_headline(str(feedback_label.text)), "%s should include a clear win/lose/draw headline." % context, failures)
-	_assert(clash_result_label != null and clash_result_label.text == "", "%s should keep the center clash label empty while the popup is active." % context, failures)
+	_assert(popup != null and popup.z_index > 0, "%s should raise the result popup above the battle table during round feedback." % context, failures)
+	_assert(popup_backdrop != null and popup_backdrop.visible, "%s should show the runtime popup backdrop during round feedback." % context, failures)
+	_assert(headline_label != null and _feedback_has_headline(str(headline_label.text)), "%s should move the main result headline into the dedicated popup headline label." % context, failures)
+	_assert(feedback_label != null and feedback_label.text.contains("You:"), "%s should show the compact matchup line in the popup body." % context, failures)
+	_assert(feedback_label != null and feedback_label.text.contains("Boss:"), "%s should show the boss card in the compact popup body." % context, failures)
+	_assert(feedback_label != null and _count_non_empty_lines(str(feedback_label.text)) <= 3, "%s should keep popup body text to at most three non-empty lines." % context, failures)
+	_assert(feedback_label != null and not _feedback_has_headline(str(feedback_label.text)), "%s should keep the main result headline out of the popup body text." % context, failures)
+	_assert(player_slot != null and player_slot.modulate.a >= 0.40 and player_slot.modulate.a <= 0.44, "%s should dim the player clash slot during result mode." % context, failures)
+	_assert(boss_slot != null and boss_slot.modulate.a >= 0.40 and boss_slot.modulate.a <= 0.44, "%s should dim the boss clash slot during result mode." % context, failures)
+	_assert(clash_result_label != null and not clash_result_label.visible, "%s should hide the center clash hint label during result mode." % context, failures)
 	_assert(clash_result_label != null and not _label_contains_round_report(str(clash_result_label.text)), "%s should keep detailed round-report text out of the center clash label." % context, failures)
 	_assert(center_info != null and not center_info.visible, "%s should hide CenterInfo during round feedback." % context, failures)
+	_assert(bet_phase_hint != null and not bet_phase_hint.visible, "%s should hide BetPhaseHint during result mode." % context, failures)
+	_assert(bet_result_hint != null and not bet_result_hint.visible, "%s should hide BetResultHint during result mode." % context, failures)
+	_assert(battle_deck_title != null and battle_deck_title.modulate.a >= 0.33 and battle_deck_title.modulate.a <= 0.37, "%s should dim the boss deck title during result mode." % context, failures)
+	if reveal_status_label != null:
+		_assert(reveal_status_label.modulate.a >= 0.33 and reveal_status_label.modulate.a <= 0.37, "%s should dim the boss reveal status label during result mode." % context, failures)
 	_assert(end_turn_button != null and not end_turn_button.visible, "%s should keep EndTurn hidden during the feedback pause." % context, failures)
 
 func _feedback_has_headline(text: String) -> bool:
@@ -1259,6 +1302,13 @@ func _label_contains_round_report(text: String) -> bool:
 		or text.contains("Power:")
 		or text.contains("remaining:")
 	)
+
+func _count_non_empty_lines(text: String) -> int:
+	var count := 0
+	for line in text.split("\n"):
+		if not line.strip_edges().is_empty():
+			count += 1
+	return count
 
 func _test_main_mvp_layout(size: Vector2i, failures: Array[String]) -> void:
 	DisplayServer.window_set_size(size)

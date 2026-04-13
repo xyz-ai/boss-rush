@@ -160,9 +160,9 @@ anchor_top = 0.02
 anchor_right = 0.74
 anchor_bottom = 0.38
 offset_left = 77.22406
-offset_top = 35.509277
+offset_top = 28.509277
 offset_right = -49.823883
-offset_bottom = 11.509285
+offset_bottom = 4.509285
 
 [node name="ClashResultLabel" type="Label" parent="ContentRoot/TableArea/ClashArea" unique_id=2137169467]
 layout_mode = 1
@@ -187,10 +187,10 @@ anchor_left = 0.26
 anchor_top = 0.62
 anchor_right = 0.74
 anchor_bottom = 0.98
-offset_left = 70.22406
-offset_top = -19.21228
-offset_right = -44.823883
-offset_bottom = -30.045212
+offset_left = 74.22406
+offset_top = 7.7877197
+offset_right = -40.823883
+offset_bottom = -3.045227
 
 [node name="PlayerHP" type="Label" parent="ContentRoot/TableArea" unique_id=284083619]
 layout_mode = 1
