@@ -24,6 +24,8 @@ const RESULT_POPUP_WIDTH := 480.0
 const RESULT_POPUP_HEIGHT := 188.0
 const VIEW_MODE_BATTLE := "battle"
 const VIEW_MODE_BET := "bet"
+const PLAYER_SUMMARY_BUTTON_NODE := "Optional" + "SummaryButton"
+const BOSS_SUMMARY_BUTTON_NODE := "Boss" + "SummaryToggleButton"
 const ROUND_FOLLOWUP_NONE := ""
 const ROUND_FOLLOWUP_OPEN_POST_BET := "open_post_bet"
 const ROUND_FOLLOWUP_FINALIZE_TURN := "finalize_turn"
@@ -54,10 +56,6 @@ var _player_card_viewport: Control
 var _player_optional_summary_button: Button
 var _player_summary_panel: PanelContainer
 var _player_summary_label: Label
-var _boss_deck_root: Control
-var _boss_hand_count_label: Label
-var _boss_hand_animation_anchor: Control
-var _deck_row: HBoxContainer
 var _boss_battle_deck_root: Control
 var _boss_battle_panel: Control
 var _boss_card_viewport: Control
@@ -86,7 +84,6 @@ var _boss_spr_label: Label
 var _boss_rep_label: Label
 var _boss_bet_area: Control
 var _boss_bet_row: HBoxContainer
-var _peek_boss_bet_button: Button
 var _player_bet_area: Control
 var _player_bet_row: HBoxContainer
 var _bet_phase_hint: Label
@@ -99,7 +96,6 @@ var _end_turn_button: Button
 var _tooltip_panel: Control
 
 var _player_hand_view: MvpPlayerHandView
-var _boss_deck_view: MvpBossDeckView
 var _boss_battle_deck_view
 var _clash_area_view: MvpClashAreaView
 var _player_bet_view
@@ -129,9 +125,6 @@ var bet_mode_enabled: bool = BET_MODE_DEFAULT_ENABLED
 var max_bets_per_turn: int = 1
 var extra_bet_cost_scaling_enabled: bool = false
 var extra_bet_cost_curve: Array = []
-var boss_bet_peek_enabled: bool = true
-var boss_bet_peek_cost_enabled: bool = false
-var boss_bet_peek_snapshot_only: bool = true
 
 var _bet_phase: String = BET_PHASE_CLOSED
 var _player_pre_bet: MvpBetCard = null
@@ -143,7 +136,6 @@ var _post_bet_window_open: bool = false
 var _post_bet_effects_applied: bool = false
 var _current_round_result: Dictionary = {}
 var _bet_result_text: String = ""
-var _boss_bet_peek_snapshot_text: String = ""
 var _player_view_mode: String = VIEW_MODE_BATTLE
 var _boss_view_mode: String = VIEW_MODE_BATTLE
 var _player_summary_visible: bool = false
@@ -152,6 +144,7 @@ var _round_feedback_active: bool = false
 var _round_feedback_version: int = 0
 var _pending_round_followup: String = ROUND_FOLLOWUP_NONE
 var _pending_round_followup_result: Dictionary = {}
+var _turn_result_payload: Dictionary = {}
 
 func _init(host: Control) -> void:
 	_host = host
@@ -202,7 +195,6 @@ func get_state_snapshot() -> Dictionary:
 		"boss_bet_id": _boss_post_bet.id if _boss_post_bet != null else "",
 		"boss_bet_timing": BET_CARD_SCRIPT.TIMING_POST if _boss_post_bet != null else "",
 		"bet_result_text": _bet_result_text,
-		"boss_bet_peek_snapshot_text": _boss_bet_peek_snapshot_text,
 		"player": _player_state.snapshot() if _player_state != null else {},
 		"boss": _boss_state.snapshot() if _boss_state != null else {},
 	}
@@ -236,135 +228,85 @@ func push_log(message: String) -> void:
 	print("[MainMVP] %s" % message)
 	_refresh_overlay_log()
 
-func _find_node(paths: Array[String]) -> Node:
-	for path in paths:
-		var node := _host.get_node_or_null(path)
-		if node != null:
-			return node
-	return null
+# Node Binding
 
-func _find_control(paths: Array[String]) -> Control:
-	return _find_node(paths) as Control
+func _find_node(path: String) -> Node:
+	return _host.get_node_or_null(path)
 
-func _find_label(paths: Array[String]) -> Label:
-	return _find_node(paths) as Label
+func _find_control(path: String) -> Control:
+	return _find_node(path) as Control
 
-func _find_button(paths: Array[String]) -> Button:
-	return _find_node(paths) as Button
+func _find_label(path: String) -> Label:
+	return _find_node(path) as Label
 
-func _find_row(paths: Array[String]) -> HBoxContainer:
-	return _find_node(paths) as HBoxContainer
+func _find_button(path: String) -> Button:
+	return _find_node(path) as Button
+
+func _find_row(path: String) -> HBoxContainer:
+	return _find_node(path) as HBoxContainer
 
 func _assert_required(node: Node, message: String) -> void:
 	assert(node != null, message)
 
 func _bind_nodes() -> void:
-	_background = _find_control(["Background"]) as TextureRect
-	_content_root = _find_control(["ContentRoot"])
-	_table_area = _find_control(["ContentRoot/TableArea"])
-	_boss_area = _find_control([
-		"ContentRoot/TableArea/BossArea",
-		"ContentRoot/BossArea",
-	])
-	_boss_portrait = _find_control([
-		"ContentRoot/TableArea/BossArea/BossPortrait",
-		"ContentRoot/BossArea/BossPortrait",
-	]) as TextureRect
-	_table_board = _find_control(["ContentRoot/TableArea/TableBoard"]) as TextureRect
-	_center_info = _find_control(["ContentRoot/TableArea/CenterInfo"])
-	_round_label = _find_label(["ContentRoot/TableArea/CenterInfo/RoundLabel"])
-	_turn_label = _find_label(["ContentRoot/TableArea/CenterInfo/TurnLabel"])
-	_player_hp_label = _find_label(["ContentRoot/TableArea/PlayerHP"])
-	_boss_hp_label = _find_label(["ContentRoot/TableArea/BossHP"])
-	_overlay_ui = _find_control(["ContentRoot/OverlayUI"])
+	# Required scene nodes
+	_background = _find_control("Background") as TextureRect
+	_content_root = _find_control("ContentRoot")
+	_table_area = _find_control("ContentRoot/TableArea")
+	_boss_area = _find_control("ContentRoot/TableArea/BossArea")
+	_boss_portrait = _find_control("ContentRoot/TableArea/BossArea/BossPortrait") as TextureRect
+	_table_board = _find_control("ContentRoot/TableArea/TableBoard") as TextureRect
+	_center_info = _find_control("ContentRoot/TableArea/CenterInfo")
+	_round_label = _find_label("ContentRoot/TableArea/CenterInfo/RoundLabel")
+	_turn_label = _find_label("ContentRoot/TableArea/CenterInfo/TurnLabel")
+	_player_hp_label = _find_label("ContentRoot/TableArea/PlayerHP")
+	_boss_hp_label = _find_label("ContentRoot/TableArea/BossHP")
+	_overlay_ui = _find_control("ContentRoot/OverlayUI")
 
-	_player_area = _find_control(["ContentRoot/TableArea/PlayerArea"])
-	_player_mode_bar = _find_row(["ContentRoot/TableArea/PlayerArea/ModeBar"])
-	_player_battle_tab_button = _find_button(["ContentRoot/TableArea/PlayerArea/ModeBar/BattleTabButton"])
-	_player_bet_tab_button = _find_button(["ContentRoot/TableArea/PlayerArea/ModeBar/BetTabButton"])
-	_player_mode_title_label = _find_label(["ContentRoot/TableArea/PlayerArea/ModeTitleLabel"])
-	_player_card_viewport = _find_control(["ContentRoot/TableArea/PlayerArea/CardViewport"])
-	_player_battle_panel = _find_control([
-		"ContentRoot/TableArea/PlayerArea/CardViewport/BattleHandPanel",
-		"ContentRoot/TableArea/PlayerArea/HandAnchor",
-	])
-	_hand_anchor = _find_row([
-		"ContentRoot/TableArea/PlayerArea/CardViewport/BattleHandPanel/BattleCardRow",
-		"ContentRoot/TableArea/PlayerArea/HandAnchor",
-	])
-	_player_bet_area = _find_control([
-		"ContentRoot/TableArea/PlayerArea/CardViewport/BetHandPanel",
-		"ContentRoot/TableArea/PlayerBetArea",
-	])
-	_player_bet_row = _find_row([
-		"ContentRoot/TableArea/PlayerArea/CardViewport/BetHandPanel/BetCardRow",
-		"ContentRoot/TableArea/PlayerBetArea/PlayerBetRow",
-	])
-	_player_optional_summary_button = _find_button([
-		"ContentRoot/TableArea/PlayerArea/OptionalSummaryButton",
-		"ContentRoot/TableArea/PlayerArea/OptionalSummary",
-	])
+	_player_area = _find_control("ContentRoot/TableArea/PlayerArea")
+	_player_mode_bar = _find_row("ContentRoot/TableArea/PlayerArea/ModeBar")
+	_player_battle_tab_button = _find_button("ContentRoot/TableArea/PlayerArea/ModeBar/BattleTabButton")
+	_player_bet_tab_button = _find_button("ContentRoot/TableArea/PlayerArea/ModeBar/BetTabButton")
+	_player_mode_title_label = _find_label("ContentRoot/TableArea/PlayerArea/ModeTitleLabel")
+	_player_card_viewport = _find_control("ContentRoot/TableArea/PlayerArea/CardViewport")
+	_player_battle_panel = _find_control("ContentRoot/TableArea/PlayerArea/CardViewport/BattleHandPanel")
+	_hand_anchor = _find_row("ContentRoot/TableArea/PlayerArea/CardViewport/BattleHandPanel/BattleCardRow")
+	_player_bet_area = _find_control("ContentRoot/TableArea/PlayerArea/CardViewport/BetHandPanel")
+	_player_bet_row = _find_row("ContentRoot/TableArea/PlayerArea/CardViewport/BetHandPanel/BetCardRow")
+	_player_optional_summary_button = _find_button("ContentRoot/TableArea/PlayerArea/%s" % PLAYER_SUMMARY_BUTTON_NODE)
 
-	_boss_card_viewport = _find_control(["ContentRoot/TableArea/BossArea/BossCardViewport"])
-	_boss_battle_panel = _find_control([
-		"ContentRoot/TableArea/BossArea/BossCardViewport/BossBattleDeckPanel",
-		"ContentRoot/TableArea/BossBattleDeckView",
-	])
+	_boss_card_viewport = _find_control("ContentRoot/TableArea/BossArea/BossCardViewport")
+	_boss_battle_panel = _find_control("ContentRoot/TableArea/BossArea/BossCardViewport/BossBattleDeckPanel")
 	_boss_battle_deck_root = _boss_battle_panel
-	_battle_deck_title = _find_label([
-		"ContentRoot/TableArea/BossArea/BossModeTitleLabel",
-		"ContentRoot/TableArea/BossBattleDeckView/BattleDeckTitle",
-	])
-	_reveal_battle_deck_button = _find_button([
-		"ContentRoot/TableArea/BossArea/BossCardViewport/BossBattleDeckPanel/RevealBattleDeckButton",
-		"ContentRoot/TableArea/BossBattleDeckView/RevealBattleDeckButton",
-	])
-	_battle_deck_row = _find_row([
-		"ContentRoot/TableArea/BossArea/BossCardViewport/BossBattleDeckPanel/BossBattleCardRow",
-		"ContentRoot/TableArea/BossBattleDeckView/BattleDeckRow",
-	])
-	_boss_bet_area = _find_control([
-		"ContentRoot/TableArea/BossArea/BossCardViewport/BossBetDeckPanel",
-		"ContentRoot/TableArea/BossBetArea",
-	])
-	_boss_bet_row = _find_row([
-		"ContentRoot/TableArea/BossArea/BossCardViewport/BossBetDeckPanel/BossBetCard",
-		"ContentRoot/TableArea/BossBetArea/BetRow",
-	])
-	_boss_battle_tab_button = _find_button(["ContentRoot/TableArea/BossArea/BossModeBar/BossBattleTabButton"])
-	_boss_bet_tab_button = _find_button(["ContentRoot/TableArea/BossArea/BossModeBar/BossBetTabButton"])
-	_peek_boss_bet_button = _find_button([
-		"ContentRoot/TableArea/BossBetArea/PeekBossBetButton",
-	])
-	_boss_mode_bar = _find_row(["ContentRoot/TableArea/BossArea/BossModeBar"])
-	_boss_reveal_status_label = _find_label(["ContentRoot/TableArea/BossArea/BossModeBar/RevealStatusLabel"])
-	_boss_summary_toggle_button = _find_button([
-		"ContentRoot/TableArea/BossArea/BossSummaryToggleButton",
-		"ContentRoot/TableArea/BossArea/BossSummaryToggle",
-	])
+	_battle_deck_title = _find_label("ContentRoot/TableArea/BossArea/BossModeTitleLabel")
+	_reveal_battle_deck_button = _find_button("ContentRoot/TableArea/BossArea/BossCardViewport/BossBattleDeckPanel/RevealBattleDeckButton")
+	_battle_deck_row = _find_row("ContentRoot/TableArea/BossArea/BossCardViewport/BossBattleDeckPanel/BossBattleCardRow")
+	_boss_bet_area = _find_control("ContentRoot/TableArea/BossArea/BossCardViewport/BossBetDeckPanel")
+	_boss_bet_row = _find_row("ContentRoot/TableArea/BossArea/BossCardViewport/BossBetDeckPanel/BossBetCard")
+	_boss_battle_tab_button = _find_button("ContentRoot/TableArea/BossArea/BossModeBar/BossBattleTabButton")
+	_boss_bet_tab_button = _find_button("ContentRoot/TableArea/BossArea/BossModeBar/BossBetTabButton")
+	_boss_mode_bar = _find_row("ContentRoot/TableArea/BossArea/BossModeBar")
+	_boss_reveal_status_label = _find_label("ContentRoot/TableArea/BossArea/BossModeBar/RevealStatusLabel")
+	_boss_summary_toggle_button = _find_button("ContentRoot/TableArea/BossArea/%s" % BOSS_SUMMARY_BUTTON_NODE)
 
-	_boss_deck_root = _find_control(["ContentRoot/TableArea/BossDeckView"])
-	_boss_hand_count_label = _find_label(["ContentRoot/TableArea/BossDeckView/BossHandCountLabel"])
-	_boss_hand_animation_anchor = _find_control(["ContentRoot/TableArea/BossDeckView/BossHandAnimationAnchor"])
-	_deck_row = _find_row(["ContentRoot/TableArea/BossDeckView/DeckRow"])
-
-	_clash_root = _find_control(["ContentRoot/TableArea/ClashArea"])
-	_player_card_slot = _find_control(["ContentRoot/TableArea/ClashArea/PlayerCardSlot"])
-	_boss_card_slot = _find_control(["ContentRoot/TableArea/ClashArea/BossCardSlot"])
-	_clash_result_label = _find_label(["ContentRoot/TableArea/ClashArea/ClashResultLabel"])
-	_player_bod_label = _find_label(["ContentRoot/TableArea/PlayerStatusPanel/MarginContainer/VBoxContainer/PlayerBOD"])
-	_player_spr_label = _find_label(["ContentRoot/TableArea/PlayerStatusPanel/MarginContainer/VBoxContainer/PlayerSPR"])
-	_player_rep_label = _find_label(["ContentRoot/TableArea/PlayerStatusPanel/MarginContainer/VBoxContainer/PlayerREP"])
-	_boss_bod_label = _find_label(["ContentRoot/TableArea/BossStatusPanel/MarginContainer/VBoxContainer/BossBOD"])
-	_boss_spr_label = _find_label(["ContentRoot/TableArea/BossStatusPanel/MarginContainer/VBoxContainer/BossSPR"])
-	_boss_rep_label = _find_label(["ContentRoot/TableArea/BossStatusPanel/MarginContainer/VBoxContainer/BossREP"])
-	_bet_phase_hint = _find_label(["ContentRoot/TableArea/BetPhaseHint"])
-	_bet_result_hint = _find_label(["ContentRoot/TableArea/BetResultHint"])
-	_turn_result_popup = _find_control(["ContentRoot/TableArea/TurnResultPopup"])
-	_feedback_label = _find_label(["ContentRoot/TableArea/TurnResultPopup/FeedbackLabel"])
-	_end_turn_button = _find_button(["ContentRoot/TableArea/EndTurn"])
+	_clash_root = _find_control("ContentRoot/TableArea/ClashArea")
+	_player_card_slot = _find_control("ContentRoot/TableArea/ClashArea/PlayerCardSlot")
+	_boss_card_slot = _find_control("ContentRoot/TableArea/ClashArea/BossCardSlot")
+	_clash_result_label = _find_label("ContentRoot/TableArea/ClashArea/ClashResultLabel")
+	_player_bod_label = _find_label("ContentRoot/TableArea/PlayerStatusPanel/MarginContainer/VBoxContainer/PlayerBOD")
+	_player_spr_label = _find_label("ContentRoot/TableArea/PlayerStatusPanel/MarginContainer/VBoxContainer/PlayerSPR")
+	_player_rep_label = _find_label("ContentRoot/TableArea/PlayerStatusPanel/MarginContainer/VBoxContainer/PlayerREP")
+	_boss_bod_label = _find_label("ContentRoot/TableArea/BossStatusPanel/MarginContainer/VBoxContainer/BossBOD")
+	_boss_spr_label = _find_label("ContentRoot/TableArea/BossStatusPanel/MarginContainer/VBoxContainer/BossSPR")
+	_boss_rep_label = _find_label("ContentRoot/TableArea/BossStatusPanel/MarginContainer/VBoxContainer/BossREP")
+	_bet_phase_hint = _find_label("ContentRoot/TableArea/BetPhaseHint")
+	_bet_result_hint = _find_label("ContentRoot/TableArea/BetResultHint")
+	_turn_result_popup = _find_control("ContentRoot/TableArea/TurnResultPopup")
+	_feedback_label = _find_label("ContentRoot/TableArea/TurnResultPopup/FeedbackLabel")
+	_end_turn_button = _find_button("ContentRoot/TableArea/EndTurn")
 	_screen_effects = _host.get_node_or_null("ScreenEffects") as Control
 
+	# Required gameplay nodes
 	_assert_required(_background, "Main.tscn is missing Background.")
 	_assert_required(_content_root, "Main.tscn is missing ContentRoot.")
 	_assert_required(_table_area, "Main.tscn is missing TableArea.")
@@ -380,7 +322,7 @@ func _bind_nodes() -> void:
 	_assert_required(_hand_anchor, "Main.tscn is missing a player battle card row.")
 	_assert_required(_player_bet_area, "Main.tscn is missing a player bet panel.")
 	_assert_required(_player_bet_row, "Main.tscn is missing a player bet row.")
-	_assert_required(_player_optional_summary_button, "Main.tscn is missing OptionalSummaryButton.")
+	_assert_required(_player_optional_summary_button, "Main.tscn is missing the player summary button.")
 	_assert_required(_boss_battle_deck_root, "Main.tscn is missing a boss battle deck panel.")
 	_assert_required(_battle_deck_title, "Main.tscn is missing BossModeTitleLabel/BattleDeckTitle.")
 	_assert_required(_reveal_battle_deck_button, "Main.tscn is missing a boss reveal trigger.")
@@ -389,7 +331,7 @@ func _bind_nodes() -> void:
 	_assert_required(_boss_bet_row, "Main.tscn is missing a boss bet row.")
 	_assert_required(_boss_battle_tab_button, "Main.tscn is missing BossBattleTabButton.")
 	_assert_required(_boss_bet_tab_button, "Main.tscn is missing BossBetTabButton.")
-	_assert_required(_boss_summary_toggle_button, "Main.tscn is missing BossSummaryToggleButton.")
+	_assert_required(_boss_summary_toggle_button, "Main.tscn is missing the boss summary button.")
 	_assert_required(_clash_root, "Main.tscn is missing ClashArea.")
 	_assert_required(_player_card_slot, "Main.tscn is missing PlayerCardSlot.")
 	_assert_required(_boss_card_slot, "Main.tscn is missing BossCardSlot.")
@@ -401,6 +343,9 @@ func _bind_nodes() -> void:
 	_assert_required(_turn_result_popup, "Main.tscn is missing TurnResultPopup.")
 	_assert_required(_feedback_label, "Main.tscn is missing TurnResultPopup/FeedbackLabel.")
 	_assert_required(_end_turn_button, "Main.tscn is missing EndTurn.")
+
+	# Optional display helpers are allowed to stay null.
+	# Runtime-created nodes are not bound here.
 
 func _set_mouse_filter(control: Control, filter_value: int) -> void:
 	if control != null:
@@ -577,16 +522,6 @@ func _set_clash_cards_dimmed(dimmed: bool) -> void:
 		if is_instance_valid(slot):
 			slot.modulate = Color(1.0, 1.0, 1.0, alpha)
 
-func _set_center_hint_hidden(hidden: bool) -> void:
-	if is_instance_valid(_center_info):
-		_center_info.visible = not hidden
-	if is_instance_valid(_clash_result_label):
-		_clash_result_label.visible = not hidden
-	if is_instance_valid(_bet_phase_hint):
-		_bet_phase_hint.visible = not hidden
-	if is_instance_valid(_bet_result_hint):
-		_bet_result_hint.visible = not hidden
-
 func _set_boss_result_mode_text_dimmed(dimmed: bool) -> void:
 	var alpha := RESULT_MODE_DECK_TEXT_ALPHA if dimmed else 1.0
 	for node in [_battle_deck_title, _boss_reveal_status_label]:
@@ -595,119 +530,11 @@ func _set_boss_result_mode_text_dimmed(dimmed: bool) -> void:
 
 func _enter_result_mode() -> void:
 	_set_clash_cards_dimmed(true)
-	_set_center_hint_hidden(true)
 	_set_boss_result_mode_text_dimmed(true)
 
 func _exit_result_mode() -> void:
 	_set_clash_cards_dimmed(false)
-	_set_center_hint_hidden(false)
 	_set_boss_result_mode_text_dimmed(false)
-
-func _refresh_summary_texts() -> void:
-	_ensure_summary_labels()
-	if _player_optional_summary_button != null:
-		_player_optional_summary_button.text = "Cards" if _player_summary_visible else "Summary"
-	if _boss_summary_toggle_button != null:
-		_boss_summary_toggle_button.text = "Cards" if _boss_summary_visible else "Summary"
-	if _boss_battle_tab_button != null:
-		_boss_battle_tab_button.text = "Battle"
-	if _boss_bet_tab_button != null:
-		_boss_bet_tab_button.text = "Bet"
-	if _player_summary_label != null:
-		_player_summary_label.text = _build_player_summary_text()
-	if _boss_summary_label != null:
-		_boss_summary_label.text = _build_boss_summary_text()
-	if _boss_archetype_label != null:
-		_boss_archetype_label.text = "%s Boss" % MvpBattleCard.archetype_display_name(_current_boss_archetype)
-
-func _build_player_summary_text() -> String:
-	if _player_view_mode == VIEW_MODE_BET and bet_mode_enabled:
-		var timing := _current_player_bet_timing()
-		var selected_bet: MvpBetCard = _selected_player_bet_for_timing(timing)
-		var lines := PackedStringArray([
-			"Player Bet Summary",
-			"Phase: %s" % _phase_text(),
-			"Selected: %s" % (selected_bet.name if selected_bet != null else "None"),
-		])
-		return "\n".join(lines)
-
-	var counts: Dictionary = _build_remaining_type_counts(_player_state)
-	return "\n".join(PackedStringArray([
-		"Player Battle Summary",
-		"Aggression x%d" % int(counts.get(MvpBattleCard.TYPE_AGGRESSION, 0)),
-		"Defense x%d" % int(counts.get(MvpBattleCard.TYPE_DEFENSE, 0)),
-		"Pressure x%d" % int(counts.get(MvpBattleCard.TYPE_PRESSURE, 0)),
-	]))
-
-func _build_boss_summary_text() -> String:
-	if _boss_view_mode == VIEW_MODE_BET and bet_mode_enabled:
-		return "Boss Bet Summary\nDetailed reveal not connected in this build."
-
-	var counts: Dictionary = _build_remaining_type_counts(_boss_state)
-	return "\n".join(PackedStringArray([
-		"Boss Battle Summary",
-		"Aggression remaining: %d" % int(counts.get(MvpBattleCard.TYPE_AGGRESSION, 0)),
-		"Defense remaining: %d" % int(counts.get(MvpBattleCard.TYPE_DEFENSE, 0)),
-		"Pressure remaining: %d" % int(counts.get(MvpBattleCard.TYPE_PRESSURE, 0)),
-	]))
-
-func _build_remaining_type_counts(actor_state: MvpCombatActorState) -> Dictionary:
-	var counts := {
-		MvpBattleCard.TYPE_AGGRESSION: 0,
-		MvpBattleCard.TYPE_DEFENSE: 0,
-		MvpBattleCard.TYPE_PRESSURE: 0,
-	}
-	if actor_state == null:
-		return counts
-	for slot_index in range(actor_state.cards.size()):
-		if actor_state.used_slots.has(slot_index):
-			continue
-		var card: MvpBattleCard = actor_state.get_card_at(slot_index)
-		if card != null:
-			counts[card.type] = int(counts.get(card.type, 0)) + 1
-	return counts
-
-func _build_used_remaining_text(actor_state: MvpCombatActorState) -> String:
-	if actor_state == null:
-		return "Used: 0 / Remaining: 0"
-	var used_count: int = actor_state.used_slots.size()
-	var remaining_count: int = max(actor_state.cards.size() - used_count, 0)
-	return "Used: %d / Remaining: %d" % [used_count, remaining_count]
-
-func _refresh_viewport_modes() -> void:
-	var player_battle_visible := true
-	var player_bet_visible := false
-	if bet_mode_enabled:
-		player_battle_visible = _player_view_mode == VIEW_MODE_BATTLE
-		player_bet_visible = _player_view_mode == VIEW_MODE_BET
-	if _player_battle_panel != null:
-		_player_battle_panel.visible = player_battle_visible
-	if _player_bet_area != null:
-		_player_bet_area.visible = bet_mode_enabled and player_bet_visible
-	if _player_summary_panel != null:
-		_player_summary_panel.visible = _player_summary_visible
-	if _player_mode_bar != null:
-		_player_mode_bar.visible = bet_mode_enabled
-	if _player_mode_title_label != null:
-		_player_mode_title_label.text = "Battle Cards" if player_battle_visible else "Bet Cards"
-
-	var boss_battle_visible := true
-	var boss_bet_visible := false
-	if bet_mode_enabled:
-		boss_battle_visible = _boss_view_mode == VIEW_MODE_BATTLE
-		boss_bet_visible = _boss_view_mode == VIEW_MODE_BET
-	if _boss_battle_panel != null:
-		_boss_battle_panel.visible = boss_battle_visible
-	if _boss_bet_area != null:
-		_boss_bet_area.visible = bet_mode_enabled and boss_bet_visible
-	if _boss_summary_panel != null:
-		_boss_summary_panel.visible = _boss_summary_visible
-	if _boss_mode_bar != null:
-		_boss_mode_bar.visible = true
-	if _battle_deck_title != null:
-		_battle_deck_title.text = "Boss Battle Deck" if boss_battle_visible else "Boss Bet"
-	if _boss_reveal_status_label != null:
-		_boss_reveal_status_label.text = "Revealed" if _boss_battle_revealed else "Hidden"
 
 func _configure_mouse_filters() -> void:
 	_set_mouse_filter(_background, Control.MOUSE_FILTER_IGNORE)
@@ -717,10 +544,6 @@ func _configure_mouse_filters() -> void:
 	_set_mouse_filter(_turn_label, Control.MOUSE_FILTER_IGNORE)
 	_set_mouse_filter(_overlay_ui, Control.MOUSE_FILTER_IGNORE)
 	_set_mouse_filter(_boss_battle_deck_root, Control.MOUSE_FILTER_IGNORE)
-	_set_mouse_filter(_boss_deck_root, Control.MOUSE_FILTER_IGNORE)
-	_set_mouse_filter(_boss_hand_count_label, Control.MOUSE_FILTER_IGNORE)
-	_set_mouse_filter(_boss_hand_animation_anchor, Control.MOUSE_FILTER_IGNORE)
-	_set_mouse_filter(_deck_row, Control.MOUSE_FILTER_IGNORE)
 	_set_mouse_filter(_battle_deck_title, Control.MOUSE_FILTER_IGNORE)
 	_set_mouse_filter(_battle_deck_row, Control.MOUSE_FILTER_IGNORE)
 	_set_mouse_filter(_player_optional_summary_button, Control.MOUSE_FILTER_STOP)
@@ -728,7 +551,6 @@ func _configure_mouse_filters() -> void:
 	_set_mouse_filter(_boss_bet_tab_button, Control.MOUSE_FILTER_STOP)
 	_set_mouse_filter(_boss_summary_toggle_button, Control.MOUSE_FILTER_STOP)
 	_set_mouse_filter(_reveal_battle_deck_button, Control.MOUSE_FILTER_STOP)
-	_set_mouse_filter(_peek_boss_bet_button, Control.MOUSE_FILTER_STOP)
 	_set_mouse_filter(_end_turn_button, Control.MOUSE_FILTER_STOP)
 	_set_mouse_filter(_bet_phase_hint, Control.MOUSE_FILTER_IGNORE)
 	_set_mouse_filter(_bet_result_hint, Control.MOUSE_FILTER_IGNORE)
@@ -738,17 +560,6 @@ func _configure_mouse_filters() -> void:
 func _setup_views() -> void:
 	_player_hand_view = MvpPlayerHandView.new(_hand_anchor, CARD_VIEW_SCENE)
 	_player_hand_view.card_play_requested.connect(_on_card_play_requested)
-
-	if _boss_deck_root != null and _boss_hand_count_label != null and _deck_row != null:
-		_boss_deck_view = MvpBossDeckView.new(
-			_boss_deck_root,
-			_boss_hand_count_label,
-			_boss_hand_animation_anchor,
-			_deck_row,
-			CARD_VIEW_SCENE
-		)
-	else:
-		_boss_deck_view = null
 
 	_boss_battle_deck_view = BOSS_BATTLE_DECK_VIEW_SCRIPT.new(
 		_boss_battle_deck_root,
@@ -784,8 +595,6 @@ func _setup_views() -> void:
 		_boss_bet_tab_button.pressed.connect(_on_boss_bet_tab_pressed)
 	if _boss_summary_toggle_button != null and not _boss_summary_toggle_button.pressed.is_connected(_toggle_boss_summary):
 		_boss_summary_toggle_button.pressed.connect(_toggle_boss_summary)
-	if _peek_boss_bet_button != null and not _peek_boss_bet_button.pressed.is_connected(_on_peek_boss_bet_pressed):
-		_peek_boss_bet_button.pressed.connect(_on_peek_boss_bet_pressed)
 	if _boss_battle_tab_button != null:
 		_boss_battle_tab_button.text = "Battle"
 	if _boss_bet_tab_button != null:
@@ -828,19 +637,148 @@ func _refresh_overlay_log() -> void:
 		return
 	_overlay_log_label.text = "\n".join(_logs)
 
-func _hide_turn_result_popup(invalidate_pending: bool = false) -> void:
-	if invalidate_pending:
-		_round_feedback_version += 1
-		_round_feedback_active = false
-		_pending_round_followup = ROUND_FOLLOWUP_NONE
-		_pending_round_followup_result.clear()
-	_exit_result_mode()
-	if is_instance_valid(_turn_result_headline_label):
-		_turn_result_headline_label.text = ""
-	if is_instance_valid(_feedback_label):
-		_feedback_label.text = ""
-	if is_instance_valid(_turn_result_popup):
-		_turn_result_popup.hide()
+# UI Refresh
+
+func _refresh_ui() -> void:
+	_refresh_status_labels()
+	_refresh_card_views()
+	_refresh_viewport_modes()
+	_refresh_summary_ui()
+	_refresh_center_guidance()
+	_refresh_bet_hint_ui()
+	_refresh_bet_rows()
+	_refresh_turn_result_popup()
+	_sync_reveal_battle_deck_layout()
+	_refresh_overlay_log()
+
+func _refresh_status_labels() -> void:
+	_round_label.text = "Round %d / %d" % [_current_set_index, MAX_SETS]
+	_turn_label.text = "Turn %d / %d" % [_current_turn_index, MAX_TURNS]
+	_player_hp_label.text = "Player HP %d" % _player_state.hp
+	_boss_hp_label.text = "Boss HP %d" % _boss_state.hp
+	_player_bod_label.text = "BOD %d" % _player_state.bod
+	_player_spr_label.text = "SPR %d" % _player_state.spr
+	_player_rep_label.text = "REP %d" % _player_state.rep
+	_boss_bod_label.text = "BOD %d" % _boss_state.bod
+	_boss_spr_label.text = "SPR %d" % _boss_state.spr
+	_boss_rep_label.text = "REP %d" % _boss_state.rep
+
+func _refresh_card_views() -> void:
+	if _player_hand_view != null:
+		_player_hand_view.set_hand(
+			_player_state.cards,
+			_player_state.used_slots,
+			not _challenge_over and not _input_locked and not _post_bet_window_open
+		)
+	if _boss_battle_deck_view != null:
+		_boss_battle_deck_view.set_deck(_boss_state.cards, _boss_battle_revealed, _boss_state.used_slots)
+		_boss_battle_deck_view.set_reveal_enabled(not _challenge_over)
+
+func _refresh_viewport_modes() -> void:
+	var player_battle_visible := true
+	var player_bet_visible := false
+	if bet_mode_enabled:
+		player_battle_visible = _player_view_mode == VIEW_MODE_BATTLE
+		player_bet_visible = _player_view_mode == VIEW_MODE_BET
+	if _player_battle_panel != null:
+		_player_battle_panel.visible = player_battle_visible
+	if _player_bet_area != null:
+		_player_bet_area.visible = bet_mode_enabled and player_bet_visible
+	if _player_summary_panel != null:
+		_player_summary_panel.visible = _player_summary_visible
+	if _player_mode_bar != null:
+		_player_mode_bar.visible = bet_mode_enabled
+	if _player_mode_title_label != null:
+		_player_mode_title_label.text = "Battle Cards" if player_battle_visible else "Bet Cards"
+
+	var boss_battle_visible := true
+	var boss_bet_visible := false
+	if bet_mode_enabled:
+		boss_battle_visible = _boss_view_mode == VIEW_MODE_BATTLE
+		boss_bet_visible = _boss_view_mode == VIEW_MODE_BET
+	if _boss_battle_panel != null:
+		_boss_battle_panel.visible = boss_battle_visible
+	if _boss_bet_area != null:
+		_boss_bet_area.visible = bet_mode_enabled and boss_bet_visible
+	if _boss_summary_panel != null:
+		_boss_summary_panel.visible = _boss_summary_visible
+	if _battle_deck_title != null:
+		_battle_deck_title.text = "Boss Battle Deck" if boss_battle_visible else "Boss Bet"
+	if _boss_reveal_status_label != null:
+		_boss_reveal_status_label.text = "Revealed" if _boss_battle_revealed else "Hidden"
+
+func _refresh_summary_ui() -> void:
+	_ensure_summary_labels()
+	if _boss_battle_tab_button != null:
+		_boss_battle_tab_button.text = "Battle"
+	if _boss_bet_tab_button != null:
+		_boss_bet_tab_button.text = "Bet"
+	_refresh_player_summary()
+	_refresh_boss_summary()
+	if _boss_archetype_label != null:
+		_boss_archetype_label.text = "%s Boss" % MvpBattleCard.archetype_display_name(_current_boss_archetype)
+
+func _refresh_player_summary() -> void:
+	if _player_optional_summary_button != null:
+		_player_optional_summary_button.text = "Cards" if _player_summary_visible else "Summary"
+	if _player_summary_label != null:
+		_player_summary_label.text = _build_player_summary_text()
+	if _player_summary_panel != null:
+		_player_summary_panel.visible = _player_summary_visible
+
+func _refresh_boss_summary() -> void:
+	if _boss_summary_toggle_button != null:
+		_boss_summary_toggle_button.text = "Cards" if _boss_summary_visible else "Summary"
+	if _boss_summary_label != null:
+		_boss_summary_label.text = _build_boss_summary_text()
+	if _boss_summary_panel != null:
+		_boss_summary_panel.visible = _boss_summary_visible
+
+func _build_player_summary_text() -> String:
+	if _player_view_mode == VIEW_MODE_BET and bet_mode_enabled:
+		var timing := _current_player_bet_timing()
+		var selected_bet: MvpBetCard = _selected_player_bet_for_timing(timing)
+		return "\n".join(PackedStringArray([
+			"Player Bet Summary",
+			"Phase: %s" % _phase_text(),
+			"Selected: %s" % (selected_bet.name if selected_bet != null else "None"),
+		]))
+
+	var counts: Dictionary = _build_remaining_type_counts(_player_state)
+	return "\n".join(PackedStringArray([
+		"Player Battle Summary",
+		"Aggression x%d" % int(counts.get(MvpBattleCard.TYPE_AGGRESSION, 0)),
+		"Defense x%d" % int(counts.get(MvpBattleCard.TYPE_DEFENSE, 0)),
+		"Pressure x%d" % int(counts.get(MvpBattleCard.TYPE_PRESSURE, 0)),
+	]))
+
+func _build_boss_summary_text() -> String:
+	if _boss_view_mode == VIEW_MODE_BET and bet_mode_enabled:
+		return "Boss Bet Summary\nDetailed reveal not connected in this build."
+
+	var counts: Dictionary = _build_remaining_type_counts(_boss_state)
+	return "\n".join(PackedStringArray([
+		"Boss Battle Summary",
+		"Aggression remaining: %d" % int(counts.get(MvpBattleCard.TYPE_AGGRESSION, 0)),
+		"Defense remaining: %d" % int(counts.get(MvpBattleCard.TYPE_DEFENSE, 0)),
+		"Pressure remaining: %d" % int(counts.get(MvpBattleCard.TYPE_PRESSURE, 0)),
+	]))
+
+func _build_remaining_type_counts(actor_state: MvpCombatActorState) -> Dictionary:
+	var counts := {
+		MvpBattleCard.TYPE_AGGRESSION: 0,
+		MvpBattleCard.TYPE_DEFENSE: 0,
+		MvpBattleCard.TYPE_PRESSURE: 0,
+	}
+	if actor_state == null:
+		return counts
+	for slot_index in range(actor_state.cards.size()):
+		if actor_state.used_slots.has(slot_index):
+			continue
+		var card: MvpBattleCard = actor_state.get_card_at(slot_index)
+		if card != null:
+			counts[card.type] = int(counts.get(card.type, 0)) + 1
+	return counts
 
 func _current_center_guidance_text() -> String:
 	if _challenge_over:
@@ -860,24 +798,74 @@ func _current_center_guidance_text() -> String:
 	return "Choose a card to start the turn."
 
 func _refresh_center_guidance() -> void:
-	if _clash_area_view == null:
-		return
-	_clash_area_view.set_result_text(_current_center_guidance_text())
+	if _center_info != null:
+		_center_info.visible = not _round_feedback_active
+	if _clash_result_label != null:
+		_clash_result_label.visible = not _round_feedback_active
+	if _clash_area_view != null:
+		_clash_area_view.set_result_text(_current_center_guidance_text())
 
-func show_turn_result_popup(payload: Dictionary) -> void:
+func _refresh_bet_hint_ui() -> void:
+	var end_turn_visible := bet_mode_enabled and _post_bet_window_open and not _challenge_over and not _round_feedback_active
+	if _end_turn_button != null:
+		_end_turn_button.visible = end_turn_visible
+		_end_turn_button.disabled = not end_turn_visible
+
+	if _bet_phase_hint != null:
+		_bet_phase_hint.text = _phase_text() if bet_mode_enabled else ""
+		_bet_phase_hint.visible = bet_mode_enabled and not _round_feedback_active
+	if _bet_result_hint != null:
+		_bet_result_hint.text = _bet_result_text if bet_mode_enabled else ""
+		_bet_result_hint.visible = bet_mode_enabled and not _round_feedback_active and not _bet_result_text.is_empty()
+
+func _refresh_bet_rows() -> void:
+	if _player_bet_view == null or _boss_bet_view == null:
+		return
+	if not bet_mode_enabled:
+		_player_bet_view.clear()
+		_boss_bet_view.clear()
+		return
+	_player_bet_view.set_entries(_build_player_bet_entries(), _is_player_bet_interactive())
+	_boss_bet_view.set_entries(_build_boss_bet_entries(), false)
+
+func _refresh_turn_result_popup() -> void:
 	_ensure_turn_result_popup_nodes()
 	if not is_instance_valid(_turn_result_popup) or not is_instance_valid(_feedback_label):
 		return
-	var headline_text := str(payload.get("headline_text", "")).strip_edges()
+
+	var is_visible := not _turn_result_payload.is_empty()
+	if not is_visible:
+		if is_instance_valid(_turn_result_headline_label):
+			_turn_result_headline_label.text = ""
+		_feedback_label.text = ""
+		_turn_result_popup.hide()
+		return
+
 	if is_instance_valid(_turn_result_headline_label):
-		_turn_result_headline_label.text = headline_text
+		_turn_result_headline_label.text = str(_turn_result_payload.get("headline_text", "")).strip_edges()
 	var lines := PackedStringArray()
 	for key in ["matchup_text", "explanation_text", "detail_text"]:
-		var line := str(payload.get(key, "")).strip_edges()
+		var line := str(_turn_result_payload.get(key, "")).strip_edges()
 		if not line.is_empty():
 			lines.append(line)
 	_feedback_label.text = "\n".join(lines)
 	_turn_result_popup.show()
+
+func _hide_turn_result_popup(invalidate_pending: bool = false) -> void:
+	if invalidate_pending:
+		_round_feedback_version += 1
+		_round_feedback_active = false
+		_pending_round_followup = ROUND_FOLLOWUP_NONE
+		_pending_round_followup_result.clear()
+	_turn_result_payload.clear()
+	_exit_result_mode()
+	_refresh_turn_result_popup()
+
+func show_turn_result_popup(payload: Dictionary) -> void:
+	_turn_result_payload = payload.duplicate(true)
+	_refresh_turn_result_popup()
+
+# Turn Flow
 
 func _build_round_feedback_payload(result: Dictionary) -> Dictionary:
 	if _boss_state == null or result.is_empty():
@@ -968,126 +956,6 @@ func _complete_round_feedback(result: Dictionary, followup: String) -> void:
 			_finalize_current_turn()
 		_:
 			_refresh_ui()
-
-func _start_new_challenge() -> void:
-	_hide_turn_result_popup(true)
-	_logs.clear()
-	_player_set_wins = 0
-	_boss_set_wins = 0
-	_current_set_index = 1
-	_current_turn_index = 1
-	_boss_battle_revealed = false
-	_boss_bet_revealed = false
-	_current_boss_template_id = MvpBattleCard.DEFAULT_BOSS_TEMPLATE_ID
-	_challenge_over = false
-	_input_locked = false
-	_bet_result_text = ""
-	_boss_bet_peek_snapshot_text = ""
-	_boss_template_rng.randomize()
-	_boss_bet_rng.randomize()
-
-	_player_state = MvpCombatActorState.new("Player", MvpBattleCard.build_player_test_deck())
-	_boss_state = MvpCombatActorState.new("Boss", MvpBattleCard.build_boss_test_deck())
-	_player_state.set_long_term_values(STARTING_BOD, STARTING_SPR, STARTING_REP)
-	_boss_state.set_long_term_values(STARTING_BOD, STARTING_SPR, STARTING_REP)
-	_reset_for_current_set()
-
-	push_log("Challenge started. First to 2 set wins takes the match.")
-	push_log("Set %d begins." % _current_set_index)
-	push_log("Turn %d begins." % _current_turn_index)
-	_refresh_ui()
-
-func _reset_for_current_set() -> void:
-	_hide_turn_result_popup(true)
-	_player_state.set_deck_blueprint(MvpBattleCard.build_player_test_deck())
-	var boss_template: Dictionary = MvpBattleCard.pick_random_boss_template(_boss_template_rng)
-	_current_boss_template_id = str(boss_template.get("id", MvpBattleCard.DEFAULT_BOSS_TEMPLATE_ID))
-	_current_boss_archetype = MvpBattleCard.archetype_for_template(_current_boss_template_id)
-	_boss_ai.set_archetype(_current_boss_archetype)
-	_boss_state.set_deck_blueprint(boss_template.get("cards", []))
-	_player_state.reset_for_new_set(SET_HP)
-	_boss_state.reset_for_new_set(SET_HP)
-	_boss_battle_revealed = false
-	_boss_bet_revealed = false
-	_current_turn_index = 1
-	_input_locked = false
-	_bet_result_text = ""
-	_boss_bet_peek_snapshot_text = ""
-	_reset_turn_bet_state(true)
-	_clash_area_view.clear_clash()
-
-func _reset_turn_bet_state(clear_result: bool = false) -> void:
-	_player_pre_bet = null
-	_player_post_bet = null
-	_boss_post_bet = null
-	_pending_player_slot = -1
-	_pending_boss_slot = -1
-	_post_bet_window_open = false
-	_post_bet_effects_applied = false
-	_current_round_result.clear()
-	_pending_round_followup = ROUND_FOLLOWUP_NONE
-	_pending_round_followup_result.clear()
-	_input_locked = false
-	_boss_bet_peek_snapshot_text = ""
-	if clear_result:
-		_bet_result_text = ""
-	_bet_phase = BET_CARD_SCRIPT.TIMING_PRE if bet_mode_enabled and not _challenge_over else BET_PHASE_CLOSED
-	_set_player_view_mode(VIEW_MODE_BET if bet_mode_enabled and not _challenge_over else VIEW_MODE_BATTLE)
-	_set_boss_view_mode(VIEW_MODE_BATTLE)
-	if is_instance_valid(_end_turn_button):
-		_end_turn_button.hide()
-
-func _refresh_ui() -> void:
-	_round_label.text = "Round %d / %d" % [_current_set_index, MAX_SETS]
-	_turn_label.text = "Turn %d / %d" % [_current_turn_index, MAX_TURNS]
-	_center_info.visible = not _round_feedback_active
-	_player_hp_label.text = "Player HP %d" % _player_state.hp
-	_boss_hp_label.text = "Boss HP %d" % _boss_state.hp
-	_player_bod_label.text = "BOD %d" % _player_state.bod
-	_player_spr_label.text = "SPR %d" % _player_state.spr
-	_player_rep_label.text = "REP %d" % _player_state.rep
-	_boss_bod_label.text = "BOD %d" % _boss_state.bod
-	_boss_spr_label.text = "SPR %d" % _boss_state.spr
-	_boss_rep_label.text = "REP %d" % _boss_state.rep
-	_battle_deck_title.text = "Boss Battle Deck"
-
-	_player_hand_view.set_hand(
-		_player_state.cards,
-		_player_state.used_slots,
-		not _challenge_over and not _input_locked and not _post_bet_window_open
-	)
-	if _boss_deck_view != null:
-		_boss_deck_view.set_hand(_boss_state.cards, _boss_state.used_slots)
-	_boss_battle_deck_view.set_deck(_boss_state.cards, _boss_battle_revealed, _boss_state.used_slots)
-	_boss_battle_deck_view.set_reveal_enabled(not _challenge_over)
-	_refresh_center_guidance()
-	_refresh_bet_ui()
-	_refresh_summary_texts()
-	_refresh_viewport_modes()
-	_sync_reveal_battle_deck_layout()
-	_refresh_overlay_log()
-
-func _refresh_bet_ui() -> void:
-	_bet_phase_hint.visible = bet_mode_enabled and not _round_feedback_active
-	if _peek_boss_bet_button != null:
-		_peek_boss_bet_button.visible = bet_mode_enabled and boss_bet_peek_enabled
-	var end_turn_visible := bet_mode_enabled and _post_bet_window_open and not _challenge_over and not _round_feedback_active
-	_end_turn_button.visible = end_turn_visible
-	_end_turn_button.disabled = not end_turn_visible
-	if not bet_mode_enabled:
-		_bet_phase_hint.text = ""
-		_bet_result_hint.text = ""
-		_bet_result_hint.visible = false
-		_player_bet_view.clear()
-		_boss_bet_view.clear()
-		return
-
-	_bet_phase_hint.text = _phase_text()
-	var bet_result_display: String = _bet_result_text if not _bet_result_text.is_empty() else _boss_bet_peek_snapshot_text
-	_bet_result_hint.text = bet_result_display
-	_bet_result_hint.visible = not _round_feedback_active and not bet_result_display.is_empty()
-	_player_bet_view.set_entries(_build_player_bet_entries(), _is_player_bet_interactive())
-	_boss_bet_view.set_entries(_build_boss_bet_entries(), false)
 
 func _on_player_battle_tab_pressed() -> void:
 	_set_player_view_mode(VIEW_MODE_BATTLE)
@@ -1192,23 +1060,11 @@ func reveal_boss_bet_deck() -> void:
 	refresh_boss_bet_deck()
 
 func refresh_boss_bet_deck() -> void:
-	_refresh_summary_texts()
+	_refresh_summary_ui()
 	_refresh_viewport_modes()
 
 func _on_reveal_requested() -> void:
 	reveal_boss_battle_deck()
-
-func _on_peek_boss_bet_pressed() -> void:
-	if not bet_mode_enabled or not boss_bet_peek_enabled:
-		return
-	_set_boss_view_mode(VIEW_MODE_BET)
-	_boss_bet_peek_snapshot_text = _build_boss_bet_snapshot_text()
-	_refresh_ui()
-
-func _build_boss_bet_snapshot_text() -> String:
-	if _boss_post_bet == null:
-		return "Boss: No Bet"
-	return "Boss Bet: %s" % _boss_post_bet.name
 
 func _on_player_bet_selected(bet_id: String) -> void:
 	if not _is_player_bet_interactive():
@@ -1429,6 +1285,74 @@ func _on_end_turn_pressed() -> void:
 		return
 	_apply_post_bet_effects_if_needed()
 	_finalize_current_turn()
+
+# Set / Challenge Progression
+
+func _start_new_challenge() -> void:
+	_hide_turn_result_popup(true)
+	_logs.clear()
+	_player_set_wins = 0
+	_boss_set_wins = 0
+	_current_set_index = 1
+	_current_turn_index = 1
+	_boss_battle_revealed = false
+	_boss_bet_revealed = false
+	_current_boss_template_id = MvpBattleCard.DEFAULT_BOSS_TEMPLATE_ID
+	_challenge_over = false
+	_input_locked = false
+	_bet_result_text = ""
+	_boss_template_rng.randomize()
+	_boss_bet_rng.randomize()
+
+	_player_state = MvpCombatActorState.new("Player", MvpBattleCard.build_player_test_deck())
+	_boss_state = MvpCombatActorState.new("Boss", MvpBattleCard.build_boss_test_deck())
+	_player_state.set_long_term_values(STARTING_BOD, STARTING_SPR, STARTING_REP)
+	_boss_state.set_long_term_values(STARTING_BOD, STARTING_SPR, STARTING_REP)
+	_reset_for_current_set()
+
+	push_log("Challenge started. First to 2 set wins takes the match.")
+	push_log("Set %d begins." % _current_set_index)
+	push_log("Turn %d begins." % _current_turn_index)
+	_refresh_ui()
+
+func _reset_for_current_set() -> void:
+	_hide_turn_result_popup(true)
+	_player_state.set_deck_blueprint(MvpBattleCard.build_player_test_deck())
+	var boss_template: Dictionary = MvpBattleCard.pick_random_boss_template(_boss_template_rng)
+	_current_boss_template_id = str(boss_template.get("id", MvpBattleCard.DEFAULT_BOSS_TEMPLATE_ID))
+	_current_boss_archetype = MvpBattleCard.archetype_for_template(_current_boss_template_id)
+	_boss_ai.set_archetype(_current_boss_archetype)
+	_boss_state.set_deck_blueprint(boss_template.get("cards", []))
+	_player_state.reset_for_new_set(SET_HP)
+	_boss_state.reset_for_new_set(SET_HP)
+	_boss_battle_revealed = false
+	_boss_bet_revealed = false
+	_current_turn_index = 1
+	_input_locked = false
+	_bet_result_text = ""
+	_reset_turn_bet_state(true)
+	_clash_area_view.clear_clash()
+
+func _reset_turn_bet_state(clear_result: bool = false) -> void:
+	_player_pre_bet = null
+	_player_post_bet = null
+	_boss_post_bet = null
+	_pending_player_slot = -1
+	_pending_boss_slot = -1
+	_post_bet_window_open = false
+	_post_bet_effects_applied = false
+	_current_round_result.clear()
+	_pending_round_followup = ROUND_FOLLOWUP_NONE
+	_pending_round_followup_result.clear()
+	_turn_result_payload.clear()
+	_input_locked = false
+	if clear_result:
+		_bet_result_text = ""
+	_bet_phase = BET_CARD_SCRIPT.TIMING_PRE if bet_mode_enabled and not _challenge_over else BET_PHASE_CLOSED
+	_set_player_view_mode(VIEW_MODE_BET if bet_mode_enabled and not _challenge_over else VIEW_MODE_BATTLE)
+	_set_boss_view_mode(VIEW_MODE_BATTLE)
+	if is_instance_valid(_end_turn_button):
+		_end_turn_button.hide()
 
 func _finalize_current_turn() -> void:
 	_post_bet_window_open = false

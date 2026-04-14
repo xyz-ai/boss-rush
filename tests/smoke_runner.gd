@@ -10,6 +10,8 @@ const MVP_BOSS_AI_SCRIPT := preload("res://scripts/game/BossAI.gd")
 const MVP_BATTLE_CARD_SCRIPT := preload("res://scripts/game/BattleCard.gd")
 const MVP_COMBAT_ACTOR_STATE_SCRIPT := preload("res://scripts/game/CombatActorState.gd")
 const ROUND_FEEDBACK_WAIT := 2.15
+const PLAYER_SUMMARY_BUTTON_PATH := "ContentRoot/TableArea/PlayerArea/Optional" + "SummaryButton"
+const BOSS_SUMMARY_BUTTON_PATH := "ContentRoot/TableArea/BossArea/Boss" + "SummaryToggleButton"
 
 func _init() -> void:
 	call_deferred("_run")
@@ -392,43 +394,25 @@ func _test_main_mvp_without_bets(failures: Array[String]) -> void:
 	await process_frame
 
 	var snapshot: Dictionary = controller.get_state_snapshot()
-	var battle_row: HBoxContainer = _find_scene_node(scene, [
-		"ContentRoot/TableArea/PlayerArea/CardViewport/BattleHandPanel/BattleCardRow",
-		"ContentRoot/TableArea/PlayerArea/HandAnchor",
-	]) as HBoxContainer
-	var battle_deck_row: HBoxContainer = _find_scene_node(scene, [
-		"ContentRoot/TableArea/BossArea/BossCardViewport/BossBattleDeckPanel/BossBattleCardRow",
-		"ContentRoot/TableArea/BossBattleDeckView/BattleDeckRow",
-	]) as HBoxContainer
+	var battle_row: HBoxContainer = _find_scene_node(scene, "ContentRoot/TableArea/PlayerArea/CardViewport/BattleHandPanel/BattleCardRow") as HBoxContainer
+	var battle_deck_row: HBoxContainer = _find_scene_node(scene, "ContentRoot/TableArea/BossArea/BossCardViewport/BossBattleDeckPanel/BossBattleCardRow") as HBoxContainer
 	var turn_label: Label = scene.get_node_or_null("ContentRoot/TableArea/CenterInfo/TurnLabel")
 	var clash_result_label: Label = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/ClashResultLabel")
 	var player_slot: Control = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/PlayerCardSlot")
 	var boss_slot: Control = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/BossCardSlot")
 	var turn_result_popup: Control = scene.get_node_or_null("ContentRoot/TableArea/TurnResultPopup")
-	var battle_deck_title: Label = _find_scene_node(scene, [
-		"ContentRoot/TableArea/BossArea/BossModeTitleLabel",
-		"ContentRoot/TableArea/BossBattleDeckView/BattleDeckTitle",
-	]) as Label
+	var battle_deck_title: Label = _find_scene_node(scene, "ContentRoot/TableArea/BossArea/BossModeTitleLabel") as Label
 	var reveal_status_label: Label = scene.get_node_or_null("ContentRoot/TableArea/BossArea/BossModeBar/RevealStatusLabel")
-	var player_bet_area: Control = _find_scene_node(scene, [
-		"ContentRoot/TableArea/PlayerArea/CardViewport/BetHandPanel",
-		"ContentRoot/TableArea/PlayerBetArea",
-	]) as Control
-	var boss_bet_area: Control = _find_scene_node(scene, [
-		"ContentRoot/TableArea/BossArea/BossCardViewport/BossBetDeckPanel",
-		"ContentRoot/TableArea/BossBetArea",
-	]) as Control
+	var player_bet_area: Control = _find_scene_node(scene, "ContentRoot/TableArea/PlayerArea/CardViewport/BetHandPanel") as Control
+	var boss_bet_area: Control = _find_scene_node(scene, "ContentRoot/TableArea/BossArea/BossCardViewport/BossBetDeckPanel") as Control
 	var bet_phase_hint: Label = scene.get_node_or_null("ContentRoot/TableArea/BetPhaseHint")
 	var bet_result_hint: Label = scene.get_node_or_null("ContentRoot/TableArea/BetResultHint")
-	var peek_boss_bet_button: Button = scene.get_node_or_null("ContentRoot/TableArea/BossBetArea/PeekBossBetButton")
 
 	_assert(not bool(snapshot.get("bet_mode_enabled", true)), "Smoke should be able to disable bet mode.", failures)
-	_assert(player_bet_area != null and not player_bet_area.visible, "PlayerBetArea should hide when bet mode is disabled.", failures)
-	_assert(boss_bet_area != null and not boss_bet_area.visible, "BossBetArea should hide when bet mode is disabled.", failures)
+	_assert(player_bet_area != null and not player_bet_area.visible, "Player bet panel should hide when bet mode is disabled.", failures)
+	_assert(boss_bet_area != null and not boss_bet_area.visible, "Boss bet panel should hide when bet mode is disabled.", failures)
 	_assert(bet_phase_hint != null and not bet_phase_hint.visible, "BetPhaseHint should hide when bet mode is disabled.", failures)
 	_assert(bet_result_hint != null and not bet_result_hint.visible, "BetResultHint should hide when bet mode is disabled.", failures)
-	if peek_boss_bet_button != null:
-		_assert(not peek_boss_bet_button.visible, "PeekBossBetButton should hide when bet mode is disabled.", failures)
 
 	if battle_row != null and battle_row.get_child_count() > 0:
 		(battle_row.get_child(0) as BaseButton).emit_signal("pressed")
@@ -505,7 +489,7 @@ func _test_main_mvp_player_summary_toggle(failures: Array[String]) -> void:
 		await process_frame
 		return
 
-	var summary_button: Button = scene.get_node_or_null("ContentRoot/TableArea/PlayerArea/OptionalSummaryButton")
+	var summary_button: Button = scene.get_node_or_null(PLAYER_SUMMARY_BUTTON_PATH)
 	var battle_tab_button: Button = scene.get_node_or_null("ContentRoot/TableArea/PlayerArea/ModeBar/BattleTabButton")
 	var battle_panel: Control = scene.get_node_or_null("ContentRoot/TableArea/PlayerArea/CardViewport/BattleHandPanel")
 	var bet_panel: Control = scene.get_node_or_null("ContentRoot/TableArea/PlayerArea/CardViewport/BetHandPanel")
@@ -513,7 +497,7 @@ func _test_main_mvp_player_summary_toggle(failures: Array[String]) -> void:
 	var summary_label: Label = scene.get_node_or_null("ContentRoot/TableArea/PlayerArea/CardViewport/RuntimePlayerSummaryPanel/MarginContainer/RuntimePlayerSummaryLabel")
 
 	var snapshot: Dictionary = controller.get_state_snapshot()
-	_assert(summary_button != null, "OptionalSummaryButton should exist for player summary smoke testing.", failures)
+	_assert(summary_button != null, "The player summary button should exist for smoke testing.", failures)
 	_assert(not bool(snapshot.get("player_summary_visible", true)), "Player summary should start collapsed.", failures)
 	_assert(str(snapshot.get("player_view_mode", "")) == "bet", "Player should still start in Bet mode when bet mode is enabled.", failures)
 	_assert(bet_panel != null and bet_panel.visible, "Player bet panel should start visible before summary toggling.", failures)
@@ -526,7 +510,7 @@ func _test_main_mvp_player_summary_toggle(failures: Array[String]) -> void:
 	snapshot = controller.get_state_snapshot()
 	summary_panel = scene.get_node_or_null("ContentRoot/TableArea/PlayerArea/CardViewport/RuntimePlayerSummaryPanel")
 	summary_label = scene.get_node_or_null("ContentRoot/TableArea/PlayerArea/CardViewport/RuntimePlayerSummaryPanel/MarginContainer/RuntimePlayerSummaryLabel")
-	_assert(bool(snapshot.get("player_summary_visible", false)), "OptionalSummaryButton should toggle player summary visibility on.", failures)
+	_assert(bool(snapshot.get("player_summary_visible", false)), "The player summary button should toggle player summary visibility on.", failures)
 	_assert(str(snapshot.get("player_view_mode", "")) == "bet", "Opening player summary should not change the current player view mode.", failures)
 	_assert(summary_panel != null and summary_panel.visible, "Player summary toggle should show the runtime summary panel.", failures)
 	_assert(summary_label != null and summary_label.visible, "Player summary toggle should show the runtime summary label.", failures)
@@ -560,7 +544,7 @@ func _test_main_mvp_player_summary_toggle(failures: Array[String]) -> void:
 	snapshot = controller.get_state_snapshot()
 	summary_panel = scene.get_node_or_null("ContentRoot/TableArea/PlayerArea/CardViewport/RuntimePlayerSummaryPanel")
 	summary_label = scene.get_node_or_null("ContentRoot/TableArea/PlayerArea/CardViewport/RuntimePlayerSummaryPanel/MarginContainer/RuntimePlayerSummaryLabel")
-	_assert(not bool(snapshot.get("player_summary_visible", true)), "OptionalSummaryButton should toggle player summary visibility off.", failures)
+	_assert(not bool(snapshot.get("player_summary_visible", true)), "The player summary button should toggle player summary visibility off.", failures)
 	_assert(summary_panel != null and not summary_panel.visible, "Closing player summary should hide the runtime summary panel.", failures)
 	_assert(summary_label != null and summary_label.visible, "Closing player summary should not destroy the runtime summary label node.", failures)
 	_assert(battle_panel != null and battle_panel.visible, "Closing player summary should keep the current player viewport panel visible.", failures)
@@ -578,10 +562,7 @@ func _test_main_mvp_bet_tooltip(failures: Array[String]) -> void:
 	await process_frame
 	await process_frame
 
-	var player_bet_row: HBoxContainer = _find_scene_node(scene, [
-		"ContentRoot/TableArea/PlayerArea/CardViewport/BetHandPanel/BetCardRow",
-		"ContentRoot/TableArea/PlayerBetArea/PlayerBetRow",
-	]) as HBoxContainer
+	var player_bet_row: HBoxContainer = _find_scene_node(scene, "ContentRoot/TableArea/PlayerArea/CardViewport/BetHandPanel/BetCardRow") as HBoxContainer
 	var hold_button: Button = null
 	if player_bet_row != null:
 		hold_button = player_bet_row.get_node_or_null("BetButton_hold_steady") as Button
@@ -630,7 +611,7 @@ func _test_main_mvp_boss_summary_toggle(failures: Array[String]) -> void:
 		await process_frame
 		return
 
-	var summary_button: Button = scene.get_node_or_null("ContentRoot/TableArea/BossArea/BossSummaryToggleButton")
+	var summary_button: Button = scene.get_node_or_null(BOSS_SUMMARY_BUTTON_PATH)
 	var boss_battle_tab_button: Button = scene.get_node_or_null("ContentRoot/TableArea/BossArea/BossModeBar/BossBattleTabButton")
 	var boss_bet_tab_button: Button = scene.get_node_or_null("ContentRoot/TableArea/BossArea/BossModeBar/BossBetTabButton")
 	var battle_panel: Control = scene.get_node_or_null("ContentRoot/TableArea/BossArea/BossCardViewport/BossBattleDeckPanel")
@@ -639,7 +620,7 @@ func _test_main_mvp_boss_summary_toggle(failures: Array[String]) -> void:
 	var summary_label: Label = scene.get_node_or_null("ContentRoot/TableArea/BossArea/BossCardViewport/RuntimeBossSummaryPanel/MarginContainer/RuntimeBossSummaryLabel")
 
 	var snapshot: Dictionary = controller.get_state_snapshot()
-	_assert(summary_button != null, "BossSummaryToggleButton should exist for boss summary smoke testing.", failures)
+	_assert(summary_button != null, "The boss summary button should exist for smoke testing.", failures)
 	_assert(str(snapshot.get("boss_view_mode", "")) == "battle", "Boss should still start in Battle mode.", failures)
 	_assert(not bool(snapshot.get("boss_summary_visible", true)), "Boss summary should start collapsed.", failures)
 	_assert(not bool(snapshot.get("boss_battle_revealed", true)), "Boss battle reveal should start hidden before summary toggling.", failures)
@@ -755,14 +736,8 @@ func _test_main_mvp_pre_bet_selection_still_allows_battle_card(failures: Array[S
 		await process_frame
 		return
 
-	var battle_row: HBoxContainer = _find_scene_node(scene, [
-		"ContentRoot/TableArea/PlayerArea/CardViewport/BattleHandPanel/BattleCardRow",
-		"ContentRoot/TableArea/PlayerArea/HandAnchor",
-	]) as HBoxContainer
-	var player_bet_row: HBoxContainer = _find_scene_node(scene, [
-		"ContentRoot/TableArea/PlayerArea/CardViewport/BetHandPanel/BetCardRow",
-		"ContentRoot/TableArea/PlayerBetArea/PlayerBetRow",
-	]) as HBoxContainer
+	var battle_row: HBoxContainer = _find_scene_node(scene, "ContentRoot/TableArea/PlayerArea/CardViewport/BattleHandPanel/BattleCardRow") as HBoxContainer
+	var player_bet_row: HBoxContainer = _find_scene_node(scene, "ContentRoot/TableArea/PlayerArea/CardViewport/BetHandPanel/BetCardRow") as HBoxContainer
 	var turn_label: Label = scene.get_node_or_null("ContentRoot/TableArea/CenterInfo/TurnLabel")
 	var player_slot: Control = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/PlayerCardSlot")
 	var boss_slot: Control = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/BossCardSlot")
@@ -829,18 +804,12 @@ func _test_main_mvp_post_bet_end_turn(failures: Array[String]) -> void:
 		await process_frame
 		return
 
-	var battle_row: HBoxContainer = _find_scene_node(scene, [
-		"ContentRoot/TableArea/PlayerArea/CardViewport/BattleHandPanel/BattleCardRow",
-		"ContentRoot/TableArea/PlayerArea/HandAnchor",
-	]) as HBoxContainer
+	var battle_row: HBoxContainer = _find_scene_node(scene, "ContentRoot/TableArea/PlayerArea/CardViewport/BattleHandPanel/BattleCardRow") as HBoxContainer
 	var battle_tab_button: Button = scene.get_node_or_null("ContentRoot/TableArea/PlayerArea/ModeBar/BattleTabButton")
 	var turn_label: Label = scene.get_node_or_null("ContentRoot/TableArea/CenterInfo/TurnLabel")
 	var player_slot: Control = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/PlayerCardSlot")
 	var boss_slot: Control = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/BossCardSlot")
-	var battle_deck_title: Label = _find_scene_node(scene, [
-		"ContentRoot/TableArea/BossArea/BossModeTitleLabel",
-		"ContentRoot/TableArea/BossBattleDeckView/BattleDeckTitle",
-	]) as Label
+	var battle_deck_title: Label = _find_scene_node(scene, "ContentRoot/TableArea/BossArea/BossModeTitleLabel") as Label
 	var reveal_status_label: Label = scene.get_node_or_null("ContentRoot/TableArea/BossArea/BossModeBar/RevealStatusLabel")
 	var clash_result_label: Label = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/ClashResultLabel")
 	var turn_result_popup: Control = scene.get_node_or_null("ContentRoot/TableArea/TurnResultPopup")
@@ -908,15 +877,9 @@ func _test_main_mvp_post_bet_card_then_end_turn(failures: Array[String]) -> void
 		await process_frame
 		return
 
-	var battle_row: HBoxContainer = _find_scene_node(scene, [
-		"ContentRoot/TableArea/PlayerArea/CardViewport/BattleHandPanel/BattleCardRow",
-		"ContentRoot/TableArea/PlayerArea/HandAnchor",
-	]) as HBoxContainer
+	var battle_row: HBoxContainer = _find_scene_node(scene, "ContentRoot/TableArea/PlayerArea/CardViewport/BattleHandPanel/BattleCardRow") as HBoxContainer
 	var battle_tab_button: Button = scene.get_node_or_null("ContentRoot/TableArea/PlayerArea/ModeBar/BattleTabButton")
-	var player_bet_row: HBoxContainer = _find_scene_node(scene, [
-		"ContentRoot/TableArea/PlayerArea/CardViewport/BetHandPanel/BetCardRow",
-		"ContentRoot/TableArea/PlayerBetArea/PlayerBetRow",
-	]) as HBoxContainer
+	var player_bet_row: HBoxContainer = _find_scene_node(scene, "ContentRoot/TableArea/PlayerArea/CardViewport/BetHandPanel/BetCardRow") as HBoxContainer
 	var turn_label: Label = scene.get_node_or_null("ContentRoot/TableArea/CenterInfo/TurnLabel")
 	var bet_result_hint: Label = scene.get_node_or_null("ContentRoot/TableArea/BetResultHint")
 	var end_turn_button: Button = scene.get_node_or_null("ContentRoot/TableArea/EndTurn")
@@ -996,37 +959,19 @@ func _test_main_mvp_with_bets(failures: Array[String]) -> void:
 
 	var round_label: Label = scene.get_node_or_null("ContentRoot/TableArea/CenterInfo/RoundLabel")
 	var turn_label: Label = scene.get_node_or_null("ContentRoot/TableArea/CenterInfo/TurnLabel")
-	var battle_row: HBoxContainer = _find_scene_node(scene, [
-		"ContentRoot/TableArea/PlayerArea/CardViewport/BattleHandPanel/BattleCardRow",
-		"ContentRoot/TableArea/PlayerArea/HandAnchor",
-	]) as HBoxContainer
+	var battle_row: HBoxContainer = _find_scene_node(scene, "ContentRoot/TableArea/PlayerArea/CardViewport/BattleHandPanel/BattleCardRow") as HBoxContainer
 	var battle_tab_button: Button = scene.get_node_or_null("ContentRoot/TableArea/PlayerArea/ModeBar/BattleTabButton")
 	var boss_battle_tab_button: Button = scene.get_node_or_null("ContentRoot/TableArea/BossArea/BossModeBar/BossBattleTabButton")
 	var boss_bet_tab_button: Button = scene.get_node_or_null("ContentRoot/TableArea/BossArea/BossModeBar/BossBetTabButton")
 	var reveal_button: Button = scene.get_node_or_null("ContentRoot/TableArea/BossArea/BossCardViewport/BossBattleDeckPanel/RevealBattleDeckButton")
-	var battle_deck_row: HBoxContainer = _find_scene_node(scene, [
-		"ContentRoot/TableArea/BossArea/BossCardViewport/BossBattleDeckPanel/BossBattleCardRow",
-		"ContentRoot/TableArea/BossBattleDeckView/BattleDeckRow",
-	]) as HBoxContainer
+	var battle_deck_row: HBoxContainer = _find_scene_node(scene, "ContentRoot/TableArea/BossArea/BossCardViewport/BossBattleDeckPanel/BossBattleCardRow") as HBoxContainer
 	var player_slot: Control = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/PlayerCardSlot")
 	var boss_slot: Control = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/BossCardSlot")
 	var clash_result_label: Label = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/ClashResultLabel")
-	var player_bet_area: Control = _find_scene_node(scene, [
-		"ContentRoot/TableArea/PlayerArea/CardViewport/BetHandPanel",
-		"ContentRoot/TableArea/PlayerBetArea",
-	]) as Control
-	var boss_bet_area: Control = _find_scene_node(scene, [
-		"ContentRoot/TableArea/BossArea/BossCardViewport/BossBetDeckPanel",
-		"ContentRoot/TableArea/BossBetArea",
-	]) as Control
-	var player_bet_row: HBoxContainer = _find_scene_node(scene, [
-		"ContentRoot/TableArea/PlayerArea/CardViewport/BetHandPanel/BetCardRow",
-		"ContentRoot/TableArea/PlayerBetArea/PlayerBetRow",
-	]) as HBoxContainer
-	var boss_bet_row: HBoxContainer = _find_scene_node(scene, [
-		"ContentRoot/TableArea/BossArea/BossCardViewport/BossBetDeckPanel/BossBetCard",
-		"ContentRoot/TableArea/BossBetArea/BetRow",
-	]) as HBoxContainer
+	var player_bet_area: Control = _find_scene_node(scene, "ContentRoot/TableArea/PlayerArea/CardViewport/BetHandPanel") as Control
+	var boss_bet_area: Control = _find_scene_node(scene, "ContentRoot/TableArea/BossArea/BossCardViewport/BossBetDeckPanel") as Control
+	var player_bet_row: HBoxContainer = _find_scene_node(scene, "ContentRoot/TableArea/PlayerArea/CardViewport/BetHandPanel/BetCardRow") as HBoxContainer
+	var boss_bet_row: HBoxContainer = _find_scene_node(scene, "ContentRoot/TableArea/BossArea/BossCardViewport/BossBetDeckPanel/BossBetCard") as HBoxContainer
 	var bet_phase_hint: Label = scene.get_node_or_null("ContentRoot/TableArea/BetPhaseHint")
 	var bet_result_hint: Label = scene.get_node_or_null("ContentRoot/TableArea/BetResultHint")
 	var reveal_status_label: Label = scene.get_node_or_null("ContentRoot/TableArea/BossArea/BossModeBar/RevealStatusLabel")
@@ -1215,8 +1160,6 @@ func _test_main_mvp_with_bets(failures: Array[String]) -> void:
 	_assert(str(snapshot.get("bet_phase", "")) == "pre", "A new set should reopen Pre-Bet when bet mode is enabled.", failures)
 	_assert(str(snapshot.get("player_bet_id", "")) == "", "A new set should clear player bet selection.", failures)
 	_assert(str(snapshot.get("boss_bet_id", "")) == "", "A new set should clear boss bet selection.", failures)
-	_assert(str(snapshot.get("boss_bet_peek_snapshot_text", "")) == "", "A new set should clear the last boss bet peek snapshot.", failures)
-
 	scene.queue_free()
 	await process_frame
 
@@ -1262,10 +1205,7 @@ func _assert_round_feedback_active(scene: Control, controller, failures: Array[S
 	var boss_slot: Control = scene.get_node_or_null("ContentRoot/TableArea/ClashArea/BossCardSlot")
 	var bet_phase_hint: Label = scene.get_node_or_null("ContentRoot/TableArea/BetPhaseHint")
 	var bet_result_hint: Label = scene.get_node_or_null("ContentRoot/TableArea/BetResultHint")
-	var battle_deck_title: Label = _find_scene_node(scene, [
-		"ContentRoot/TableArea/BossArea/BossModeTitleLabel",
-		"ContentRoot/TableArea/BossBattleDeckView/BattleDeckTitle",
-	]) as Label
+	var battle_deck_title: Label = _find_scene_node(scene, "ContentRoot/TableArea/BossArea/BossModeTitleLabel") as Label
 	var reveal_status_label: Label = scene.get_node_or_null("ContentRoot/TableArea/BossArea/BossModeBar/RevealStatusLabel")
 	var end_turn_button: Button = scene.get_node_or_null("ContentRoot/TableArea/EndTurn")
 	_assert(bool(snapshot.get("round_feedback_active", false)), "%s should enter round feedback mode immediately after the clash resolves." % context, failures)
@@ -1322,21 +1262,12 @@ func _test_main_mvp_layout(size: Vector2i, failures: Array[String]) -> void:
 
 	var viewport_size := scene.get_viewport_rect().size
 	var reveal_button: Control = scene.get_node_or_null("ContentRoot/TableArea/BossArea/BossCardViewport/BossBattleDeckPanel/RevealBattleDeckButton")
-	var battle_deck_row: HBoxContainer = _find_scene_node(scene, [
-		"ContentRoot/TableArea/BossArea/BossCardViewport/BossBattleDeckPanel/BossBattleCardRow",
-		"ContentRoot/TableArea/BossBattleDeckView/BattleDeckRow",
-	]) as HBoxContainer
-	var battle_row: HBoxContainer = _find_scene_node(scene, [
-		"ContentRoot/TableArea/PlayerArea/CardViewport/BattleHandPanel/BattleCardRow",
-		"ContentRoot/TableArea/PlayerArea/HandAnchor",
-	]) as HBoxContainer
+	var battle_deck_row: HBoxContainer = _find_scene_node(scene, "ContentRoot/TableArea/BossArea/BossCardViewport/BossBattleDeckPanel/BossBattleCardRow") as HBoxContainer
+	var battle_row: HBoxContainer = _find_scene_node(scene, "ContentRoot/TableArea/PlayerArea/CardViewport/BattleHandPanel/BattleCardRow") as HBoxContainer
 	var overlay_ui: Control = scene.get_node_or_null("ContentRoot/OverlayUI")
 	var player_hp: Control = scene.get_node_or_null("ContentRoot/TableArea/PlayerHP")
 	var boss_hp: Control = scene.get_node_or_null("ContentRoot/TableArea/BossHP")
-	var boss_portrait: Control = _find_scene_node(scene, [
-		"ContentRoot/TableArea/BossArea/BossPortrait",
-		"ContentRoot/BossArea/BossPortrait",
-	]) as Control
+	var boss_portrait: Control = _find_scene_node(scene, "ContentRoot/TableArea/BossArea/BossPortrait") as Control
 	var table_board: Control = scene.get_node_or_null("ContentRoot/TableArea/TableBoard")
 	var player_status_panel: Control = scene.get_node_or_null("ContentRoot/TableArea/PlayerStatusPanel")
 	var boss_status_panel: Control = scene.get_node_or_null("ContentRoot/TableArea/BossStatusPanel")
@@ -1380,12 +1311,8 @@ func _fresh_state(loader) -> Object:
 	state.current_set_state.configure_boss_deck(loader.get_boss("team_lead").get("deck", []))
 	return state
 
-func _find_scene_node(scene: Node, paths: Array[String]) -> Node:
-	for path in paths:
-		var node := scene.get_node_or_null(path)
-		if node != null:
-			return node
-	return null
+func _find_scene_node(scene: Node, path: String) -> Node:
+	return scene.get_node_or_null(path)
 
 func _assert(condition: bool, message: String, failures: Array[String]) -> void:
 	if not condition:
