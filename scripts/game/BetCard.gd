@@ -29,12 +29,14 @@ var branch_resolution_mode: String = ""
 var role_text: String = ""
 var effect_text: String = ""
 var condition_text: String = ""
+var cost_text: String = ""
+var tooltip_body_template: String = ""
 
 func _init(data: Dictionary = {}) -> void:
 	id = str(data.get("id", HOLD_STEADY_ID))
 	name = str(data.get("name", "Hold Steady"))
 	type = str(data.get("type", TYPE_BET))
-	base_cost = int(data.get("base_cost", 0))
+	base_cost = int(data.get("base_cost", data.get("cost", 0)))
 	cost_resource = str(data.get("cost_resource", COST_RESOURCE_SPR))
 	timing_windows = []
 	for timing in data.get("timing_windows", [TIMING_PRE, TIMING_POST]):
@@ -45,22 +47,32 @@ func _init(data: Dictionary = {}) -> void:
 	branch_group_id = str(data.get("branch_group_id", ""))
 	branch_options = data.get("branch_options", []).duplicate(true)
 	branch_resolution_mode = str(data.get("branch_resolution_mode", ""))
-	role_text = str(data.get("role_text", ""))
-	effect_text = str(data.get("effect_text", ""))
-	condition_text = str(data.get("condition_text", ""))
+	role_text = str(data.get("role", data.get("role_text", "No role text configured.")))
+	effect_text = str(data.get("effect_summary", data.get("effect_text", "No effect summary configured.")))
+	condition_text = str(data.get("condition_text", "No condition text configured."))
+	cost_text = str(data.get("cost_text", "{cost} {resource}"))
+	tooltip_body_template = str(data.get("tooltip_body", ""))
 
 static func build_default_cards() -> Array:
-	return [
-		new(_blueprint_hold_steady()),
-		new(_blueprint_positive_shift()),
-		new(_blueprint_dirty_move()),
-	]
+	var loader := _data_loader()
+	if loader != null and loader.has_method("get_mvp_bet_card_defs"):
+		return build_cards_from_defs(loader.get_mvp_bet_card_defs())
+	return []
 
 static func from_id(bet_id: String):
-	for card in build_default_cards():
-		if card.id == bet_id:
-			return card
+	var loader := _data_loader()
+	if loader != null and loader.has_method("get_mvp_bet_card_def"):
+		var card_def: Dictionary = loader.get_mvp_bet_card_def(bet_id)
+		if not card_def.is_empty():
+			return new(card_def)
 	return null
+
+static func build_cards_from_defs(defs: Array) -> Array:
+	var cards: Array = []
+	for entry in defs:
+		if entry is Dictionary:
+			cards.append(new(entry))
+	return cards
 
 static func cost_for_timing(card, timing: String) -> int:
 	if card == null:
@@ -74,12 +86,20 @@ func is_available_in_timing(timing: String) -> bool:
 	return timing_windows.has(timing)
 
 func tooltip_body_for_timing(timing: String) -> String:
-	var cost: int = cost_for_timing(self, timing)
+	var resolved_cost_text := _resolve_cost_text(timing)
+	if not tooltip_body_template.is_empty():
+		return tooltip_body_template \
+			.replace("{role}", role_text) \
+			.replace("{effect_summary}", effect_text) \
+			.replace("{condition_text}", condition_text) \
+			.replace("{cost_text}", resolved_cost_text) \
+			.replace("{cost}", str(cost_for_timing(self, timing))) \
+			.replace("{resource}", cost_resource.to_upper())
 	return "\n".join(PackedStringArray([
 		"Role: %s" % role_text,
 		"Effect: %s" % effect_text,
 		"Condition: %s" % condition_text,
-		"Cost: %d %s" % [cost, cost_resource.to_upper()],
+		"Cost: %s" % resolved_cost_text,
 	]))
 
 func to_dict() -> Dictionary:
@@ -96,64 +116,23 @@ func to_dict() -> Dictionary:
 		"branch_group_id": branch_group_id,
 		"branch_options": branch_options.duplicate(true),
 		"branch_resolution_mode": branch_resolution_mode,
-		"role_text": role_text,
-		"effect_text": effect_text,
+		"role": role_text,
+		"effect_summary": effect_text,
 		"condition_text": condition_text,
+		"cost_text": cost_text,
+		"tooltip_body": tooltip_body_template,
 	}
 
-static func _blueprint_hold_steady() -> Dictionary:
-	return {
-		"id": HOLD_STEADY_ID,
-		"name": "Hold Steady",
-		"type": TYPE_BET,
-		"base_cost": 0,
-		"cost_resource": COST_RESOURCE_SPR,
-		"timing_windows": [TIMING_PRE, TIMING_POST],
-		"effect_on_win": {},
-		"effect_on_lose": {},
-		"branch_enabled": false,
-		"branch_group_id": "",
-		"branch_options": [],
-		"branch_resolution_mode": "",
-		"role_text": "Skip betting safely",
-		"effect_text": "Place no modifier this phase",
-		"condition_text": "Available during Pre-Bet and Post-Bet",
-	}
+func _resolve_cost_text(timing: String) -> String:
+	var resolved_cost := cost_for_timing(self, timing)
+	if cost_text.is_empty():
+		return "%d %s" % [resolved_cost, cost_resource.to_upper()]
+	return cost_text \
+		.replace("{cost}", str(resolved_cost)) \
+		.replace("{resource}", cost_resource.to_upper())
 
-static func _blueprint_positive_shift() -> Dictionary:
-	return {
-		"id": POSITIVE_SHIFT_ID,
-		"name": "Positive Shift",
-		"type": TYPE_BET,
-		"base_cost": 2,
-		"cost_resource": COST_RESOURCE_SPR,
-		"timing_windows": [TIMING_PRE, TIMING_POST],
-		"effect_on_win": {"bonus_damage": 1},
-		"effect_on_lose": {},
-		"branch_enabled": false,
-		"branch_group_id": "",
-		"branch_options": [],
-		"branch_resolution_mode": "",
-		"role_text": "Push advantage when your read is correct",
-		"effect_text": "If you win, deal +1 damage",
-		"condition_text": "Available during Pre-Bet and Post-Bet; only matters on a winning clash",
-	}
-
-static func _blueprint_dirty_move() -> Dictionary:
-	return {
-		"id": DIRTY_MOVE_ID,
-		"name": "Dirty Move",
-		"type": TYPE_BET,
-		"base_cost": 2,
-		"cost_resource": COST_RESOURCE_SPR,
-		"timing_windows": [TIMING_PRE, TIMING_POST],
-		"effect_on_win": {"bonus_damage": 2},
-		"effect_on_lose": {"self_damage": 1},
-		"branch_enabled": false,
-		"branch_group_id": "",
-		"branch_options": [],
-		"branch_resolution_mode": "",
-		"role_text": "Trade safety for swing",
-		"effect_text": "If you win, deal +2 damage; if you lose, take 1 self-damage",
-		"condition_text": "Available during Pre-Bet and Post-Bet",
-	}
+static func _data_loader() -> Node:
+	var main_loop := Engine.get_main_loop()
+	if main_loop is SceneTree:
+		return (main_loop as SceneTree).root.get_node_or_null("DataLoader")
+	return null

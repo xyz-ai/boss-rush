@@ -117,6 +117,7 @@ var _boss_battle_revealed: bool = false
 var _boss_bet_revealed: bool = false
 var _current_boss_template_id: String = MvpBattleCard.DEFAULT_BOSS_TEMPLATE_ID
 var _current_boss_archetype: String = MvpBattleCard.ARCHETYPE_BALANCED
+var _current_boss_ui_label: String = ""
 var _challenge_over: bool = false
 var _input_locked: bool = false
 var _logs: Array[String] = []
@@ -148,10 +149,10 @@ var _turn_result_payload: Dictionary = {}
 
 func _init(host: Control) -> void:
 	_host = host
-	_bet_cards = BET_CARD_SCRIPT.build_default_cards()
 
 func ready() -> void:
 	_bind_nodes()
+	_load_content_defs()
 	_hide_turn_result_popup(true)
 	_configure_mouse_filters()
 	_setup_views()
@@ -227,6 +228,28 @@ func push_log(message: String) -> void:
 		_logs.remove_at(0)
 	print("[MainMVP] %s" % message)
 	_refresh_overlay_log()
+
+func _data_loader() -> Node:
+	return _host.get_node_or_null("/root/DataLoader")
+
+func _text(key: String, fallback_text: String = "") -> String:
+	var loader := _data_loader()
+	if loader != null and loader.has_method("get_mvp_text"):
+		return str(loader.get_mvp_text(key, fallback_text))
+	return fallback_text
+
+func _load_content_defs() -> void:
+	var loader := _data_loader()
+	if loader != null and loader.has_method("get_mvp_bet_card_defs"):
+		_bet_cards = BET_CARD_SCRIPT.build_cards_from_defs(loader.get_mvp_bet_card_defs())
+	else:
+		_bet_cards = BET_CARD_SCRIPT.build_default_cards()
+
+func _find_bet_card_by_id(card_id: String) -> MvpBetCard:
+	for bet_card in _bet_cards:
+		if bet_card != null and bet_card.id == card_id:
+			return bet_card
+	return null
 
 # Node Binding
 
@@ -600,10 +623,12 @@ func _setup_views() -> void:
 	if _boss_bet_tab_button != null:
 		_boss_bet_tab_button.text = "Bet"
 	if _player_optional_summary_button != null:
-		_player_optional_summary_button.text = "Summary"
+		_player_optional_summary_button.text = _text("labels.summary", "Summary")
 	if _boss_summary_toggle_button != null:
-		_boss_summary_toggle_button.text = "Summary"
-	_end_turn_button.text = "End Turn"
+		_boss_summary_toggle_button.text = _text("labels.summary", "Summary")
+	if _reveal_battle_deck_button != null:
+		_reveal_battle_deck_button.text = _text("labels.reveal_battle_deck", "Reveal Battle Deck")
+	_end_turn_button.text = _text("labels.end_turn", "End Turn")
 	_end_turn_button.hide()
 	_ensure_turn_result_popup_nodes()
 	if not _end_turn_button.pressed.is_connected(_on_end_turn_pressed):
@@ -689,7 +714,7 @@ func _refresh_viewport_modes() -> void:
 	if _player_mode_bar != null:
 		_player_mode_bar.visible = bet_mode_enabled
 	if _player_mode_title_label != null:
-		_player_mode_title_label.text = "Battle Cards" if player_battle_visible else "Bet Cards"
+		_player_mode_title_label.text = _text("labels.player_battle_cards", "Battle Cards") if player_battle_visible else _text("labels.player_bet_cards", "Bet Cards")
 
 	var boss_battle_visible := true
 	var boss_bet_visible := false
@@ -703,24 +728,26 @@ func _refresh_viewport_modes() -> void:
 	if _boss_summary_panel != null:
 		_boss_summary_panel.visible = _boss_summary_visible
 	if _battle_deck_title != null:
-		_battle_deck_title.text = "Boss Battle Deck" if boss_battle_visible else "Boss Bet"
+		_battle_deck_title.text = _text("labels.boss_battle_deck", "Boss Battle Deck") if boss_battle_visible else _text("labels.boss_bet_deck", "Boss Bet Deck")
 	if _boss_reveal_status_label != null:
-		_boss_reveal_status_label.text = "Revealed" if _boss_battle_revealed else "Hidden"
+		_boss_reveal_status_label.text = _text("labels.revealed", "Revealed") if _boss_battle_revealed else _text("labels.hidden", "Hidden")
 
 func _refresh_summary_ui() -> void:
 	_ensure_summary_labels()
 	if _boss_battle_tab_button != null:
-		_boss_battle_tab_button.text = "Battle"
+		_boss_battle_tab_button.text = _text("labels.battle", "Battle")
 	if _boss_bet_tab_button != null:
-		_boss_bet_tab_button.text = "Bet"
+		_boss_bet_tab_button.text = _text("labels.bet", "Bet")
+	if _reveal_battle_deck_button != null:
+		_reveal_battle_deck_button.text = _text("labels.reveal_battle_deck", "Reveal Battle Deck")
 	_refresh_player_summary()
 	_refresh_boss_summary()
 	if _boss_archetype_label != null:
-		_boss_archetype_label.text = "%s Boss" % MvpBattleCard.archetype_display_name(_current_boss_archetype)
+		_boss_archetype_label.text = _current_boss_ui_label
 
 func _refresh_player_summary() -> void:
 	if _player_optional_summary_button != null:
-		_player_optional_summary_button.text = "Cards" if _player_summary_visible else "Summary"
+		_player_optional_summary_button.text = _text("labels.cards", "Cards") if _player_summary_visible else _text("labels.summary", "Summary")
 	if _player_summary_label != null:
 		_player_summary_label.text = _build_player_summary_text()
 	if _player_summary_panel != null:
@@ -728,7 +755,7 @@ func _refresh_player_summary() -> void:
 
 func _refresh_boss_summary() -> void:
 	if _boss_summary_toggle_button != null:
-		_boss_summary_toggle_button.text = "Cards" if _boss_summary_visible else "Summary"
+		_boss_summary_toggle_button.text = _text("labels.cards", "Cards") if _boss_summary_visible else _text("labels.summary", "Summary")
 	if _boss_summary_label != null:
 		_boss_summary_label.text = _build_boss_summary_text()
 	if _boss_summary_panel != null:
@@ -739,14 +766,14 @@ func _build_player_summary_text() -> String:
 		var timing := _current_player_bet_timing()
 		var selected_bet: MvpBetCard = _selected_player_bet_for_timing(timing)
 		return "\n".join(PackedStringArray([
-			"Player Bet Summary",
+			_text("summary.player_bet_title", "Player Bet Summary"),
 			"Phase: %s" % _phase_text(),
-			"Selected: %s" % (selected_bet.name if selected_bet != null else "None"),
+			"Selected: %s" % (selected_bet.name if selected_bet != null else _text("summary.selected_none", "None")),
 		]))
 
 	var counts: Dictionary = _build_remaining_type_counts(_player_state)
 	return "\n".join(PackedStringArray([
-		"Player Battle Summary",
+		_text("summary.player_battle_title", "Player Battle Summary"),
 		"Aggression x%d" % int(counts.get(MvpBattleCard.TYPE_AGGRESSION, 0)),
 		"Defense x%d" % int(counts.get(MvpBattleCard.TYPE_DEFENSE, 0)),
 		"Pressure x%d" % int(counts.get(MvpBattleCard.TYPE_PRESSURE, 0)),
@@ -754,11 +781,14 @@ func _build_player_summary_text() -> String:
 
 func _build_boss_summary_text() -> String:
 	if _boss_view_mode == VIEW_MODE_BET and bet_mode_enabled:
-		return "Boss Bet Summary\nDetailed reveal not connected in this build."
+		return "%s\n%s" % [
+			_text("summary.boss_bet_title", "Boss Bet Summary"),
+			_text("summary.boss_bet_placeholder", "Detailed reveal not connected in this build."),
+		]
 
 	var counts: Dictionary = _build_remaining_type_counts(_boss_state)
 	return "\n".join(PackedStringArray([
-		"Boss Battle Summary",
+		_text("summary.boss_battle_title", "Boss Battle Summary"),
 		"Aggression remaining: %d" % int(counts.get(MvpBattleCard.TYPE_AGGRESSION, 0)),
 		"Defense remaining: %d" % int(counts.get(MvpBattleCard.TYPE_DEFENSE, 0)),
 		"Pressure remaining: %d" % int(counts.get(MvpBattleCard.TYPE_PRESSURE, 0)),
@@ -782,20 +812,20 @@ func _build_remaining_type_counts(actor_state: MvpCombatActorState) -> Dictionar
 
 func _current_center_guidance_text() -> String:
 	if _challenge_over:
-		return "Challenge complete."
+		return _text("guidance.challenge_complete", "Challenge complete.")
 	if _round_feedback_active:
 		return ""
 	if _post_bet_window_open:
 		if _post_bet_effects_applied or _player_post_bet != null:
-			return "Choose End Turn to continue."
-		return "Post-Bet: play one bet card or choose End Turn."
+			return _text("guidance.end_turn_continue", "Choose End Turn to continue.")
+		return _text("guidance.post_bet_open", "Post-Bet: play one bet card or choose End Turn.")
 	if not bet_mode_enabled:
-		return "Choose a card to start the turn."
+		return _text("guidance.turn_start", "Choose a card to start the turn.")
 	if _bet_phase == BET_CARD_SCRIPT.TIMING_PRE:
 		if _player_pre_bet == null:
-			return "Optional: place a bet first."
-		return "Choose a battle card to start the turn."
-	return "Choose a card to start the turn."
+			return _text("guidance.pre_bet_optional", "Optional: place a bet first.")
+		return _text("guidance.pre_bet_choose_battle", "Choose a battle card to start the turn.")
+	return _text("guidance.turn_start", "Choose a card to start the turn.")
 
 func _refresh_center_guidance() -> void:
 	if _center_info != null:
@@ -880,14 +910,14 @@ func _build_round_feedback_payload(result: Dictionary) -> Dictionary:
 	var player_total := int(result.get("player_total", 0))
 	var boss_total := int(result.get("boss_total", 0))
 	var winner := str(result.get("winner", "tie"))
-	var headline_text := "DRAW"
+	var headline_text := _text("result.draw", "DRAW")
 	match winner:
 		"player":
-			headline_text = "YOU WIN"
+			headline_text = _text("result.you_win", "YOU WIN")
 		"boss":
-			headline_text = "YOU LOSE"
+			headline_text = _text("result.you_lose", "YOU LOSE")
 		_:
-			headline_text = "DRAW"
+			headline_text = _text("result.draw", "DRAW")
 
 	var remaining_count := 0
 	for slot_index in range(_boss_state.cards.size()):
@@ -1004,7 +1034,7 @@ func _build_boss_bet_entries() -> Array[Dictionary]:
 		return []
 	return [{
 		"id": _boss_post_bet.id,
-		"label": "Boss Bet Locked",
+		"label": _text("labels.boss_bet_locked", "Boss Bet Locked"),
 		"disabled": true,
 	}]
 
@@ -1021,11 +1051,11 @@ func _current_player_bet_timing() -> String:
 func _phase_text() -> String:
 	match _bet_phase:
 		BET_CARD_SCRIPT.TIMING_PRE:
-			return "Pre-Bet Phase"
+			return _text("phase.pre_bet", "Pre-Bet Phase")
 		BET_CARD_SCRIPT.TIMING_POST:
-			return "Post-Bet Phase"
+			return _text("phase.post_bet", "Post-Bet Phase")
 		_:
-			return "Bet Closed"
+			return _text("phase.closed", "Bet Closed")
 
 func _is_player_bet_interactive() -> bool:
 	if not bet_mode_enabled or _challenge_over or _round_feedback_active:
@@ -1069,7 +1099,9 @@ func _on_reveal_requested() -> void:
 func _on_player_bet_selected(bet_id: String) -> void:
 	if not _is_player_bet_interactive():
 		return
-	var bet_card = BET_CARD_SCRIPT.from_id(bet_id)
+	var bet_card = _find_bet_card_by_id(bet_id)
+	if bet_card == null:
+		return
 	var timing: String = _current_player_bet_timing()
 	if not _can_actor_use_bet(_player_state, bet_card, timing):
 		return
@@ -1146,9 +1178,9 @@ func _choose_boss_bet(player_card: MvpBattleCard, boss_card: MvpBattleCard):
 	elif MvpBattleCard.beats(player_card.type, boss_card.type):
 		matchup = "disadvantage"
 
-	var hold = BET_CARD_SCRIPT.from_id(BET_CARD_SCRIPT.HOLD_STEADY_ID)
-	var positive = BET_CARD_SCRIPT.from_id(BET_CARD_SCRIPT.POSITIVE_SHIFT_ID)
-	var dirty = BET_CARD_SCRIPT.from_id(BET_CARD_SCRIPT.DIRTY_MOVE_ID)
+	var hold = _find_bet_card_by_id(BET_CARD_SCRIPT.HOLD_STEADY_ID)
+	var positive = _find_bet_card_by_id(BET_CARD_SCRIPT.POSITIVE_SHIFT_ID)
+	var dirty = _find_bet_card_by_id(BET_CARD_SCRIPT.DIRTY_MOVE_ID)
 	var timing: String = BET_CARD_SCRIPT.TIMING_POST
 	var roll: int = _boss_bet_rng.randi_range(1, 100)
 
@@ -1298,6 +1330,8 @@ func _start_new_challenge() -> void:
 	_boss_battle_revealed = false
 	_boss_bet_revealed = false
 	_current_boss_template_id = MvpBattleCard.DEFAULT_BOSS_TEMPLATE_ID
+	_current_boss_archetype = MvpBattleCard.ARCHETYPE_BALANCED
+	_current_boss_ui_label = ""
 	_challenge_over = false
 	_input_locked = false
 	_bet_result_text = ""
@@ -1305,7 +1339,7 @@ func _start_new_challenge() -> void:
 	_boss_bet_rng.randomize()
 
 	_player_state = MvpCombatActorState.new("Player", MvpBattleCard.build_player_test_deck())
-	_boss_state = MvpCombatActorState.new("Boss", MvpBattleCard.build_boss_test_deck())
+	_boss_state = MvpCombatActorState.new("Boss", [])
 	_player_state.set_long_term_values(STARTING_BOD, STARTING_SPR, STARTING_REP)
 	_boss_state.set_long_term_values(STARTING_BOD, STARTING_SPR, STARTING_REP)
 	_reset_for_current_set()
@@ -1318,11 +1352,15 @@ func _start_new_challenge() -> void:
 func _reset_for_current_set() -> void:
 	_hide_turn_result_popup(true)
 	_player_state.set_deck_blueprint(MvpBattleCard.build_player_test_deck())
-	var boss_template: Dictionary = MvpBattleCard.pick_random_boss_template(_boss_template_rng)
-	_current_boss_template_id = str(boss_template.get("id", MvpBattleCard.DEFAULT_BOSS_TEMPLATE_ID))
-	_current_boss_archetype = MvpBattleCard.archetype_for_template(_current_boss_template_id)
-	_boss_ai.set_archetype(_current_boss_archetype)
-	_boss_state.set_deck_blueprint(boss_template.get("cards", []))
+	var boss_config: Dictionary = {}
+	var loader := _data_loader()
+	if loader != null and loader.has_method("get_random_mvp_boss_config"):
+		boss_config = loader.get_random_mvp_boss_config(_boss_template_rng)
+	_current_boss_template_id = str(boss_config.get("boss_id", MvpBattleCard.DEFAULT_BOSS_TEMPLATE_ID))
+	_current_boss_archetype = str(boss_config.get("archetype", MvpBattleCard.ARCHETYPE_BALANCED))
+	_current_boss_ui_label = str(boss_config.get("ui_label", boss_config.get("display_name", "Boss")))
+	_boss_ai.set_profile(boss_config)
+	_boss_state.set_deck_blueprint(MvpBattleCard.build_boss_template(_current_boss_template_id))
 	_player_state.reset_for_new_set(SET_HP)
 	_boss_state.reset_for_new_set(SET_HP)
 	_boss_battle_revealed = false

@@ -14,15 +14,43 @@ const ARCHETYPE_TYPE_BONUS := 30
 
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var _archetype: String = ARCHETYPE_BALANCED
+var _category_weights := {
+	CATEGORY_COUNTER: COUNTER_WEIGHT,
+	CATEGORY_NEUTRAL: NEUTRAL_WEIGHT,
+	CATEGORY_WRONG: WRONG_WEIGHT,
+}
+var _type_bonuses := {
+	MvpBattleCard.TYPE_AGGRESSION: 0,
+	MvpBattleCard.TYPE_DEFENSE: 0,
+	MvpBattleCard.TYPE_PRESSURE: 0,
+}
 
 func _init() -> void:
 	rng.randomize()
+	_reset_profile_to_defaults()
 
 func set_seed(seed: int) -> void:
 	rng.seed = seed
 
 func set_archetype(archetype: String) -> void:
 	_archetype = _normalize_archetype(archetype)
+	_reset_type_bonuses_for_archetype()
+
+func set_profile(boss_config: Dictionary) -> void:
+	_archetype = _normalize_archetype(str(boss_config.get("archetype", ARCHETYPE_BALANCED)))
+	_category_weights = {
+		CATEGORY_COUNTER: COUNTER_WEIGHT,
+		CATEGORY_NEUTRAL: NEUTRAL_WEIGHT,
+		CATEGORY_WRONG: WRONG_WEIGHT,
+	}
+	_reset_type_bonuses_for_archetype()
+	var ai_weights: Dictionary = boss_config.get("ai_weights", {})
+	_category_weights[CATEGORY_COUNTER] = int(ai_weights.get("counter", _category_weights[CATEGORY_COUNTER]))
+	_category_weights[CATEGORY_NEUTRAL] = int(ai_weights.get("neutral", _category_weights[CATEGORY_NEUTRAL]))
+	_category_weights[CATEGORY_WRONG] = int(ai_weights.get("wrong", _category_weights[CATEGORY_WRONG]))
+	_type_bonuses[MvpBattleCard.TYPE_AGGRESSION] = int(ai_weights.get("aggression_bonus", _type_bonuses[MvpBattleCard.TYPE_AGGRESSION]))
+	_type_bonuses[MvpBattleCard.TYPE_DEFENSE] = int(ai_weights.get("defense_bonus", _type_bonuses[MvpBattleCard.TYPE_DEFENSE]))
+	_type_bonuses[MvpBattleCard.TYPE_PRESSURE] = int(ai_weights.get("pressure_bonus", _type_bonuses[MvpBattleCard.TYPE_PRESSURE]))
 
 func choose_slot(boss_state: MvpCombatActorState, player_card: MvpBattleCard) -> int:
 	if boss_state == null or player_card == null:
@@ -120,24 +148,10 @@ func _fallback_order_for(target_category: String) -> Array[String]:
 			return [CATEGORY_COUNTER, CATEGORY_NEUTRAL, CATEGORY_WRONG]
 
 func _category_weight(category: String) -> int:
-	match category:
-		CATEGORY_COUNTER:
-			return COUNTER_WEIGHT
-		CATEGORY_NEUTRAL:
-			return NEUTRAL_WEIGHT
-		CATEGORY_WRONG:
-			return WRONG_WEIGHT
-		_:
-			return 0
+	return int(_category_weights.get(category, 0))
 
 func _archetype_bonus_for_type(card_type: String) -> int:
-	match _archetype:
-		ARCHETYPE_AGGRESSIVE:
-			return ARCHETYPE_TYPE_BONUS if card_type == MvpBattleCard.TYPE_AGGRESSION else 0
-		ARCHETYPE_DEFENSIVE:
-			return ARCHETYPE_TYPE_BONUS if card_type == MvpBattleCard.TYPE_DEFENSE else 0
-		_:
-			return 0
+	return int(_type_bonuses.get(card_type, 0))
 
 func _normalize_archetype(archetype: String) -> String:
 	match archetype:
@@ -145,3 +159,23 @@ func _normalize_archetype(archetype: String) -> String:
 			return archetype
 		_:
 			return ARCHETYPE_BALANCED
+
+func _reset_profile_to_defaults() -> void:
+	_category_weights = {
+		CATEGORY_COUNTER: COUNTER_WEIGHT,
+		CATEGORY_NEUTRAL: NEUTRAL_WEIGHT,
+		CATEGORY_WRONG: WRONG_WEIGHT,
+	}
+	_reset_type_bonuses_for_archetype()
+
+func _reset_type_bonuses_for_archetype() -> void:
+	_type_bonuses = {
+		MvpBattleCard.TYPE_AGGRESSION: 0,
+		MvpBattleCard.TYPE_DEFENSE: 0,
+		MvpBattleCard.TYPE_PRESSURE: 0,
+	}
+	match _archetype:
+		ARCHETYPE_AGGRESSIVE:
+			_type_bonuses[MvpBattleCard.TYPE_AGGRESSION] = ARCHETYPE_TYPE_BONUS
+		ARCHETYPE_DEFENSIVE:
+			_type_bonuses[MvpBattleCard.TYPE_DEFENSE] = ARCHETYPE_TYPE_BONUS

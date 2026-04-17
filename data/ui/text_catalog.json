@@ -1,0 +1,45 @@
+{
+  "result": {
+    "you_win": "YOU WIN",
+    "you_lose": "YOU LOSE",
+    "draw": "DRAW"
+  },
+  "guidance": {
+    "turn_start": "Choose a card to start the turn.",
+    "pre_bet_optional": "Optional: place a bet first.",
+    "pre_bet_choose_battle": "Choose a battle card to start the turn.",
+    "post_bet_open": "Post-Bet: play one bet card or choose End Turn.",
+    "end_turn_continue": "Choose End Turn to continue.",
+    "challenge_complete": "Challenge complete."
+  },
+  "labels": {
+    "player_battle_cards": "Battle Cards",
+    "player_bet_cards": "Bet Cards",
+    "boss_battle_deck": "Boss Battle Deck",
+    "boss_bet_deck": "Boss Bet Deck",
+    "battle": "Battle",
+    "bet": "Bet",
+    "summary": "Summary",
+    "cards": "Cards",
+    "end_turn": "End Turn",
+    "reveal_battle_deck": "Reveal Battle Deck",
+    "battle_deck_revealed": "Battle Deck Revealed",
+    "reveal_locked": "Reveal Locked",
+    "revealed": "Revealed",
+    "hidden": "Hidden",
+    "boss_bet_locked": "Boss Bet Locked"
+  },
+  "phase": {
+    "pre_bet": "Pre-Bet Phase",
+    "post_bet": "Post-Bet Phase",
+    "closed": "Bet Closed"
+  },
+  "summary": {
+    "player_battle_title": "Player Battle Summary",
+    "player_bet_title": "Player Bet Summary",
+    "boss_battle_title": "Boss Battle Summary",
+    "boss_bet_title": "Boss Bet Summary",
+    "boss_bet_placeholder": "Detailed reveal not connected in this build.",
+    "selected_none": "None"
+  }
+}

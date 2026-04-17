@@ -35,7 +35,7 @@ func get_result_text() -> String:
 func clear_clash() -> void:
 	_clear_slot(_player_card_slot)
 	_clear_slot(_boss_card_slot)
-	_result_label.text = "Choose a card to start the turn."
+	_result_label.text = ""
 
 func _place_card(slot: Control, card_data: Dictionary, node_name: String) -> void:
 	_clear_slot(slot)

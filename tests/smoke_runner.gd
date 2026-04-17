@@ -8,6 +8,7 @@ const BOSS_AI_SCRIPT := preload("res://scripts/core/BossAI.gd")
 const MATCHUP_RULES_SCRIPT := preload("res://scripts/core/MatchupRules.gd")
 const MVP_BOSS_AI_SCRIPT := preload("res://scripts/game/BossAI.gd")
 const MVP_BATTLE_CARD_SCRIPT := preload("res://scripts/game/BattleCard.gd")
+const MVP_BET_CARD_SCRIPT := preload("res://scripts/game/BetCard.gd")
 const MVP_COMBAT_ACTOR_STATE_SCRIPT := preload("res://scripts/game/CombatActorState.gd")
 const ROUND_FEEDBACK_WAIT := 2.15
 const PLAYER_SUMMARY_BUTTON_PATH := "ContentRoot/TableArea/PlayerArea/Optional" + "SummaryButton"
@@ -26,6 +27,7 @@ func _run() -> void:
 		_test_logic(loader, failures)
 		_test_ai(loader, failures)
 		_test_mvp_boss_ai(failures)
+		_test_mvp_content_externalization(loader, failures)
 	await _test_scene_instancing(loader, failures)
 	await _test_main_mvp(failures)
 
@@ -277,6 +279,7 @@ func _test_mvp_boss_ai(failures: Array[String]) -> void:
 		"Defensive MVP BossAI should choose Defense more often than Aggression when both remain legal.",
 		failures
 	)
+
 	ai.set_archetype(MVP_BATTLE_CARD_SCRIPT.ARCHETYPE_BALANCED)
 
 	var no_counter_state: MvpCombatActorState = MVP_COMBAT_ACTOR_STATE_SCRIPT.new("Boss", [
@@ -315,6 +318,31 @@ func _test_mvp_boss_ai(failures: Array[String]) -> void:
 	])
 	exhausted_state.mark_card_used(0)
 	_assert(ai.choose_slot(exhausted_state, player_aggression) == -1, "MVP BossAI should return -1 instead of crashing when no legal slots remain.", failures)
+
+func _test_mvp_content_externalization(loader, failures: Array[String]) -> void:
+	_assert(loader.has_method("get_mvp_boss_config"), "DataLoader should expose MVP boss content getters.", failures)
+	_assert(loader.has_method("get_mvp_bet_card_def"), "DataLoader should expose MVP bet card content getters.", failures)
+	_assert(loader.has_method("get_mvp_text"), "DataLoader should expose MVP text catalog getters.", failures)
+
+	var boss_ids: Array[String] = loader.get_mvp_boss_ids()
+	_assert(boss_ids.size() == 3, "MVP content repo should expose exactly 3 boss templates.", failures)
+	_assert(boss_ids.has("template_a") and boss_ids.has("template_b") and boss_ids.has("template_c"), "MVP content repo should keep the three fixed boss ids.", failures)
+
+	var template_a: Dictionary = loader.get_mvp_boss_config("template_a")
+	var template_c: Dictionary = loader.get_mvp_boss_config("template_c")
+	_assert(str(template_a.get("ui_label", "")) == "Aggressive Boss", "Boss ui_label should come from boss_templates.json.", failures)
+	_assert((template_a.get("battle_deck", []) as Array).size() == 5, "Boss battle deck composition should come from boss_templates.json.", failures)
+	_assert(str(template_c.get("flavor_text", "__missing__")) == "", "Missing optional boss flavor_text should fall back to an empty string.", failures)
+
+	_assert(loader.get_mvp_text("result.you_win", "") == "YOU WIN", "Result headline text should come from text_catalog.json.", failures)
+	_assert(loader.get_mvp_text("missing.key", "Fallback Text") == "Fallback Text", "Missing text_catalog keys should return the provided fallback text.", failures)
+
+	var dirty_move := MVP_BET_CARD_SCRIPT.new(loader.get_mvp_bet_card_def("dirty_move"))
+	var dirty_tooltip := dirty_move.tooltip_body_for_timing(MVP_BET_CARD_SCRIPT.TIMING_POST)
+	_assert(dirty_tooltip.contains("Role:"), "Fallback bet tooltip generation should include a role line.", failures)
+	_assert(dirty_tooltip.contains("Effect:"), "Fallback bet tooltip generation should include an effect line.", failures)
+	_assert(dirty_tooltip.contains("Condition:"), "Fallback bet tooltip generation should include a condition line.", failures)
+	_assert(dirty_tooltip.contains("Cost:"), "Fallback bet tooltip generation should include a cost line.", failures)
 
 func _test_scene_instancing(loader, failures: Array[String]) -> void:
 	for scene_path in [
@@ -377,6 +405,7 @@ func _test_main_mvp_without_bets(failures: Array[String]) -> void:
 	DisplayServer.window_set_size(Vector2i(1440, 900))
 	await process_frame
 	await process_frame
+	var loader = get_root().get_node_or_null("DataLoader")
 	var scene: Control = load("res://scenes/main/Main.tscn").instantiate()
 	get_root().add_child(scene)
 	await process_frame
@@ -437,7 +466,10 @@ func _test_main_mvp_without_bets(failures: Array[String]) -> void:
 	_assert(battle_deck_title != null and battle_deck_title.modulate.a >= 0.98, "Without bet mode, the boss deck title should return to full opacity after result mode.", failures)
 	if reveal_status_label != null:
 		_assert(reveal_status_label.modulate.a >= 0.98, "Without bet mode, the reveal status label should return to full opacity after result mode.", failures)
-	_assert(clash_result_label != null and clash_result_label.text == "Choose a card to start the turn.", "After popup feedback ends without bet mode, the center clash label should return to the default turn prompt.", failures)
+	var default_turn_prompt := "Choose a card to start the turn."
+	if loader != null and loader.has_method("get_mvp_text"):
+		default_turn_prompt = str(loader.get_mvp_text("guidance.turn_start", default_turn_prompt))
+	_assert(clash_result_label != null and clash_result_label.text == default_turn_prompt, "After popup feedback ends without bet mode, the center clash label should return to the default turn prompt.", failures)
 
 	scene.queue_free()
 	await process_frame
@@ -446,6 +478,7 @@ func _test_main_mvp_boss_archetype(failures: Array[String]) -> void:
 	DisplayServer.window_set_size(Vector2i(1440, 900))
 	await process_frame
 	await process_frame
+	var loader = get_root().get_node_or_null("DataLoader")
 	var scene: Control = load("res://scenes/main/Main.tscn").instantiate()
 	get_root().add_child(scene)
 	await process_frame
@@ -460,12 +493,16 @@ func _test_main_mvp_boss_archetype(failures: Array[String]) -> void:
 
 	var snapshot: Dictionary = controller.get_state_snapshot()
 	var template_id := str(snapshot.get("current_boss_template_id", ""))
-	var expected_archetype := str(MVP_BATTLE_CARD_SCRIPT.archetype_for_template(template_id))
+	var boss_config: Dictionary = {}
+	if loader != null and loader.has_method("get_mvp_boss_config"):
+		boss_config = loader.get_mvp_boss_config(template_id)
+	var expected_archetype := str(boss_config.get("archetype", MVP_BATTLE_CARD_SCRIPT.archetype_for_template(template_id)))
+	var expected_ui_label := str(boss_config.get("ui_label", boss_config.get("display_name", "%s Boss" % MVP_BATTLE_CARD_SCRIPT.archetype_display_name(expected_archetype))))
 	var archetype_label: Label = scene.get_node_or_null("ContentRoot/TableArea/BossArea/BossModeBar/RuntimeBossArchetypeLabel")
 	_assert(str(snapshot.get("boss_archetype", "")) == expected_archetype, "Main MVP should cache the boss archetype that matches the chosen template.", failures)
 	_assert(archetype_label != null, "Boss mode bar should expose the runtime boss archetype label.", failures)
 	_assert(
-		archetype_label != null and archetype_label.text == "%s Boss" % MVP_BATTLE_CARD_SCRIPT.archetype_display_name(expected_archetype),
+		archetype_label != null and archetype_label.text == expected_ui_label,
 		"Boss archetype label should match the chosen boss template.",
 		failures
 	)
@@ -477,6 +514,7 @@ func _test_main_mvp_player_summary_toggle(failures: Array[String]) -> void:
 	DisplayServer.window_set_size(Vector2i(1440, 900))
 	await process_frame
 	await process_frame
+	var loader = get_root().get_node_or_null("DataLoader")
 	var scene: Control = load("res://scenes/main/Main.tscn").instantiate()
 	get_root().add_child(scene)
 	await process_frame
@@ -510,13 +548,22 @@ func _test_main_mvp_player_summary_toggle(failures: Array[String]) -> void:
 	snapshot = controller.get_state_snapshot()
 	summary_panel = scene.get_node_or_null("ContentRoot/TableArea/PlayerArea/CardViewport/RuntimePlayerSummaryPanel")
 	summary_label = scene.get_node_or_null("ContentRoot/TableArea/PlayerArea/CardViewport/RuntimePlayerSummaryPanel/MarginContainer/RuntimePlayerSummaryLabel")
+	var cards_label := "Cards"
+	var summary_label_text := "Summary"
+	var player_bet_summary_title := "Player Bet Summary"
+	var player_battle_summary_title := "Player Battle Summary"
+	if loader != null and loader.has_method("get_mvp_text"):
+		cards_label = str(loader.get_mvp_text("labels.cards", cards_label))
+		summary_label_text = str(loader.get_mvp_text("labels.summary", summary_label_text))
+		player_bet_summary_title = str(loader.get_mvp_text("summary.player_bet_title", player_bet_summary_title))
+		player_battle_summary_title = str(loader.get_mvp_text("summary.player_battle_title", player_battle_summary_title))
 	_assert(bool(snapshot.get("player_summary_visible", false)), "The player summary button should toggle player summary visibility on.", failures)
 	_assert(str(snapshot.get("player_view_mode", "")) == "bet", "Opening player summary should not change the current player view mode.", failures)
 	_assert(summary_panel != null and summary_panel.visible, "Player summary toggle should show the runtime summary panel.", failures)
 	_assert(summary_label != null and summary_label.visible, "Player summary toggle should show the runtime summary label.", failures)
-	_assert(summary_label != null and summary_label.text.contains("Player Bet Summary"), "Player summary should reflect the current Bet mode when opened from Bet view.", failures)
+	_assert(summary_label != null and summary_label.text.contains(player_bet_summary_title), "Player summary should reflect the current Bet mode when opened from Bet view.", failures)
 	_assert(bet_panel != null and bet_panel.visible, "Opening player summary should keep the current player viewport panel visible.", failures)
-	_assert(summary_button != null and summary_button.text == "Cards", "Player summary button should switch to Cards while summary is open.", failures)
+	_assert(summary_button != null and summary_button.text == cards_label, "Player summary button should switch to Cards while summary is open.", failures)
 
 	if battle_tab_button != null:
 		battle_tab_button.emit_signal("pressed")
@@ -530,7 +577,7 @@ func _test_main_mvp_player_summary_toggle(failures: Array[String]) -> void:
 	_assert(bool(snapshot.get("player_summary_visible", false)), "Changing player tabs should not close the summary.", failures)
 	_assert(summary_panel != null and summary_panel.visible, "Player summary panel should remain visible while switching tabs.", failures)
 	_assert(summary_label != null and summary_label.visible, "Player summary label should remain visible while switching tabs.", failures)
-	_assert(summary_label != null and summary_label.text.contains("Player Battle Summary"), "Player summary should refresh to the Battle summary when the view mode changes.", failures)
+	_assert(summary_label != null and summary_label.text.contains(player_battle_summary_title), "Player summary should refresh to the Battle summary when the view mode changes.", failures)
 	_assert(summary_label != null and summary_label.text.contains("Aggression x2"), "Player battle summary should expose Aggression count.", failures)
 	_assert(summary_label != null and summary_label.text.contains("Defense x1"), "Player battle summary should expose Defense count.", failures)
 	_assert(summary_label != null and summary_label.text.contains("Pressure x2"), "Player battle summary should expose Pressure count.", failures)
@@ -548,7 +595,7 @@ func _test_main_mvp_player_summary_toggle(failures: Array[String]) -> void:
 	_assert(summary_panel != null and not summary_panel.visible, "Closing player summary should hide the runtime summary panel.", failures)
 	_assert(summary_label != null and summary_label.visible, "Closing player summary should not destroy the runtime summary label node.", failures)
 	_assert(battle_panel != null and battle_panel.visible, "Closing player summary should keep the current player viewport panel visible.", failures)
-	_assert(summary_button != null and summary_button.text == "Summary", "Player summary button should return to Summary when collapsed.", failures)
+	_assert(summary_button != null and summary_button.text == summary_label_text, "Player summary button should return to Summary when collapsed.", failures)
 
 	scene.queue_free()
 	await process_frame
@@ -557,6 +604,7 @@ func _test_main_mvp_bet_tooltip(failures: Array[String]) -> void:
 	DisplayServer.window_set_size(Vector2i(1440, 900))
 	await process_frame
 	await process_frame
+	var loader = get_root().get_node_or_null("DataLoader")
 	var scene: Control = load("res://scenes/main/Main.tscn").instantiate()
 	get_root().add_child(scene)
 	await process_frame
@@ -578,8 +626,11 @@ func _test_main_mvp_bet_tooltip(failures: Array[String]) -> void:
 		await process_frame
 		await process_frame
 
+	var expected_hold_name := "Hold Steady"
+	if loader != null and loader.has_method("get_mvp_bet_card_def"):
+		expected_hold_name = str(loader.get_mvp_bet_card_def("hold_steady").get("name", expected_hold_name))
 	_assert(tooltip_panel != null and tooltip_panel.visible, "Hovering a player bet card should show the tooltip panel.", failures)
-	_assert(tooltip_title != null and tooltip_title.text == "Hold Steady", "Bet tooltip title should show the hovered card name.", failures)
+	_assert(tooltip_title != null and tooltip_title.text == expected_hold_name, "Bet tooltip title should show the hovered card name.", failures)
 	_assert(tooltip_body != null and tooltip_body.text.contains("Role:"), "Bet tooltip body should include a role line.", failures)
 	_assert(tooltip_body != null and tooltip_body.text.contains("Effect:"), "Bet tooltip body should include an effect line.", failures)
 	_assert(tooltip_body != null and tooltip_body.text.contains("Condition:"), "Bet tooltip body should include a condition line.", failures)
@@ -599,6 +650,7 @@ func _test_main_mvp_boss_summary_toggle(failures: Array[String]) -> void:
 	DisplayServer.window_set_size(Vector2i(1440, 900))
 	await process_frame
 	await process_frame
+	var loader = get_root().get_node_or_null("DataLoader")
 	var scene: Control = load("res://scenes/main/Main.tscn").instantiate()
 	get_root().add_child(scene)
 	await process_frame
@@ -634,17 +686,26 @@ func _test_main_mvp_boss_summary_toggle(failures: Array[String]) -> void:
 	snapshot = controller.get_state_snapshot()
 	summary_panel = scene.get_node_or_null("ContentRoot/TableArea/BossArea/BossCardViewport/RuntimeBossSummaryPanel")
 	summary_label = scene.get_node_or_null("ContentRoot/TableArea/BossArea/BossCardViewport/RuntimeBossSummaryPanel/MarginContainer/RuntimeBossSummaryLabel")
+	var cards_label := "Cards"
+	var summary_label_text := "Summary"
+	var boss_battle_summary_title := "Boss Battle Summary"
+	var boss_bet_summary_title := "Boss Bet Summary"
+	if loader != null and loader.has_method("get_mvp_text"):
+		cards_label = str(loader.get_mvp_text("labels.cards", cards_label))
+		summary_label_text = str(loader.get_mvp_text("labels.summary", summary_label_text))
+		boss_battle_summary_title = str(loader.get_mvp_text("summary.boss_battle_title", boss_battle_summary_title))
+		boss_bet_summary_title = str(loader.get_mvp_text("summary.boss_bet_title", boss_bet_summary_title))
 	_assert(bool(snapshot.get("boss_summary_visible", false)), "Boss summary toggle should open the boss summary.", failures)
 	_assert(str(snapshot.get("boss_view_mode", "")) == "battle", "Opening boss summary should not change the current boss view mode.", failures)
 	_assert(not bool(snapshot.get("boss_battle_revealed", true)), "Opening boss summary should not reveal the boss battle deck.", failures)
 	_assert(summary_panel != null and summary_panel.visible, "Boss summary toggle should show the runtime boss summary panel.", failures)
 	_assert(summary_label != null and summary_label.visible, "Boss summary toggle should show the runtime boss summary label.", failures)
-	_assert(summary_label != null and summary_label.text.contains("Boss Battle Summary"), "Boss summary should show the battle summary while in Battle mode.", failures)
+	_assert(summary_label != null and summary_label.text.contains(boss_battle_summary_title), "Boss summary should show the battle summary while in Battle mode.", failures)
 	_assert(summary_label != null and summary_label.text.contains("Aggression remaining:"), "Boss battle summary should expose remaining Aggression count.", failures)
 	_assert(summary_label != null and summary_label.text.contains("Defense remaining:"), "Boss battle summary should expose remaining Defense count.", failures)
 	_assert(summary_label != null and summary_label.text.contains("Pressure remaining:"), "Boss battle summary should expose remaining Pressure count.", failures)
 	_assert(battle_panel != null and battle_panel.visible, "Opening boss summary should keep the current boss viewport panel visible.", failures)
-	_assert(summary_button != null and summary_button.text == "Cards", "Boss summary button should switch to Cards while summary is open.", failures)
+	_assert(summary_button != null and summary_button.text == cards_label, "Boss summary button should switch to Cards while summary is open.", failures)
 
 	if boss_bet_tab_button != null:
 		boss_bet_tab_button.emit_signal("pressed")
@@ -658,7 +719,7 @@ func _test_main_mvp_boss_summary_toggle(failures: Array[String]) -> void:
 	_assert(bool(snapshot.get("boss_summary_visible", false)), "Switching boss tabs should not close the summary.", failures)
 	_assert(summary_panel != null and summary_panel.visible, "Boss summary panel should stay visible while switching tabs.", failures)
 	_assert(summary_label != null and summary_label.visible, "Boss summary label should stay visible while switching tabs.", failures)
-	_assert(summary_label != null and summary_label.text.contains("Boss Bet Summary"), "Boss summary should refresh to the Bet placeholder while in Bet mode.", failures)
+	_assert(summary_label != null and summary_label.text.contains(boss_bet_summary_title), "Boss summary should refresh to the Bet placeholder while in Bet mode.", failures)
 	_assert(bet_panel != null and bet_panel.visible, "Boss bet panel should stay visible while summary is open.", failures)
 
 	if boss_battle_tab_button != null:
@@ -679,7 +740,7 @@ func _test_main_mvp_boss_summary_toggle(failures: Array[String]) -> void:
 	_assert(summary_panel != null and not summary_panel.visible, "Closing boss summary should hide the runtime summary panel.", failures)
 	_assert(summary_label != null and summary_label.visible, "Closing boss summary should not destroy the runtime summary label node.", failures)
 	_assert(battle_panel != null and battle_panel.visible, "Closing boss summary should keep the current boss viewport panel visible.", failures)
-	_assert(summary_button != null and summary_button.text == "Summary", "Boss summary button should return to Summary when collapsed.", failures)
+	_assert(summary_button != null and summary_button.text == summary_label_text, "Boss summary button should return to Summary when collapsed.", failures)
 
 	scene.queue_free()
 	await process_frame
@@ -792,6 +853,7 @@ func _test_main_mvp_post_bet_end_turn(failures: Array[String]) -> void:
 	DisplayServer.window_set_size(Vector2i(1440, 900))
 	await process_frame
 	await process_frame
+	var loader = get_root().get_node_or_null("DataLoader")
 	var scene: Control = load("res://scenes/main/Main.tscn").instantiate()
 	get_root().add_child(scene)
 	await process_frame
@@ -845,7 +907,10 @@ func _test_main_mvp_post_bet_end_turn(failures: Array[String]) -> void:
 	if reveal_status_label != null:
 		_assert(reveal_status_label.modulate.a >= 0.98, "Once result mode ends, the boss reveal status label should return to full opacity.", failures)
 	_assert(end_turn_button != null and end_turn_button.visible, "EndTurn should become visible during Post-Bet.", failures)
-	_assert(clash_result_label != null and clash_result_label.text == "Post-Bet: play one bet card or choose End Turn.", "After the popup clears, the center clash label should switch to a short Post-Bet guidance prompt.", failures)
+	var post_bet_guidance := "Post-Bet: play one bet card or choose End Turn."
+	if loader != null and loader.has_method("get_mvp_text"):
+		post_bet_guidance = str(loader.get_mvp_text("guidance.post_bet_open", post_bet_guidance))
+	_assert(clash_result_label != null and clash_result_label.text == post_bet_guidance, "After the popup clears, the center clash label should switch to a short Post-Bet guidance prompt.", failures)
 
 	if end_turn_button != null:
 		end_turn_button.emit_signal("pressed")
@@ -945,6 +1010,7 @@ func _test_main_mvp_with_bets(failures: Array[String]) -> void:
 	DisplayServer.window_set_size(Vector2i(1440, 900))
 	await process_frame
 	await process_frame
+	var loader = get_root().get_node_or_null("DataLoader")
 	var scene: Control = load("res://scenes/main/Main.tscn").instantiate()
 	get_root().add_child(scene)
 	await process_frame
@@ -978,14 +1044,23 @@ func _test_main_mvp_with_bets(failures: Array[String]) -> void:
 	var boss_archetype_label: Label = scene.get_node_or_null("ContentRoot/TableArea/BossArea/BossModeBar/RuntimeBossArchetypeLabel")
 	var turn_result_popup: Control = scene.get_node_or_null("ContentRoot/TableArea/TurnResultPopup")
 	var end_turn_button: Button = scene.get_node_or_null("ContentRoot/TableArea/EndTurn")
+	var pre_bet_phase_text := "Pre-Bet Phase"
+	var battle_label := "Battle"
+	var bet_label := "Bet"
+	var revealed_label := "Revealed"
+	if loader != null and loader.has_method("get_mvp_text"):
+		pre_bet_phase_text = str(loader.get_mvp_text("phase.pre_bet", pre_bet_phase_text))
+		battle_label = str(loader.get_mvp_text("labels.battle", battle_label))
+		bet_label = str(loader.get_mvp_text("labels.bet", bet_label))
+		revealed_label = str(loader.get_mvp_text("labels.revealed", revealed_label))
 
 	_assert(round_label != null and round_label.text == "Round 1 / 3", "Main MVP should start at Round 1 / 3.", failures)
 	_assert(turn_label != null and turn_label.text == "Turn 1 / 5", "Main MVP should start at Turn 1 / 5.", failures)
 	_assert(player_bet_area != null and player_bet_area.visible, "Player bet panel should be visible when bet mode is enabled.", failures)
 	_assert(boss_bet_area != null and not boss_bet_area.visible, "Boss bet panel should start hidden until the boss switches to bet mode.", failures)
-	_assert(bet_phase_hint != null and bet_phase_hint.text == "Pre-Bet Phase", "Bet mode should start in Pre-Bet phase.", failures)
-	_assert(boss_battle_tab_button != null and boss_battle_tab_button.text == "Battle", "BossBattleTabButton should exist as the battle mode switch.", failures)
-	_assert(boss_bet_tab_button != null and boss_bet_tab_button.text == "Bet", "BossBetTabButton should exist as the bet mode switch.", failures)
+	_assert(bet_phase_hint != null and bet_phase_hint.text == pre_bet_phase_text, "Bet mode should start in Pre-Bet phase.", failures)
+	_assert(boss_battle_tab_button != null and boss_battle_tab_button.text == battle_label, "BossBattleTabButton should exist as the battle mode switch.", failures)
+	_assert(boss_bet_tab_button != null and boss_bet_tab_button.text == bet_label, "BossBetTabButton should exist as the bet mode switch.", failures)
 	_assert(player_bet_row != null and player_bet_row.get_child_count() == 3, "Player should see 3 minimal bet cards in bet mode.", failures)
 	_assert(battle_row != null and battle_row.get_child_count() == 5, "Main MVP should spawn 5 player cards in the battle row.", failures)
 	_assert(battle_deck_row != null and battle_deck_row.get_child_count() == 5, "Boss battle deck should always expose 5 slots.", failures)
@@ -1000,20 +1075,18 @@ func _test_main_mvp_with_bets(failures: Array[String]) -> void:
 		_assert(actual_player_hand == expected_player_hand, "Player hand should be the fixed 2-1-2 template.", failures)
 
 	var snapshot: Dictionary = controller.get_state_snapshot()
-	var expected_templates := {
-		"template_a": ["Aggression", "Aggression", "Pressure", "Pressure", "Defense"],
-		"template_b": ["Defense", "Defense", "Aggression", "Pressure", "Pressure"],
-		"template_c": ["Aggression", "Defense", "Pressure", "Aggression", "Defense"],
-	}
 	var template_id := str(snapshot.get("current_boss_template_id", ""))
-	_assert(expected_templates.has(template_id), "Boss should choose one of the three fixed templates.", failures)
+	var boss_config: Dictionary = {}
+	if loader != null and loader.has_method("get_mvp_boss_config"):
+		boss_config = loader.get_mvp_boss_config(template_id)
+	_assert(not boss_config.is_empty(), "Boss should choose one of the configured MVP templates.", failures)
 	_assert(
-		str(snapshot.get("boss_archetype", "")) == str(MVP_BATTLE_CARD_SCRIPT.archetype_for_template(template_id)),
+		str(snapshot.get("boss_archetype", "")) == str(boss_config.get("archetype", MVP_BATTLE_CARD_SCRIPT.archetype_for_template(template_id))),
 		"Boss archetype snapshot should align with the selected template.",
 		failures
 	)
 	_assert(
-		boss_archetype_label != null and boss_archetype_label.text == "%s Boss" % MVP_BATTLE_CARD_SCRIPT.archetype_display_name(str(snapshot.get("boss_archetype", ""))),
+		boss_archetype_label != null and boss_archetype_label.text == str(boss_config.get("ui_label", boss_config.get("display_name", ""))),
 		"Runtime boss archetype label should expose the selected light personality.",
 		failures
 	)
@@ -1065,10 +1138,16 @@ func _test_main_mvp_with_bets(failures: Array[String]) -> void:
 				revealed_names.append(str(child.get_card_data().get("display_name", "")))
 		var reveal_snapshot: Dictionary = controller.get_state_snapshot()
 		var reveal_template_id := str(reveal_snapshot.get("current_boss_template_id", ""))
+		var reveal_config: Dictionary = {}
+		var expected_revealed_names: Array[String] = []
+		if loader != null and loader.has_method("get_mvp_boss_config"):
+			reveal_config = loader.get_mvp_boss_config(reveal_template_id)
+			for card_type in reveal_config.get("battle_deck", []):
+				expected_revealed_names.append(MVP_BATTLE_CARD_SCRIPT.display_name_for_type(str(card_type)))
 		_assert(bool(reveal_snapshot.get("boss_battle_revealed", false)), "RevealBattleDeckButton should only flip the boss battle reveal state.", failures)
 		_assert(str(reveal_snapshot.get("boss_view_mode", "")) == "battle", "RevealBattleDeckButton should not switch away from battle mode.", failures)
-		_assert(reveal_status_label != null and reveal_status_label.text == "Revealed", "RevealStatusLabel should track the battle deck reveal state.", failures)
-		_assert(revealed_names == expected_templates.get(reveal_template_id, []), "Reveal should expose exactly one of the fixed boss templates.", failures)
+		_assert(reveal_status_label != null and reveal_status_label.text == revealed_label, "RevealStatusLabel should track the battle deck reveal state.", failures)
+		_assert(revealed_names == expected_revealed_names, "Reveal should expose exactly the configured boss template deck.", failures)
 		for child in battle_deck_row.get_children():
 			if child.has_method("get_view_state"):
 				_assert(child.get_view_state() == "normal", "Reveal should switch every unused boss deck slot to normal.", failures)

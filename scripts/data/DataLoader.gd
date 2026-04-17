@@ -3,10 +3,12 @@ extends Node
 const CARD_DATABASE_SCRIPT := preload("res://scripts/data/CardDatabase.gd")
 const BOSS_DATABASE_SCRIPT := preload("res://scripts/data/BossDatabase.gd")
 const ADDON_DATABASE_SCRIPT := preload("res://scripts/data/AddonDatabase.gd")
+const GAME_CONTENT_SCRIPT := preload("res://scripts/data/GameContent.gd")
 
 var _card_db = CARD_DATABASE_SCRIPT.new()
 var _boss_db = BOSS_DATABASE_SCRIPT.new()
 var _addon_db = ADDON_DATABASE_SCRIPT.new()
+var _game_content = GAME_CONTENT_SCRIPT.new()
 
 var _matchup_rules: Dictionary = {}
 var _ui_thresholds: Dictionary = {}
@@ -26,10 +28,14 @@ func reload_all() -> void:
 		_read_json("res://data/bosses/team_lead.json", {}),
 		_read_json("res://data/bosses/manager.json", {}),
 	]
+	var mvp_boss_templates = _read_json("res://data/bosses/boss_templates.json", [])
+	var mvp_bet_card_defs = _read_json("res://data/cards/bet_card_defs.json", [])
+	var mvp_text_catalog = _read_json("res://data/ui/text_catalog.json", {})
 
 	_card_db.configure(battle_cards, boss_cards)
 	_addon_db.configure(addon_cards)
 	_boss_db.configure(bosses)
+	_game_content.configure(mvp_boss_templates, mvp_bet_card_defs, mvp_text_catalog)
 	_matchup_rules = _read_json("res://data/balance/matchup_rules.json", {})
 	_ui_thresholds = _read_json("res://data/balance/ui_thresholds.json", {})
 	_starting_values = _read_json("res://data/balance/starting_values.json", {})
@@ -63,6 +69,24 @@ func get_all_addons() -> Array[Dictionary]:
 
 func get_boss(boss_id: String) -> Dictionary:
 	return _boss_db.get_boss(boss_id)
+
+func get_mvp_boss_config(boss_id: String) -> Dictionary:
+	return _game_content.get_boss_config(boss_id)
+
+func get_random_mvp_boss_config(rng: RandomNumberGenerator) -> Dictionary:
+	return _game_content.get_random_boss_config(rng)
+
+func get_mvp_boss_ids() -> Array[String]:
+	return _game_content.get_boss_ids()
+
+func get_mvp_bet_card_def(card_id: String) -> Dictionary:
+	return _game_content.get_bet_card_def(card_id)
+
+func get_mvp_bet_card_defs() -> Array[Dictionary]:
+	return _game_content.get_bet_card_defs()
+
+func get_mvp_text(key: String, fallback_text: String = "") -> String:
+	return _game_content.get_text(key, fallback_text)
 
 func get_shop_pool() -> Array:
 	return _shop_pool.duplicate(true)

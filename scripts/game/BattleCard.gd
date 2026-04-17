@@ -21,30 +21,6 @@ const PLAYER_TEMPLATE := [
 	TYPE_PRESSURE,
 ]
 
-const BOSS_TEMPLATES := {
-	TEMPLATE_A_ID: [
-		TYPE_AGGRESSION,
-		TYPE_AGGRESSION,
-		TYPE_PRESSURE,
-		TYPE_PRESSURE,
-		TYPE_DEFENSE,
-	],
-	TEMPLATE_B_ID: [
-		TYPE_DEFENSE,
-		TYPE_DEFENSE,
-		TYPE_AGGRESSION,
-		TYPE_PRESSURE,
-		TYPE_PRESSURE,
-	],
-	TEMPLATE_C_ID: [
-		TYPE_AGGRESSION,
-		TYPE_DEFENSE,
-		TYPE_PRESSURE,
-		TYPE_AGGRESSION,
-		TYPE_DEFENSE,
-	],
-}
-
 var type: String = TYPE_AGGRESSION
 
 func _init(card_type: String = TYPE_AGGRESSION) -> void:
@@ -60,30 +36,37 @@ static func build_boss_test_deck() -> Array[MvpBattleCard]:
 	return build_boss_template(DEFAULT_BOSS_TEMPLATE_ID)
 
 static func build_boss_template(template_id: String) -> Array[MvpBattleCard]:
-	var template_types: Array = BOSS_TEMPLATES.get(template_id, BOSS_TEMPLATES[DEFAULT_BOSS_TEMPLATE_ID])
-	return _build_cards_from_types(template_types)
+	return _build_cards_from_types(get_boss_template_types(template_id))
 
 static func pick_random_boss_template(rng: RandomNumberGenerator) -> Dictionary:
-	var template_ids: Array[String] = [
-		TEMPLATE_A_ID,
-		TEMPLATE_B_ID,
-		TEMPLATE_C_ID,
-	]
-	var chosen_template_id: String = template_ids[rng.randi_range(0, template_ids.size() - 1)]
+	var loader := _data_loader()
+	if loader != null and loader.has_method("get_random_mvp_boss_config"):
+		var config: Dictionary = loader.get_random_mvp_boss_config(rng)
+		return {
+			"id": str(config.get("boss_id", DEFAULT_BOSS_TEMPLATE_ID)),
+			"cards": _build_cards_from_types(config.get("battle_deck", [])),
+		}
 	return {
-		"id": chosen_template_id,
-		"cards": build_boss_template(chosen_template_id),
+		"id": DEFAULT_BOSS_TEMPLATE_ID,
+		"cards": [],
 	}
 
 static func get_boss_template_types(template_id: String) -> Array[String]:
 	var types: Array[String] = []
-	for card_type in BOSS_TEMPLATES.get(template_id, BOSS_TEMPLATES[DEFAULT_BOSS_TEMPLATE_ID]):
-		types.append(str(card_type))
+	var loader := _data_loader()
+	if loader != null and loader.has_method("get_mvp_boss_config"):
+		var config: Dictionary = loader.get_mvp_boss_config(template_id)
+		for card_type in config.get("battle_deck", []):
+			types.append(str(card_type))
 	return types
 
 static func get_all_boss_templates() -> Dictionary:
 	var templates: Dictionary = {}
-	for template_id in [TEMPLATE_A_ID, TEMPLATE_B_ID, TEMPLATE_C_ID]:
+	var loader := _data_loader()
+	var template_ids: Array[String] = [TEMPLATE_A_ID, TEMPLATE_B_ID, TEMPLATE_C_ID]
+	if loader != null and loader.has_method("get_mvp_boss_ids"):
+		template_ids = loader.get_mvp_boss_ids()
+	for template_id in template_ids:
 		templates[template_id] = get_boss_template_types(template_id)
 	return templates
 
@@ -99,15 +82,10 @@ static func display_name_for_type(card_type: String) -> String:
 			return "Aggression"
 
 static func archetype_for_template(template_id: String) -> String:
-	match template_id:
-		TEMPLATE_A_ID:
-			return ARCHETYPE_AGGRESSIVE
-		TEMPLATE_B_ID:
-			return ARCHETYPE_DEFENSIVE
-		TEMPLATE_C_ID:
-			return ARCHETYPE_BALANCED
-		_:
-			return ARCHETYPE_BALANCED
+	var loader := _data_loader()
+	if loader != null and loader.has_method("get_mvp_boss_config"):
+		return str(loader.get_mvp_boss_config(template_id).get("archetype", ARCHETYPE_BALANCED))
+	return ARCHETYPE_BALANCED
 
 static func archetype_display_name(archetype: String) -> String:
 	match archetype:
@@ -150,6 +128,12 @@ static func _build_cards_from_types(source_types: Array) -> Array[MvpBattleCard]
 	for card_type in source_types:
 		deck.append(MvpBattleCard.new(str(card_type)))
 	return deck
+
+static func _data_loader() -> Node:
+	var main_loop := Engine.get_main_loop()
+	if main_loop is SceneTree:
+		return (main_loop as SceneTree).root.get_node_or_null("DataLoader")
+	return null
 
 func duplicate_card() -> MvpBattleCard:
 	return MvpBattleCard.new(type)

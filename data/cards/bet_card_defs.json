@@ -1,0 +1,54 @@
+[
+  {
+    "id": "hold_steady",
+    "name": "Hold Steady",
+    "type": "bet",
+    "cost": 0,
+    "base_cost": 0,
+    "cost_resource": "spr",
+    "timing_windows": ["pre", "post"],
+    "effect_on_win": {},
+    "effect_on_lose": {},
+    "role": "Skip betting safely",
+    "effect_summary": "Place no modifier this phase",
+    "condition_text": "Available during Pre-Bet and Post-Bet",
+    "cost_text": "{cost} {resource}",
+    "tooltip_body": "Role: {role}\nEffect: {effect_summary}\nCondition: {condition_text}\nCost: {cost_text}"
+  },
+  {
+    "id": "positive_shift",
+    "name": "Positive Shift",
+    "type": "bet",
+    "cost": 2,
+    "base_cost": 2,
+    "cost_resource": "spr",
+    "timing_windows": ["pre", "post"],
+    "effect_on_win": {
+      "bonus_damage": 1
+    },
+    "effect_on_lose": {},
+    "role": "Push advantage when your read is correct",
+    "effect_summary": "If you win, deal +1 damage",
+    "condition_text": "Available during Pre-Bet and Post-Bet; only matters on a winning clash",
+    "cost_text": "{cost} {resource}",
+    "tooltip_body": "Role: {role}\nEffect: {effect_summary}\nCondition: {condition_text}\nCost: {cost_text}"
+  },
+  {
+    "id": "dirty_move",
+    "name": "Dirty Move",
+    "type": "bet",
+    "cost": 2,
+    "base_cost": 2,
+    "cost_resource": "spr",
+    "timing_windows": ["pre", "post"],
+    "effect_on_win": {
+      "bonus_damage": 2
+    },
+    "effect_on_lose": {
+      "self_damage": 1
+    },
+    "role": "Trade safety for swing",
+    "effect_summary": "If you win, deal +2 damage; if you lose, take 1 self-damage",
+    "condition_text": "Available during Pre-Bet and Post-Bet"
+  }
+]

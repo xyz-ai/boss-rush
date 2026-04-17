@@ -22,7 +22,7 @@ func _init(root: Control, reveal_button: Button, deck_row: HBoxContainer, card_s
 	_deck_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	_deck_row.add_theme_constant_override("separation", 10)
 	_deck_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_reveal_button.text = "Reveal Battle Deck"
+	_reveal_button.text = _text("labels.reveal_battle_deck", "Reveal Battle Deck")
 	_reveal_button.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
 	_deck_row.anchor_left = 0.0
 	_deck_row.anchor_top = 0.0
@@ -63,11 +63,11 @@ func _on_reveal_pressed() -> void:
 
 func _refresh_button_state() -> void:
 	if _revealed:
-		_reveal_button.text = "Battle Deck Revealed"
+		_reveal_button.text = _text("labels.battle_deck_revealed", "Battle Deck Revealed")
 	elif not _reveal_enabled:
-		_reveal_button.text = "Reveal Locked"
+		_reveal_button.text = _text("labels.reveal_locked", "Reveal Locked")
 	else:
-		_reveal_button.text = "Reveal Battle Deck"
+		_reveal_button.text = _text("labels.reveal_battle_deck", "Reveal Battle Deck")
 	_reveal_button.disabled = _revealed or not _reveal_enabled
 
 func _sync_card_views() -> void:
@@ -96,3 +96,11 @@ func _state_for_slot(slot_index: int) -> String:
 	if _revealed:
 		return "normal"
 	return "hidden"
+
+func _text(key: String, fallback_text: String) -> String:
+	var main_loop := Engine.get_main_loop()
+	if main_loop is SceneTree:
+		var loader := (main_loop as SceneTree).root.get_node_or_null("DataLoader")
+		if loader != null and loader.has_method("get_mvp_text"):
+			return str(loader.get_mvp_text(key, fallback_text))
+	return fallback_text
