@@ -1,8 +1,1 @@
-res://scripts/data/DataLoader.gd
-res://scripts/game/BattleCard.gd
-res://scripts/game/BetCard.gd
-res://scripts/game/BossAI.gd
-res://scripts/ui/ClashAreaView.gd
-res://scripts/ui/Main.gd
-res://scripts/data/GameContent.gd
-res://scripts/ui/BossBattleDeckView.gd
+res://scenes/main/Main.tscn

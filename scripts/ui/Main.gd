@@ -6,6 +6,8 @@ const BOSS_BATTLE_DECK_VIEW_SCRIPT := preload("res://scripts/ui/BossBattleDeckVi
 const BET_ROW_VIEW_SCRIPT := preload("res://scripts/ui/BetRowView.gd")
 const BET_CARD_SCRIPT := preload("res://scripts/game/BetCard.gd")
 const TOOLTIP_PANEL_SCENE := preload("res://scenes/ui/TooltipPanel.tscn")
+const UI_ASSET_PATHS := preload("res://scripts/ui/UiAssetPaths.gd")
+const UI_TEXTURE_HELPER := preload("res://scripts/ui/UiTextureHelper.gd")
 
 const MAX_SETS := 3
 const WINS_TO_CLEAR := 2
@@ -79,9 +81,11 @@ var _screen_effects: Control
 var _player_bod_label: Label
 var _player_spr_label: Label
 var _player_rep_label: Label
+var _player_status_panel: PanelContainer
 var _boss_bod_label: Label
 var _boss_spr_label: Label
 var _boss_rep_label: Label
+var _boss_status_panel: PanelContainer
 var _boss_bet_area: Control
 var _boss_bet_row: HBoxContainer
 var _player_bet_area: Control
@@ -89,7 +93,7 @@ var _player_bet_row: HBoxContainer
 var _bet_phase_hint: Label
 var _bet_result_hint: Label
 var _turn_result_popup: Control
-var _turn_result_backdrop: ColorRect
+var _turn_result_backdrop: TextureRect
 var _turn_result_headline_label: Label
 var _feedback_label: Label
 var _end_turn_button: Button
@@ -152,6 +156,7 @@ func _init(host: Control) -> void:
 
 func ready() -> void:
 	_bind_nodes()
+	_apply_static_textures()
 	_load_content_defs()
 	_hide_turn_result_popup(true)
 	_configure_mouse_filters()
@@ -316,9 +321,11 @@ func _bind_nodes() -> void:
 	_player_card_slot = _find_control("ContentRoot/TableArea/ClashArea/PlayerCardSlot")
 	_boss_card_slot = _find_control("ContentRoot/TableArea/ClashArea/BossCardSlot")
 	_clash_result_label = _find_label("ContentRoot/TableArea/ClashArea/ClashResultLabel")
+	_player_status_panel = _find_node("ContentRoot/TableArea/PlayerStatusPanel") as PanelContainer
 	_player_bod_label = _find_label("ContentRoot/TableArea/PlayerStatusPanel/MarginContainer/VBoxContainer/PlayerBOD")
 	_player_spr_label = _find_label("ContentRoot/TableArea/PlayerStatusPanel/MarginContainer/VBoxContainer/PlayerSPR")
 	_player_rep_label = _find_label("ContentRoot/TableArea/PlayerStatusPanel/MarginContainer/VBoxContainer/PlayerREP")
+	_boss_status_panel = _find_node("ContentRoot/TableArea/BossStatusPanel") as PanelContainer
 	_boss_bod_label = _find_label("ContentRoot/TableArea/BossStatusPanel/MarginContainer/VBoxContainer/BossBOD")
 	_boss_spr_label = _find_label("ContentRoot/TableArea/BossStatusPanel/MarginContainer/VBoxContainer/BossSPR")
 	_boss_rep_label = _find_label("ContentRoot/TableArea/BossStatusPanel/MarginContainer/VBoxContainer/BossREP")
@@ -374,6 +381,81 @@ func _set_mouse_filter(control: Control, filter_value: int) -> void:
 	if control != null:
 		control.mouse_filter = filter_value
 
+func _apply_static_textures() -> void:
+	_apply_table_texture()
+	_apply_boss_visual_state("idle")
+	_apply_button_textures()
+	_apply_panel_textures()
+	_apply_status_badge_textures()
+
+func _apply_table_texture() -> void:
+	UI_TEXTURE_HELPER.apply_texture_rect(
+		_table_board,
+		UI_ASSET_PATHS.TABLE_MAIN,
+		TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	)
+
+func _apply_boss_visual_state(state: String) -> void:
+	var texture_path := str(UI_ASSET_PATHS.BOSS_STATE_TEXTURES.get(state, UI_ASSET_PATHS.BOSS_DEFAULT_IDLE))
+	UI_TEXTURE_HELPER.apply_texture_rect(
+		_boss_portrait,
+		texture_path,
+		TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	)
+
+func _apply_button_textures() -> void:
+	for button in [_end_turn_button, _reveal_battle_deck_button]:
+		UI_TEXTURE_HELPER.apply_button_textures(
+			button,
+			UI_ASSET_PATHS.BUTTON_PRIMARY,
+			UI_ASSET_PATHS.BUTTON_HOVER,
+			UI_ASSET_PATHS.BUTTON_PRESSED,
+			UI_ASSET_PATHS.BUTTON_DISABLED
+		)
+	for button in [
+		_player_battle_tab_button,
+		_player_bet_tab_button,
+		_player_optional_summary_button,
+		_boss_battle_tab_button,
+		_boss_bet_tab_button,
+		_boss_summary_toggle_button,
+	]:
+		UI_TEXTURE_HELPER.apply_button_textures(
+			button,
+			UI_ASSET_PATHS.BUTTON_SECONDARY,
+			UI_ASSET_PATHS.BUTTON_HOVER,
+			UI_ASSET_PATHS.BUTTON_PRESSED,
+			UI_ASSET_PATHS.BUTTON_DISABLED
+		)
+
+func _apply_panel_textures() -> void:
+	UI_TEXTURE_HELPER.apply_panel_texture(_player_status_panel, UI_ASSET_PATHS.PANEL_DARK)
+	UI_TEXTURE_HELPER.apply_panel_texture(_boss_status_panel, UI_ASSET_PATHS.PANEL_DARK)
+	UI_TEXTURE_HELPER.ensure_backdrop(_overlay_ui, "RuntimeLogBackdrop", UI_ASSET_PATHS.PANEL_DARK)
+	_ensure_turn_result_popup_nodes()
+
+func _apply_status_badge_textures() -> void:
+	_apply_badge_label(_player_hp_label, UI_ASSET_PATHS.BADGE_HP, Vector2(168, 46))
+	_apply_badge_label(_boss_hp_label, UI_ASSET_PATHS.BADGE_HP, Vector2(168, 46))
+	_apply_badge_label(_player_bod_label, UI_ASSET_PATHS.BADGE_BOD, Vector2(116, 34))
+	_apply_badge_label(_player_spr_label, UI_ASSET_PATHS.BADGE_SPR, Vector2(116, 34))
+	_apply_badge_label(_player_rep_label, UI_ASSET_PATHS.BADGE_REP, Vector2(116, 34))
+	_apply_badge_label(_boss_bod_label, UI_ASSET_PATHS.BADGE_BOD, Vector2(116, 34))
+	_apply_badge_label(_boss_spr_label, UI_ASSET_PATHS.BADGE_SPR, Vector2(116, 34))
+	_apply_badge_label(_boss_rep_label, UI_ASSET_PATHS.BADGE_REP, Vector2(116, 34))
+
+func _apply_badge_label(label: Label, badge_path: String, min_size: Vector2) -> void:
+	if label == null:
+		return
+	label.custom_minimum_size = min_size
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.add_theme_color_override("font_color", Color(0.97, 0.94, 0.86, 1.0))
+	label.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.82))
+	label.add_theme_constant_override("shadow_offset_x", 1)
+	label.add_theme_constant_override("shadow_offset_y", 1)
+	UI_TEXTURE_HELPER.ensure_label_backdrop(label, "RuntimeBadgeBackdrop", badge_path)
+
 func _normalize_view_mode(mode: String) -> String:
 	if mode == VIEW_MODE_BET:
 		return VIEW_MODE_BET
@@ -424,6 +506,7 @@ func _create_summary_panel(panel_name: String, label_name: String) -> PanelConta
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.visible = false
 	panel.z_index = 5
+	UI_TEXTURE_HELPER.apply_panel_texture(panel, UI_ASSET_PATHS.PANEL_DARK)
 
 	var margin := MarginContainer.new()
 	margin.name = "MarginContainer"
@@ -487,9 +570,9 @@ func _ensure_turn_result_popup_nodes() -> void:
 	_turn_result_popup.offset_right = RESULT_POPUP_WIDTH * 0.5
 	_turn_result_popup.offset_bottom = RESULT_POPUP_HEIGHT * 0.5
 
-	_turn_result_backdrop = _turn_result_popup.get_node_or_null("RuntimeResultBackdrop") as ColorRect
+	_turn_result_backdrop = _turn_result_popup.get_node_or_null("RuntimeResultBackdrop") as TextureRect
 	if _turn_result_backdrop == null:
-		_turn_result_backdrop = ColorRect.new()
+		_turn_result_backdrop = TextureRect.new()
 		_turn_result_backdrop.name = "RuntimeResultBackdrop"
 		_turn_result_popup.add_child(_turn_result_backdrop)
 		_turn_result_popup.move_child(_turn_result_backdrop, 0)
@@ -501,7 +584,13 @@ func _ensure_turn_result_popup_nodes() -> void:
 	_turn_result_backdrop.offset_right = 0.0
 	_turn_result_backdrop.offset_bottom = 0.0
 	_turn_result_backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_turn_result_backdrop.color = Color(0.04, 0.05, 0.07, 0.64)
+	_turn_result_backdrop.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_turn_result_backdrop.stretch_mode = TextureRect.STRETCH_SCALE
+	UI_TEXTURE_HELPER.apply_texture_rect(
+		_turn_result_backdrop,
+		UI_ASSET_PATHS.BROADCAST_BASE,
+		TextureRect.STRETCH_SCALE
+	)
 
 	_turn_result_headline_label = _turn_result_popup.get_node_or_null("RuntimeResultHeadlineLabel") as Label
 	if _turn_result_headline_label == null:
@@ -601,10 +690,10 @@ func _setup_views() -> void:
 		CARD_VIEW_SCENE
 	)
 
-	_player_bet_view = BET_ROW_VIEW_SCRIPT.new(_player_bet_row)
+	_player_bet_view = BET_ROW_VIEW_SCRIPT.new(_player_bet_row, CARD_VIEW_SCENE)
 	if not _player_bet_view.bet_selected.is_connected(_on_player_bet_selected):
 		_player_bet_view.bet_selected.connect(_on_player_bet_selected)
-	_boss_bet_view = BET_ROW_VIEW_SCRIPT.new(_boss_bet_row)
+	_boss_bet_view = BET_ROW_VIEW_SCRIPT.new(_boss_bet_row, CARD_VIEW_SCENE)
 	_ensure_summary_labels()
 	if _player_battle_tab_button != null and not _player_battle_tab_button.pressed.is_connected(_on_player_battle_tab_pressed):
 		_player_battle_tab_button.pressed.connect(_on_player_battle_tab_pressed)
@@ -644,10 +733,10 @@ func _ensure_overlay_log() -> void:
 	_overlay_log_label.anchor_top = 0.0
 	_overlay_log_label.anchor_right = 1.0
 	_overlay_log_label.anchor_bottom = 1.0
-	_overlay_log_label.offset_left = 0.0
-	_overlay_log_label.offset_top = 0.0
-	_overlay_log_label.offset_right = 0.0
-	_overlay_log_label.offset_bottom = 0.0
+	_overlay_log_label.offset_left = 12.0
+	_overlay_log_label.offset_top = 10.0
+	_overlay_log_label.offset_right = -12.0
+	_overlay_log_label.offset_bottom = -10.0
 	_overlay_log_label.bbcode_enabled = false
 	_overlay_log_label.fit_content = false
 	_overlay_log_label.scroll_active = false
@@ -1024,6 +1113,7 @@ func _build_player_bet_entries() -> Array[Dictionary]:
 			"id": bet_card.id,
 			"label": label,
 			"disabled": disabled,
+			"selected": selected,
 			"tooltip_title": bet_card.name,
 			"tooltip_body": bet_card.tooltip_body_for_timing(timing),
 		})
