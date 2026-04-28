@@ -7,6 +7,7 @@ const BOSS_DEFAULT_IDLE := "res://assets/battle/boss/boss_default_idle.png"
 const BOSS_DEFAULT_PRESSURE := "res://assets/battle/boss/boss_default_pressure.png"
 const BOSS_DEFAULT_HIT := "res://assets/battle/boss/boss_default_hit.png"
 const BOSS_DEFAULT_LOW := "res://assets/battle/boss/boss_default_low.png"
+const BOSS_TEAM_LEAD_SILHOUETTE := "res://assets/battle/boss/team_lead/boss_team_lead_silhouette.png"
 
 const BUTTON_PRIMARY := "res://assets/ui/buttons/button_primary.png"
 const BUTTON_HOVER := "res://assets/ui/buttons/button_hover.png"
@@ -76,3 +77,9 @@ const STATUS_BADGES := {
 	"rep": BADGE_REP,
 	"life": BADGE_LIFE,
 }
+
+static func boss_state_texture_path(state: String) -> String:
+	return str(BOSS_STATE_TEXTURES.get(state, BOSS_DEFAULT_IDLE))
+
+static func default_boss_portrait_path() -> String:
+	return BOSS_TEAM_LEAD_SILHOUETTE

@@ -249,7 +249,7 @@
 
 ### 复跑命令
 ```powershell
-E:\godot\Godot_console.exe --headless --log-file e:\boss-rush\tests\out\smoke_tmp.log --path e:\boss-rush --script res://tests/smoke_runner.gd
+<GODOT_EXE> --headless --log-file <PROJECT_ROOT>/tests/out/smoke_tmp.log --path <PROJECT_ROOT> --script res://tests/smoke_runner.gd
 ```
 
 ### 当前验收结论

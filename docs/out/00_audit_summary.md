@@ -11,7 +11,7 @@
 - 启动链路清晰：`project.godot` 指向 `Main.tscn`，`Main.tscn` 再通过 `scenes/main/Main.gd` 创建 `MvpMainController`。
 - 战斗主流程已经符合当前设计：点击战斗牌立即结算，短暂停留在结果播报，再根据情况进入 `Post-Bet`，最后由 `EndTurn` 推进回合。
 - 真正的问题不在“功能不能跑”，而在“结构风险过于集中”。风险核心集中在 `scripts/ui/Main.gd`。
-- 已复跑 smoke：`E:\godot\Godot_console.exe --headless --log-file e:\boss-rush\tests\out\audit_smoke.log --path e:\boss-rush --script res://tests/smoke_runner.gd`，结果为 `SMOKE OK`。
+- 已复跑 smoke：`<GODOT_EXE> --headless --log-file <PROJECT_ROOT>/tests/out/audit_smoke.log --path <PROJECT_ROOT> --script res://tests/smoke_runner.gd`，结果为 `SMOKE OK`。
 
 ## 整体健康度判断
 - 结论：中等偏上，适合继续开发，但不适合继续无边界堆功能。
@@ -76,4 +76,3 @@
   结果暂停、`Post-Bet` 打开、`EndTurn` 显示、下一回合准备。
 - 最小修复建议：
   先在 `Main.gd` 内部定义更清晰的 round state 注释和 helper，再考虑是否升级成更明确的状态对象。
-

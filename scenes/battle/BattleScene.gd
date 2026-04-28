@@ -6,10 +6,10 @@ const BOSS_AI_SCRIPT := preload("res://scripts/core/BossAI.gd")
 const PEEK_SYSTEM_SCRIPT := preload("res://scripts/systems/PeekSystem.gd")
 const ADDON_SYSTEM_SCRIPT := preload("res://scripts/systems/AddonSystem.gd")
 const COLLAPSE_EFFECTS_SCRIPT := preload("res://scripts/systems/CollapseEffects.gd")
+const UI_ASSET_PATHS := preload("res://scripts/ui/UiAssetPaths.gd")
 
 const BG_OFFICE_PATH := "res://assets/battle/background/bg_office_dark.png"
 const DESK_TABLE_PATH := "res://assets/battle/table/table_main.png"
-const DEFAULT_BOSS_PORTRAIT_PATH := "res://assets/battle/boss/team_lead/boss_team_lead_silhouette.png"
 const VIGNETTE_PATH := "res://assets/ui/common/vignette_main.png"
 
 var run_state
@@ -765,9 +765,9 @@ func _get_boss_portrait_path(presentation: Dictionary) -> String:
 		return presentation_path
 	match str(boss_def.get("id", "")):
 		"team_lead":
-			return DEFAULT_BOSS_PORTRAIT_PATH
+			return UI_ASSET_PATHS.default_boss_portrait_path()
 		_:
-			return DEFAULT_BOSS_PORTRAIT_PATH
+			return UI_ASSET_PATHS.default_boss_portrait_path()
 
 func _data_loader():
 	return get_node_or_null("/root/DataLoader")
