@@ -398,12 +398,17 @@ func _apply_boss_visual_state(state: String) -> void:
 	if _boss_portrait == null:
 		push_warning("Main.tscn is missing BossPortrait; boss visual state '%s' was skipped." % state)
 		return
+	if not UI_ASSET_PATHS.USE_SEPARATE_BOSS_PORTRAIT:
+		# Current background already includes the Boss; keep the separate portrait disabled.
+		_boss_portrait.visible = false
+		return
 	var texture_path := UI_ASSET_PATHS.boss_state_texture_path(state)
 	var texture := UI_TEXTURE_HELPER.load_texture(texture_path)
 	if texture == null:
 		push_warning("Boss visual texture could not be loaded: %s" % texture_path)
 		return
 	_boss_portrait.texture = texture
+	_boss_portrait.visible = true
 
 func _apply_button_textures() -> void:
 	for button in [_end_turn_button, _reveal_battle_deck_button]:

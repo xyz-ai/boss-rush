@@ -155,6 +155,14 @@ func _sync_presentation() -> void:
 	var presentation: Dictionary = boss_def.get("presentation", {})
 	var accent = Color.from_string(str(presentation.get("accent_color", "#d4c8b5")), Color(0.84, 0.78, 0.72))
 	_desk_base_color = Color.from_string(str(presentation.get("desk_tint", "#7b6655")), Color(0.86, 0.76, 0.66, 0.94))
+	if not UI_ASSET_PATHS.USE_SEPARATE_BOSS_PORTRAIT:
+		# Current background already includes the Boss; keep the separate portrait disabled.
+		_boss_portrait.visible = false
+		_boss_portrait_fallback.visible = false
+		_portrait_caption.text = "%s / %s" % [boss_def.get("title", "瀵瑰腑"), boss_def.get("name", "Counterparty")]
+		if _boss_panel.has_method("set_accent"):
+			_boss_panel.set_accent(accent)
+		return
 	var portrait_path := _get_boss_portrait_path(presentation)
 	var portrait_texture := _load_texture(portrait_path)
 	_boss_portrait.texture = portrait_texture

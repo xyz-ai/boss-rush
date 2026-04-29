@@ -3,6 +3,10 @@ class_name UiAssetPaths
 
 const TABLE_MAIN := "res://assets/battle/table/table_main.png"
 
+# Current background composition already owns the Boss silhouette layer.
+# Enable only after replacing the battle background with a no-character plate.
+const USE_SEPARATE_BOSS_PORTRAIT := false
+
 const BOSS_DEFAULT_IDLE := "res://assets/battle/boss/boss_default_idle.png"
 const BOSS_DEFAULT_PRESSURE := "res://assets/battle/boss/boss_default_pressure.png"
 const BOSS_DEFAULT_HIT := "res://assets/battle/boss/boss_default_hit.png"

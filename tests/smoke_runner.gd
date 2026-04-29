@@ -10,6 +10,7 @@ const MVP_BOSS_AI_SCRIPT := preload("res://scripts/game/BossAI.gd")
 const MVP_BATTLE_CARD_SCRIPT := preload("res://scripts/game/BattleCard.gd")
 const MVP_BET_CARD_SCRIPT := preload("res://scripts/game/BetCard.gd")
 const MVP_COMBAT_ACTOR_STATE_SCRIPT := preload("res://scripts/game/CombatActorState.gd")
+const UI_ASSET_PATHS := preload("res://scripts/ui/UiAssetPaths.gd")
 const ROUND_FEEDBACK_WAIT := 2.15
 const PLAYER_SUMMARY_BUTTON_PATH := "ContentRoot/TableArea/PlayerArea/Optional" + "SummaryButton"
 const BOSS_SUMMARY_BUTTON_PATH := "ContentRoot/TableArea/BossArea/Boss" + "SummaryToggleButton"
@@ -370,6 +371,9 @@ func _test_scene_instancing(loader, failures: Array[String]) -> void:
 	get_root().add_child(battle_scene)
 	battle_scene.bind_context(battle_state, loader.get_boss("team_lead"))
 	await process_frame
+	var battle_boss_portrait: Control = battle_scene.get_node_or_null("SafeArea/StageRoot/BossStage/PortraitFrame/BossPortrait")
+	if not UI_ASSET_PATHS.USE_SEPARATE_BOSS_PORTRAIT:
+		_assert(battle_boss_portrait != null and not battle_boss_portrait.visible, "BattleScene BossPortrait should be hidden while separate Boss portraits are disabled.", failures)
 	battle_scene.call("_on_peek_requested")
 	await process_frame
 	_assert(battle_state.current_set_state.boss_revealed, "BattleScene should reveal the boss deck after peek.", failures)
@@ -1358,6 +1362,8 @@ func _test_main_mvp_layout(size: Vector2i, failures: Array[String]) -> void:
 	_assert_control_within_viewport(player_hp, viewport_size, "PlayerHP should stay inside the viewport at %s." % size, failures)
 	_assert_control_within_viewport(boss_hp, viewport_size, "BossHP should stay inside the viewport at %s." % size, failures)
 	_assert_control_within_viewport(boss_portrait, viewport_size, "BossPortrait should stay inside the viewport at %s." % size, failures)
+	if not UI_ASSET_PATHS.USE_SEPARATE_BOSS_PORTRAIT:
+		_assert(boss_portrait != null and not boss_portrait.visible, "BossPortrait should be hidden while separate Boss portraits are disabled.", failures)
 	_assert_control_within_viewport(table_board, viewport_size, "TableBoard should stay inside the viewport at %s." % size, failures)
 	_assert_control_within_viewport(player_status_panel, viewport_size, "PlayerStatusPanel should stay inside the viewport at %s." % size, failures)
 	_assert_control_within_viewport(boss_status_panel, viewport_size, "BossStatusPanel should stay inside the viewport at %s." % size, failures)

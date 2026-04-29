@@ -4,7 +4,6 @@
 [ext_resource type="PackedScene" uid="uid://b3mcvllc0heso" path="res://scenes/ui/ScreenEffects.tscn" id="2"]
 [ext_resource type="Theme" path="res://themes/default_theme.tres" id="3"]
 [ext_resource type="Texture2D" uid="uid://3jv760jkrpcm" path="res://assets/battle/background/bg_office_dark.png" id="4"]
-[ext_resource type="Texture2D" uid="uid://d1ytde133eqh8" path="res://assets/battle/boss/team_lead/boss_team_lead_silhouette.png" id="5"]
 [ext_resource type="Texture2D" uid="uid://du5bbqqm1wqq0" path="res://assets/battle/table/table_main.png" id="6"]
 
 [node name="Main" type="Control" unique_id=6274944]
@@ -411,6 +410,7 @@ offset_bottom = 73.59999
 grow_horizontal = 2
 
 [node name="BossPortrait" type="TextureRect" parent="ContentRoot/TableArea/BossArea" unique_id=1403377710]
+visible = false
 layout_mode = 1
 anchors_preset = -1
 anchor_right = 1.0
@@ -422,7 +422,6 @@ offset_bottom = 249.42853
 grow_horizontal = 2
 grow_vertical = 2
 scale = Vector2(0.7, 0.7)
-texture = ExtResource("5")
 expand_mode = 1
 stretch_mode = 6
 
